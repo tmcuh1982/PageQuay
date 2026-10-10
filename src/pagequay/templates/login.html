@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Connexion · PageQuay</title><link rel="stylesheet" href="/static/style.css"></head>
+<body class="login-body"><main class="login-card">
+<div class="brand"><span class="mark">PQ</span><span>PageQuay<small>BROWSER GATEWAY</small></span></div>
+<p class="eyebrow">VOTRE POINT D’ACCÈS AU WEB</p><h1>Bienvenue à quai.</h1>
+<p class="muted">Connectez-vous pour gérer vos projets et leurs sessions de navigation.</p>
+{% if error %}<div role="alert" class="notice danger">{{ error }}</div>{% endif %}
+{% if not initialized %}<div class="notice">Créez votre administrateur dans le terminal avec <code>pq init-admin</code>.</div>{% endif %}
+<form method="post" action="/admin/login"><input type="hidden" name="csrf" value="{{ nonce }}">
+<label>Identifiant<input name="username" autocomplete="username" required maxlength="100"></label>
+<label>Mot de passe<input name="password" type="password" autocomplete="current-password" required maxlength="512"></label>
+<button type="submit" class="primary">Se connecter <span>→</span></button></form>
+<p class="footnote">Service privé · Profils isolés · Données conservées localement</p>
+</main></body></html>

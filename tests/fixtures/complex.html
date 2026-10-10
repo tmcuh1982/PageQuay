@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr"><head><title>Page complexe PQ</title>
+<meta name="description" content="Une page dynamique de recette">
+<link rel="canonical" href="https://example.org/complex">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Article de recette"}</script>
+<style>.hidden {display:none}</style></head><body>
+<nav><a href="/navigation">Navigation globale</a></nav>
+<main><h1>Catalogue</h1><p id="hydrated">En cours de chargement</p>
+<p>Lire la <a href="/documentation">documentation</a>.</p>
+<div class="hidden"><p>HIDDEN-CONTENT-SECRET</p></div>
+<div aria-hidden="true">ARIA-HIDDEN-SECRET</div>
+<ul><li>Premier<ul><li>Sous-élément</li></ul></li><li>Deuxième</li></ul>
+<table><caption>Tarifs</caption><tr><th>Produit</th><th>Prix</th></tr>
+<tr><td rowspan="2">Robot</td><td>42 €</td></tr><tr><td>43 €</td></tr></table>
+<div role="grid" aria-label="Stock"><div role="row"><div role="columnheader">Produit</div><div role="columnheader">Quantité</div></div>
+<div role="row"><div role="gridcell">Robot</div><div role="gridcell">3</div></div></div>
+<form id="contact" action="/send" method="post">
+<label for="email">Adresse courriel</label><input id="email" name="email" value="PRIVATE-EMAIL-VALUE">
+<label>Mot de passe<input type="password" name="password" value="PRIVATE-PASSWORD-VALUE"></label>
+<input type="hidden" name="csrf" value="PRIVATE-CSRF-VALUE">
+<label for="message">Message</label><textarea id="message" name="message">PRIVATE-TEXTAREA-VALUE</textarea>
+<label for="choice">Choix</label><select id="choice" name="choice"><option value="PRIVATE-OPTION-VALUE">Oui</option><option>Non</option></select>
+<button type="submit">Envoyer</button></form>
+<input name="external" form="contact" aria-label="Champ externe" value="PRIVATE-EXTERNAL-VALUE">
+<pq-card><span slot="details">Détails projetés</span></pq-card><pq-private></pq-private>
+<img src="/image.png" alt="Illustration robot">
+<canvas aria-label="Graphique des ventes" width="300" height="80"></canvas>
+<iframe title="Document intégré" src="__FRAME_URL__"></iframe>
+<iframe title="Document invisible" style="display:none" src="__FRAME_URL__?hidden=1"></iframe>
+<div role="heading" aria-level="3">Titre ARIA</div>
+</main>
+<script>
+customElements.define('pq-card', class extends HTMLElement {
+  constructor() { super(); this.attachShadow({mode:'open'}).innerHTML = '<h2>Composant ouvert</h2><p>Texte du composant <slot name="details"></slot></p>'; }
+});
+customElements.define('pq-private', class extends HTMLElement {
+  constructor() { super(); this.attachShadow({mode:'closed'}).innerHTML = '<p>CLOSED-SHADOW-SECRET</p>'; }
+});
+window.addEventListener('load', () => {
+  const p = document.getElementById('hydrated');
+  p.textContent = 'Contenu après hydratation'; p.className = 'ready';
+  document.getElementById('message').value = 'PRIVATE-LIVE-TEXTAREA-VALUE';
+});
+</script></body></html>

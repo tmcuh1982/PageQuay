@@ -1,0 +1,1045 @@
+{
+  "schema_version": "1.0",
+  "title": "Page complexe PQ",
+  "url": "http://localhost:52918/complex",
+  "metadata": {
+    "language": "fr",
+    "meta": [
+      {
+        "name": "description",
+        "content": "Une page dynamique de recette"
+      }
+    ],
+    "json_ld": [
+      {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "Article de recette"
+      }
+    ],
+    "description": "Une page dynamique de recette",
+    "canonical": "https://example.org/complex"
+  },
+  "content_root": "n5",
+  "blocks": [
+    {
+      "type": "heading",
+      "node_id": "n6",
+      "level": 1,
+      "text": "Catalogue"
+    },
+    {
+      "type": "paragraph",
+      "node_id": "n8",
+      "text": "Contenu après hydratation"
+    },
+    {
+      "type": "paragraph",
+      "node_id": "n10",
+      "text": "Lire la documentation."
+    },
+    {
+      "type": "list",
+      "node_id": "n15",
+      "ordered": false,
+      "items": [
+        {
+          "node_id": "n16",
+          "text": "Premier",
+          "children": [
+            {
+              "node_id": "n18",
+              "ordered": false,
+              "items": [
+                {
+                  "node_id": "n19",
+                  "text": "Sous-élément",
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "node_id": "n21",
+          "text": "Deuxième",
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "node_id": "n23",
+      "table_id": "n23"
+    },
+    {
+      "type": "table",
+      "node_id": "n40",
+      "table_id": "n40"
+    },
+    {
+      "type": "paragraph",
+      "node_id": "n53",
+      "text": "Adresse courrielMot de passeMessageChoixOuiNonEnvoyer"
+    },
+    {
+      "type": "heading",
+      "node_id": "n73",
+      "level": 2,
+      "text": "Composant ouvert"
+    },
+    {
+      "type": "paragraph",
+      "node_id": "n75",
+      "text": "Texte du composant Détails projetés"
+    },
+    {
+      "type": "frame",
+      "node_id": "n83",
+      "url": "http://localhost:52919/child",
+      "title": "Document intégré"
+    },
+    {
+      "type": "heading",
+      "node_id": "n84",
+      "level": 3,
+      "text": "Titre ARIA"
+    }
+  ],
+  "links": [
+    {
+      "node_id": "n3",
+      "text": "Navigation globale",
+      "url": "http://localhost:52918/navigation"
+    },
+    {
+      "node_id": "n12",
+      "text": "documentation",
+      "url": "http://localhost:52918/documentation"
+    }
+  ],
+  "images": [
+    {
+      "node_id": "n81",
+      "url": "http://localhost:52918/image.png",
+      "alt": "Illustration robot"
+    }
+  ],
+  "tables": [
+    {
+      "node_id": "n23",
+      "caption": "Tarifs",
+      "kind": "table",
+      "rows": [
+        [
+          {
+            "node_id": "n28",
+            "text": "Produit",
+            "header": true,
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "node_id": "n30",
+            "text": "Prix",
+            "header": true,
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ],
+        [
+          {
+            "node_id": "n33",
+            "text": "Robot",
+            "header": false,
+            "colspan": 1,
+            "rowspan": 2
+          },
+          {
+            "node_id": "n35",
+            "text": "42 €",
+            "header": false,
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ],
+        [
+          {
+            "node_id": "n38",
+            "text": "43 €",
+            "header": false,
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ]
+      ]
+    },
+    {
+      "node_id": "n40",
+      "caption": "Stock",
+      "kind": "grid",
+      "rows": [
+        [
+          {
+            "node_id": "n42",
+            "text": "Produit",
+            "header": true,
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "node_id": "n44",
+            "text": "Quantité",
+            "header": true,
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ],
+        [
+          {
+            "node_id": "n47",
+            "text": "Robot",
+            "header": false,
+            "colspan": 1,
+            "rowspan": 1
+          },
+          {
+            "node_id": "n49",
+            "text": "3",
+            "header": false,
+            "colspan": 1,
+            "rowspan": 1
+          }
+        ]
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "node_id": "n54",
+      "tag": "input",
+      "type": "text",
+      "name": "email",
+      "label": "Adresse courriel",
+      "required": false,
+      "disabled": false,
+      "value_omitted": true,
+      "form_id": "n51"
+    },
+    {
+      "node_id": "n57",
+      "tag": "input",
+      "type": "password",
+      "name": "password",
+      "label": "Mot de passe",
+      "required": false,
+      "disabled": false,
+      "value_omitted": true,
+      "form_id": "n51"
+    },
+    {
+      "node_id": "n60",
+      "tag": "textarea",
+      "type": "textarea",
+      "name": "message",
+      "label": "Message",
+      "required": false,
+      "disabled": false,
+      "value_omitted": true,
+      "form_id": "n51"
+    },
+    {
+      "node_id": "n63",
+      "tag": "select",
+      "type": "select",
+      "name": "choice",
+      "label": "Choix",
+      "required": false,
+      "disabled": false,
+      "value_omitted": true,
+      "form_id": "n51",
+      "options": [
+        "Oui",
+        "Non"
+      ]
+    },
+    {
+      "node_id": "n68",
+      "tag": "button",
+      "type": "submit",
+      "name": "",
+      "label": "Envoyer",
+      "required": false,
+      "disabled": false,
+      "value_omitted": true,
+      "form_id": "n51"
+    },
+    {
+      "node_id": "n70",
+      "tag": "input",
+      "type": "text",
+      "name": "external",
+      "label": "Champ externe",
+      "required": false,
+      "disabled": false,
+      "value_omitted": true,
+      "form_id": "n51"
+    }
+  ],
+  "forms": [
+    {
+      "node_id": "n51",
+      "action": "http://localhost:52918/send",
+      "method": "post",
+      "label": "",
+      "control_ids": [
+        "n54",
+        "n57",
+        "n60",
+        "n63",
+        "n68",
+        "n70"
+      ]
+    }
+  ],
+  "visuals": [
+    {
+      "node_id": "n82",
+      "type": "canvas",
+      "label": "Graphique des ventes",
+      "requires_screenshot": true
+    }
+  ],
+  "landmarks": [
+    {
+      "node_id": "n2",
+      "tag": "nav",
+      "role": "",
+      "label": ""
+    },
+    {
+      "node_id": "n5",
+      "tag": "main",
+      "role": "",
+      "label": ""
+    }
+  ],
+  "stats": {
+    "nodes_visited": 117,
+    "nodes_included": 85,
+    "open_shadow_roots": 1,
+    "characters": 908
+  },
+  "truncated": false,
+  "truncation_reasons": [],
+  "dom": {
+    "root": {
+      "node_id": "n1",
+      "tag": "body",
+      "attributes": {},
+      "children": [
+        {
+          "node_id": "n2",
+          "tag": "nav",
+          "attributes": {},
+          "children": [
+            {
+              "node_id": "n3",
+              "tag": "a",
+              "attributes": {
+                "href": "http://localhost:52918/navigation"
+              },
+              "children": [
+                {
+                  "node_id": "n4",
+                  "tag": "#text",
+                  "text": "Navigation globale"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "node_id": "n5",
+          "tag": "main",
+          "attributes": {},
+          "children": [
+            {
+              "node_id": "n6",
+              "tag": "h1",
+              "attributes": {},
+              "children": [
+                {
+                  "node_id": "n7",
+                  "tag": "#text",
+                  "text": "Catalogue"
+                }
+              ]
+            },
+            {
+              "node_id": "n8",
+              "tag": "p",
+              "attributes": {
+                "id": "hydrated",
+                "class": "ready"
+              },
+              "children": [
+                {
+                  "node_id": "n9",
+                  "tag": "#text",
+                  "text": "Contenu après hydratation"
+                }
+              ]
+            },
+            {
+              "node_id": "n10",
+              "tag": "p",
+              "attributes": {},
+              "children": [
+                {
+                  "node_id": "n11",
+                  "tag": "#text",
+                  "text": "Lire la "
+                },
+                {
+                  "node_id": "n12",
+                  "tag": "a",
+                  "attributes": {
+                    "href": "http://localhost:52918/documentation"
+                  },
+                  "children": [
+                    {
+                      "node_id": "n13",
+                      "tag": "#text",
+                      "text": "documentation"
+                    }
+                  ]
+                },
+                {
+                  "node_id": "n14",
+                  "tag": "#text",
+                  "text": "."
+                }
+              ]
+            },
+            {
+              "node_id": "n15",
+              "tag": "ul",
+              "attributes": {},
+              "children": [
+                {
+                  "node_id": "n16",
+                  "tag": "li",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "node_id": "n17",
+                      "tag": "#text",
+                      "text": "Premier"
+                    },
+                    {
+                      "node_id": "n18",
+                      "tag": "ul",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "node_id": "n19",
+                          "tag": "li",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "node_id": "n20",
+                              "tag": "#text",
+                              "text": "Sous-élément"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "node_id": "n21",
+                  "tag": "li",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "node_id": "n22",
+                      "tag": "#text",
+                      "text": "Deuxième"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "node_id": "n23",
+              "tag": "table",
+              "attributes": {},
+              "children": [
+                {
+                  "node_id": "n24",
+                  "tag": "caption",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "node_id": "n25",
+                      "tag": "#text",
+                      "text": "Tarifs"
+                    }
+                  ]
+                },
+                {
+                  "node_id": "n26",
+                  "tag": "tbody",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "node_id": "n27",
+                      "tag": "tr",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "node_id": "n28",
+                          "tag": "th",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "node_id": "n29",
+                              "tag": "#text",
+                              "text": "Produit"
+                            }
+                          ]
+                        },
+                        {
+                          "node_id": "n30",
+                          "tag": "th",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "node_id": "n31",
+                              "tag": "#text",
+                              "text": "Prix"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "node_id": "n32",
+                      "tag": "tr",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "node_id": "n33",
+                          "tag": "td",
+                          "attributes": {
+                            "rowspan": "2"
+                          },
+                          "children": [
+                            {
+                              "node_id": "n34",
+                              "tag": "#text",
+                              "text": "Robot"
+                            }
+                          ]
+                        },
+                        {
+                          "node_id": "n35",
+                          "tag": "td",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "node_id": "n36",
+                              "tag": "#text",
+                              "text": "42 €"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "node_id": "n37",
+                      "tag": "tr",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "node_id": "n38",
+                          "tag": "td",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "node_id": "n39",
+                              "tag": "#text",
+                              "text": "43 €"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "node_id": "n40",
+              "tag": "div",
+              "attributes": {
+                "role": "grid",
+                "aria-label": "Stock"
+              },
+              "children": [
+                {
+                  "node_id": "n41",
+                  "tag": "div",
+                  "attributes": {
+                    "role": "row"
+                  },
+                  "children": [
+                    {
+                      "node_id": "n42",
+                      "tag": "div",
+                      "attributes": {
+                        "role": "columnheader"
+                      },
+                      "children": [
+                        {
+                          "node_id": "n43",
+                          "tag": "#text",
+                          "text": "Produit"
+                        }
+                      ]
+                    },
+                    {
+                      "node_id": "n44",
+                      "tag": "div",
+                      "attributes": {
+                        "role": "columnheader"
+                      },
+                      "children": [
+                        {
+                          "node_id": "n45",
+                          "tag": "#text",
+                          "text": "Quantité"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "node_id": "n46",
+                  "tag": "div",
+                  "attributes": {
+                    "role": "row"
+                  },
+                  "children": [
+                    {
+                      "node_id": "n47",
+                      "tag": "div",
+                      "attributes": {
+                        "role": "gridcell"
+                      },
+                      "children": [
+                        {
+                          "node_id": "n48",
+                          "tag": "#text",
+                          "text": "Robot"
+                        }
+                      ]
+                    },
+                    {
+                      "node_id": "n49",
+                      "tag": "div",
+                      "attributes": {
+                        "role": "gridcell"
+                      },
+                      "children": [
+                        {
+                          "node_id": "n50",
+                          "tag": "#text",
+                          "text": "3"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "node_id": "n51",
+              "tag": "form",
+              "attributes": {
+                "id": "contact",
+                "method": "post",
+                "action": "http://localhost:52918/send"
+              },
+              "children": [
+                {
+                  "node_id": "n52",
+                  "tag": "label",
+                  "attributes": {
+                    "for": "email"
+                  },
+                  "children": [
+                    {
+                      "node_id": "n53",
+                      "tag": "#text",
+                      "text": "Adresse courriel"
+                    }
+                  ]
+                },
+                {
+                  "node_id": "n54",
+                  "tag": "input",
+                  "attributes": {
+                    "id": "email",
+                    "name": "email",
+                    "type": "text"
+                  },
+                  "children": []
+                },
+                {
+                  "node_id": "n55",
+                  "tag": "label",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "node_id": "n56",
+                      "tag": "#text",
+                      "text": "Mot de passe"
+                    },
+                    {
+                      "node_id": "n57",
+                      "tag": "input",
+                      "attributes": {
+                        "name": "password",
+                        "type": "password"
+                      },
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "node_id": "n58",
+                  "tag": "label",
+                  "attributes": {
+                    "for": "message"
+                  },
+                  "children": [
+                    {
+                      "node_id": "n59",
+                      "tag": "#text",
+                      "text": "Message"
+                    }
+                  ]
+                },
+                {
+                  "node_id": "n60",
+                  "tag": "textarea",
+                  "attributes": {
+                    "id": "message",
+                    "name": "message"
+                  },
+                  "children": []
+                },
+                {
+                  "node_id": "n61",
+                  "tag": "label",
+                  "attributes": {
+                    "for": "choice"
+                  },
+                  "children": [
+                    {
+                      "node_id": "n62",
+                      "tag": "#text",
+                      "text": "Choix"
+                    }
+                  ]
+                },
+                {
+                  "node_id": "n63",
+                  "tag": "select",
+                  "attributes": {
+                    "id": "choice",
+                    "name": "choice"
+                  },
+                  "children": [
+                    {
+                      "node_id": "n64",
+                      "tag": "option",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "node_id": "n65",
+                          "tag": "#text",
+                          "text": "Oui"
+                        }
+                      ]
+                    },
+                    {
+                      "node_id": "n66",
+                      "tag": "option",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "node_id": "n67",
+                          "tag": "#text",
+                          "text": "Non"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "node_id": "n68",
+                  "tag": "button",
+                  "attributes": {
+                    "type": "submit"
+                  },
+                  "children": [
+                    {
+                      "node_id": "n69",
+                      "tag": "#text",
+                      "text": "Envoyer"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "node_id": "n70",
+              "tag": "input",
+              "attributes": {
+                "aria-label": "Champ externe",
+                "name": "external",
+                "form": "contact",
+                "type": "text"
+              },
+              "children": []
+            },
+            {
+              "node_id": "n71",
+              "tag": "pq-card",
+              "attributes": {},
+              "children": [
+                {
+                  "node_id": "n72",
+                  "tag": "#shadow-root",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "node_id": "n73",
+                      "tag": "h2",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "node_id": "n74",
+                          "tag": "#text",
+                          "text": "Composant ouvert"
+                        }
+                      ]
+                    },
+                    {
+                      "node_id": "n75",
+                      "tag": "p",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "node_id": "n76",
+                          "tag": "#text",
+                          "text": "Texte du composant "
+                        },
+                        {
+                          "node_id": "n77",
+                          "tag": "slot",
+                          "attributes": {
+                            "name": "details"
+                          },
+                          "children": [
+                            {
+                              "node_id": "n78",
+                              "tag": "span",
+                              "attributes": {},
+                              "children": [
+                                {
+                                  "node_id": "n79",
+                                  "tag": "#text",
+                                  "text": "Détails projetés"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "node_id": "n80",
+              "tag": "pq-private",
+              "attributes": {},
+              "children": []
+            },
+            {
+              "node_id": "n81",
+              "tag": "img",
+              "attributes": {
+                "alt": "Illustration robot",
+                "src": "http://localhost:52918/image.png"
+              },
+              "children": []
+            },
+            {
+              "node_id": "n82",
+              "tag": "canvas",
+              "attributes": {
+                "aria-label": "Graphique des ventes"
+              },
+              "children": []
+            },
+            {
+              "node_id": "n83",
+              "tag": "iframe",
+              "attributes": {
+                "title": "Document intégré",
+                "src": "http://localhost:52919/child"
+              },
+              "children": []
+            },
+            {
+              "node_id": "n84",
+              "tag": "div",
+              "attributes": {
+                "role": "heading",
+                "aria-level": "3"
+              },
+              "children": [
+                {
+                  "node_id": "n85",
+                  "tag": "#text",
+                  "text": "Titre ARIA"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "filtered": true,
+    "excluded": [
+      "hidden_elements",
+      "scripts",
+      "styles",
+      "form_values"
+    ]
+  },
+  "source": "rendered_dom",
+  "frame_id": "f0",
+  "frames": [
+    {
+      "frame_id": "f1",
+      "parent_frame_id": "f0",
+      "name": "",
+      "url": "http://localhost:52919/child",
+      "status": "extracted",
+      "document": {
+        "title": "Enfant",
+        "url": "http://localhost:52919/child",
+        "metadata": {
+          "language": "",
+          "meta": [],
+          "json_ld": [],
+          "description": null,
+          "canonical": null
+        },
+        "content_root": "n1",
+        "blocks": [
+          {
+            "type": "heading",
+            "node_id": "n2",
+            "level": 2,
+            "text": "Contenu iframe"
+          },
+          {
+            "type": "paragraph",
+            "node_id": "n4",
+            "text": "Autre origine"
+          }
+        ],
+        "links": [],
+        "images": [],
+        "tables": [],
+        "controls": [],
+        "forms": [],
+        "visuals": [],
+        "landmarks": [],
+        "stats": {
+          "nodes_visited": 5,
+          "nodes_included": 5,
+          "open_shadow_roots": 0,
+          "characters": 61
+        },
+        "truncated": false,
+        "truncation_reasons": [],
+        "dom": {
+          "root": {
+            "node_id": "n1",
+            "tag": "body",
+            "attributes": {},
+            "children": [
+              {
+                "node_id": "n2",
+                "tag": "h2",
+                "attributes": {},
+                "children": [
+                  {
+                    "node_id": "n3",
+                    "tag": "#text",
+                    "text": "Contenu iframe"
+                  }
+                ]
+              },
+              {
+                "node_id": "n4",
+                "tag": "p",
+                "attributes": {},
+                "children": [
+                  {
+                    "node_id": "n5",
+                    "tag": "#text",
+                    "text": "Autre origine"
+                  }
+                ]
+              }
+            ]
+          },
+          "filtered": true,
+          "excluded": [
+            "hidden_elements",
+            "scripts",
+            "styles",
+            "form_values"
+          ]
+        }
+      }
+    },
+    {
+      "frame_id": "f2",
+      "parent_frame_id": "f0",
+      "name": "",
+      "url": "http://localhost:52919/child?hidden=1",
+      "status": "omitted",
+      "reason": "hidden_frame"
+    }
+  ],
+  "partial": false,
+  "frame_limit_reached": false,
+  "limitations": [
+    "Only mounted DOM content is captured; no automatic scrolling or clicks.",
+    "Closed shadow roots are inaccessible.",
+    "Canvas and visual SVG content require a screenshot for visual interpretation.",
+    "Node IDs refer to this snapshot only; they are not action selectors."
+  ]
+}

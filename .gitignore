@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.env
+.env.*
+!.env.example
+.data/
+data/
+profiles/
+artifacts/
+backups/
+dist/
+*.sqlite3*
+*.log
+.DS_Store
+
+# Local diagnostics may contain machine names, IP addresses and captured pages.
+docs/testing/*
+!docs/testing/REPORT.md
+!docs/testing/structured-complex.json
+!docs/testing/structured-complex-compact.json
+pagequay-*-probe*
