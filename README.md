@@ -18,20 +18,23 @@ Passerelle Web privée et auto-hébergée : un projet possède son propre profil
 | [Mémoire](memory.md) / [Décisions](decisions.md) | Suivi du développement et choix techniques |
 | [OpenAPI](docs/openapi.json) | Contrat API exporté |
 
-Au 10 octobre 2026, le MVP et sa documentation sont prêts dans le dossier de développement. La publication publique sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay) est autorisée, mais l'écriture GitHub reste bloquée par l'accès du connecteur (`403 Resource not accessible by integration`). Le dernier état distant vérifié ne contient que le README initial ; une copie GitHub seule ne permet donc pas encore l'installation. Le statut détaillé et la procédure de reprise sont dans les documents ci-dessus.
+Au 10 octobre 2026, le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
 
 ## Installation macOS
 
-Python 3.12–3.14 et [uv](https://docs.astral.sh/uv/) sont nécessaires pour la procédure verrouillée. Le développement initial utilise Python 3.14 sur Apple Silicon. Depuis une copie complète des sources, dans un terminal (adapter le chemin à votre installation) :
+Python 3.12–3.14 et [uv](https://docs.astral.sh/uv/) sont nécessaires pour la procédure verrouillée. Le développement initial utilise Python 3.14 sur Apple Silicon. Pour une nouvelle installation, dans un terminal :
 
 ```sh
-cd ~/Documents/Codex/PageQuay
+git clone https://github.com/tmcuh1982/PageQuay.git
+cd PageQuay
 ./scripts/install_macos.sh
 .venv/bin/pq init-admin
 ./scripts/start.sh
 ```
 
 Le programme demande un identifiant et un mot de passe d'au moins 14 caractères dans un terminal interactif. Aucun compte initial ou mot de passe par défaut. Ouvrir ensuite [la console locale](http://127.0.0.1:8765/admin).
+
+Avec une copie déjà présente, commencer dans sa racine sans relancer `git clone`.
 
 Le script installe les dépendances et Chromium ; `uv.lock` conserve les versions exactes des dépendances Python. Dans l'environnement de développement, cette installation a déjà été vérifiée. L'initialisation de l'administrateur reste à effectuer par chaque opérateur. La commande `pq serve` applique les migrations SQL au démarrage, lie **uniquement `127.0.0.1`**, utilise un seul processus et désactive les access logs. Ctrl-C arrête proprement le service et conserve les profils.
 

@@ -80,10 +80,16 @@ Les secrets, environnements, bases, profils, sauvegardes et diagnostics/captures
 
 L'utilisateur a ensuite explicitement confirmé **« Publier dans le dépôt public existant »**, levant le refus initial lié à la visibilité. Le terminal n'ayant pas d'identifiants HTTPS, la publication utilise la connexion GitHub de l'application, puis Git récupère les commits publics pour aligner le dossier local. Aucun identifiant terminal ni secret n'est créé ou copié.
 
-État actuel : nouvelle tentative autorisée refusée par GitHub (**403 Resource not accessible by integration**), aucune installation/account d'application détecté par le connecteur. Publication toujours non effectuée ; reconfiguration de la connexion avec accès au dépôt requise. La confirmation publique reste acquise, le blocage concerne uniquement l'accès technique GitHub.
+État avant la connexion CLI décrite en D019 : nouvelle tentative autorisée refusée par GitHub (**403 Resource not accessible by integration**), aucune installation/account d'application détecté par le connecteur. Publication alors non effectuée ; reconfiguration de la connexion avec accès au dépôt requise. La confirmation publique restait acquise, le blocage concernait uniquement l'accès technique GitHub.
 
 ## D018 — Documentation locale et distante cohérente (10 octobre 2026)
 
 À la demande de l'utilisateur, le README devient le point d'entrée vers architecture, extraction, exploitation, tests et suivi. `docs/STATUS.md` distingue fonctionnalités livrées, tests exécutés, recette distante non effectuée et état de publication. `docs/PUBLISHING.md` décrit les accès et contrôles nécessaires pour synchroniser les documents et les sources, sans assimiler une mise à jour documentaire à un déploiement du service.
 
 La mise à jour du README distant est tentée par l'API Contents avec son SHA courant ; GitHub refuse aussi cette voie avec 403. Conserver et versionner la documentation locale prête, sans annoncer une mise à jour GitHub non effectuée. Une fois l'accès opérationnel, publier les documents liés ensemble et vérifier leur contenu distant.
+
+## D019 — Publication par GitHub CLI après authentification directe (10 octobre 2026)
+
+La reconfiguration du plugin n'a pas levé le refus 403. Installer le client GitHub officiel puis effectuer sa connexion par code navigateur, validée par l'utilisateur sous `tmcuh1982`, fournit l'accès en écriture nécessaire. Le helper de credentials est configuré uniquement dans le dépôt PageQuay, sans token dans les arguments, sources ou documents.
+
+Push Git normal réussi : historique initial et commits locaux conservés ; code et documentation publiés ensemble sur `main`. Le statut bloqué dans les documents est remplacé par le résultat observé. GitHub CLI a stocké ses identifiants hors du dépôt dans un fichier privé 0600, plutôt que dans le stockage système sécurisé. Les futurs pushes peuvent utiliser cette connexion ; la visibilité publique ne nécessite aucune nouvelle confirmation.

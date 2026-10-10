@@ -1,6 +1,6 @@
 # Mémoire de travail — PageQuay (PQ)
 
-Dernière mise à jour : 2026-10-10, documentation locale et tentative de mise à jour GitHub.
+Dernière mise à jour : 2026-10-10, publication GitHub et synchronisation de la documentation.
 
 ## Objectif et autorisation
 
@@ -89,3 +89,11 @@ Contrat et sources : `docs/EXTRACTION.md`. Reprise : utiliser le JSON par défau
 - Nouveaux `docs/STATUS.md` (fonctionnalités, preuves de validation, recettes restantes, état distant) et `docs/PUBLISHING.md` (accès requis, fichiers publiables, synchronisation et vérification). Ils distinguent publication des sources, déploiement du service et simple publication des documents.
 - Liens relatifs du README et des deux nouveaux documents contrôlés : aucune cible manquante. Mise à jour documentaire seulement, aucune suite navigateur relancée.
 - GitHub recontrôlé : dépôt public et droit utilisateur push/admin ; aucune installation de l'application détectée. README distant toujours une seule ligne. Tentative de mise à jour via l'API Contents (`update_file`, avec le SHA du README relu juste avant) : même **403 Resource not accessible by integration**. La documentation distante n'a pas changé ; les documents locaux sont prêts à publier quand l'accès en écriture sera opérationnel. L'accord de visibilité publique reste acquis.
+
+## Publication effective — 10 octobre
+
+- L'utilisateur a confirmé la reconfiguration du plugin ; les outils ont encore retourné installations vides et 403 sur une création de blob. Le Git HTTPS non authentifié était aussi inutilisable. Ces blocages décrivent les tentatives précédentes, pas l'état actuel de publication.
+- Client officiel GitHub CLI **2.102.0** installé via Homebrew sur le mini. Connexion directe par code navigateur validée par l'utilisateur ; `gh api user --jq .login` confirme **tmcuh1982**. Aucun token affiché ou copié dans le projet. Identifiants CLI stockés dans un fichier hors du dépôt, permissions **0600** vérifiées ; stockage système sécurisé non utilisé par gh lors de cette connexion.
+- Helper Git configuré **localement dans ce dépôt** pour appeler `/opt/homebrew/bin/gh auth git-credential`. Aucun réglage de credentials des autres projets modifié par cette configuration locale.
+- **Premier push réussi** de `5e85c7b` à `ad0c861` sur `origin/main` ; référence distante relue identique. Tous les commits de développement conservés, aucun push forcé. Sources et documentation disponibles sur `https://github.com/tmcuh1982/PageQuay`.
+- README, STATUS et PUBLISHING actualisés : publication débloquée, installation par clone public, voie CLI documentée. Les limites de recette Google/Air, déploiement et protection réseau restent celles réellement testées ; aucun nouveau test de navigateur ou de déploiement exécuté pour cette opération.

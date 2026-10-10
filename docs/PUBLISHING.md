@@ -4,9 +4,20 @@ Le dépôt cible est [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay)
 
 ## Accès GitHub requis
 
-Le compte `tmcuh1982` possède les droits de modification du dépôt. Cela ne suffit pas à donner au connecteur de l'application l'accès en écriture : la dernière tentative a reçu `403 Resource not accessible by integration`, et aucune installation d'application n'a été détectée par ce connecteur.
+Le compte `tmcuh1982` possède les droits de modification du dépôt. Le connecteur de l'application continue à refuser l'écriture avec `403 Resource not accessible by integration` après sa reconnexion. La publication effective utilise **GitHub CLI 2.102.0**, installé sur le mini et authentifié directement avec ce compte. Le premier push du code et des documents a été confirmé.
 
-Configurer la connexion GitHub de l'application avec l'accès au dépôt PageQuay, puis vérifier à nouveau les droits effectifs. Une autre voie est un client Git déjà authentifié sous le compte prévu, avec les droits d'écriture de ce dépôt. Aucun mot de passe, token ou clé privée ne doit être copié dans les documents ou transmis dans le chat. La visibilité publique n'est plus une question en attente.
+Pour une autre installation, avec `gh` disponible :
+
+```sh
+gh auth login --hostname github.com --git-protocol https --web
+gh api user --jq .login
+git config --local credential.https://github.com.helper ''
+git config --local --add credential.https://github.com.helper '!gh auth git-credential'
+```
+
+Valider le code navigateur sous le compte prévu, puis vérifier que le login retourné est `tmcuh1982` avant publication. Le helper est configuré seulement pour le dépôt courant ; dans l'environnement du mini, il utilise le chemin absolu du binaire installé. Aucun mot de passe, token ou clé privée n'est copié dans les documents ou transmis dans le chat. La visibilité publique est déjà confirmée.
+
+Lors de cette connexion, GitHub CLI a stocké ses identifiants dans un fichier local hors du projet, de permissions 0600, plutôt que dans le stockage sécurisé système. Ne pas ajouter ce fichier à une sauvegarde publique ni au dépôt ; aucun identifiant n'est nécessaire pour cloner les sources publiques en lecture.
 
 ## Contenu versionné
 

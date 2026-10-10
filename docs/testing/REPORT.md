@@ -105,3 +105,7 @@ Les pages virtualisées/non chargées, les closed shadows et la sémantique visu
 ## Mise à jour documentaire — 10 octobre
 
 Liens relatifs du README, de `docs/STATUS.md` et de `docs/PUBLISHING.md` contrôlés : aucune cible manquante. Aucun code modifié et aucune suite navigateur relancée pour cette mise à jour. La lecture du README GitHub confirme son contenu initial ; l'API de modification du fichier a refusé l'écriture avec **403 Resource not accessible by integration**. La documentation locale est actualisée ; la publication distante reste non effectuée.
+
+## Publication débloquée — 10 octobre
+
+Le connecteur reste en erreur 403 après reconnexion, mais l'authentification GitHub CLI directe a été validée par l'utilisateur. Login vérifié : `tmcuh1982`. Helper Git configuré dans ce dépôt, premier push réussi de `5e85c7b` à `ad0c861`, référence distante relue identique ; les sources et documents sont maintenant publiés. Les paragraphes précédents décrivent l'historique des essais. README et documents de statut actualisés ensuite. Aucune modification de code ni nouvelle recette navigateur, Google/Air ou déploiement lors de la publication.
