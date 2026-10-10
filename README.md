@@ -16,7 +16,7 @@ Passerelle Web privée et auto-hébergée : un projet possède son propre profil
 | [Sécurité](SECURITY.md) | Protections et limites du MVP |
 | [Rapport de tests](docs/testing/REPORT.md) | Résultats observés et recettes non exécutées |
 | [Mémoire](memory.md) / [Décisions](decisions.md) | Suivi du développement et choix techniques |
-| [Recherche paginée](docs/SEARCH_API.md) | Continuations DuckDuckGo, quotas, idempotence et exemple UniversRobot |
+| [Recherche paginée](docs/SEARCH_API.md) | Continuations DuckDuckGo, quotas, idempotence et exemple ProjectX |
 | [OpenAPI](docs/openapi.json) | Contrat API client 0.2.0, également disponible via `/openapi.json` |
 
 Au 10 octobre 2026, le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
@@ -53,7 +53,7 @@ Ne changez pas de dossier de données entre l'initialisation et le démarrage. `
 
 ## Utilisation
 
-1. Créer `universrobot` et `projet-b` dans **Projets / Profils**.
+1. Créer `projectx` et `projet-b` dans **Projets / Profils**.
 2. Démarrer leurs navigateurs : deux contextes persistants indépendants peuvent rester ouverts ensemble. Le mode visible est le défaut ; une session macOS graphique ouverte est nécessaire.
 3. Créer une clé dans **Clés API**, choisir projet, droits et expiration. Copier le secret affiché une seule fois. Les droits initiaux sont `search:read` et `content:read` ; la navigation et les actions nécessitent `browser:interact`, les listes `browser:read`, les captures `screenshot:read`.
 4. Utiliser **Recherche** ou **Sessions / Onglets** pour tester manuellement. Les opérations longues créent un job ; son état et son résultat apparaissent dans la console.
@@ -99,7 +99,7 @@ Toutes les routes de cette table utilisent `Authorization: Bearer <clé>` et con
 `GET /v1/projects/{slug}/key-info` permet à un client de découvrir ses propres réglages avec son Bearer habituel. Exemple local sur le port API :
 
 ```sh
-curl --fail-with-body http://127.0.0.1:8766/v1/projects/universrobot/key-info \
+curl --fail-with-body http://127.0.0.1:8766/v1/projects/projectx/key-info \
   -H "Authorization: Bearer $PQ_API_KEY"
 ```
 
@@ -110,7 +110,7 @@ Réponse illustrative après le premier appel avec une clé à 60 requêtes/minu
   "key_id": "identifiant-de-la-cle",
   "name": "Mon application",
   "prefix": "pq_exemple",
-  "project": {"slug": "universrobot", "name": "UniversRobot"},
+  "project": {"slug": "projectx", "name": "ProjectX"},
   "scopes": ["content:read", "search:read"],
   "expires_at": null,
   "rate_limit": {
@@ -139,7 +139,7 @@ Exemple curl (clé saisie sans l'inscrire dans l'historique) :
 ```sh
 read -s PQ_API_KEY
 export PQ_API_KEY
-curl --fail-with-body http://127.0.0.1:8765/v1/projects/universrobot/search \
+curl --fail-with-body http://127.0.0.1:8765/v1/projects/projectx/search \
   -H "Authorization: Bearer $PQ_API_KEY" -H 'Content-Type: application/json' \
   -d '{"query":"robotique agricole","engine":"duckduckgo","limit":5}'
 unset PQ_API_KEY
@@ -152,6 +152,8 @@ Les exemples Python et WebSocket sont dans `examples/`. Ne jamais transmettre de
 DuckDuckGo, Brave Search et Google disposent d’adaptateurs séparés testés sur fixtures. `auto` autorise le repli/la fusion ; un moteur explicite ne bascule jamais vers un autre. DuckDuckGo accepte un `cursor` opaque pour rendre le reliquat d’une page puis suivre son formulaire natif « Next ». `limit` reste un maximum de résultats par job, plafonné à 10 par défaut ; pour autoriser 50, régler `search_max_results=50` dans le projet. Le résultat indique `next_cursor`, `has_more` (true/false/null), moteurs, quantités, rangs, URL exacte et motif d’arrêt. Les chaînes sont bornées à 10 pages / 200 résultats / 15 minutes par défaut. Les essais réels récents ont rencontré un CAPTCHA ; trois pages natives sont validées en simulation, pas encore sur DuckDuckGo réel.
 
 Le quota **PageQuay** est de 6 tentatives de page par fenêtre fixe de 60 secondes pour chaque couple projet/moteur, partagé par les clés et l’admin ; il ne décrit pas un quota DuckDuckGo. Les reliquats stockés ne consomment pas de tentative moteur. Le quota REST par clé reste distinct et compte notamment le suivi des jobs. HTTP 429 fournit `Retry-After` lorsqu’il est connu ; les erreurs des jobs indiquent portée/cause/délai, reprise possible et résultats partiels. `Idempotency-Key` sur POST /search permet de retrouver la même opération pendant 24 heures, y compris après redémarrage. Les onglets internes sont fermés après succès, échec ou annulation.
+
+Pour cibler l’actualité avec DuckDuckGo, ajouter `region` (par exemple `fr-fr`, `pl-pl`, `us-en` ou `wt-wt`) et `time_range` (`any`, `day`, `week`, `month`, `year`). La console **Recherche** propose les menus **Pays / région** et **Période** lorsque DuckDuckGo est sélectionné. Exemple : `{"query":"robot agriculture","engine":"duckduckgo","region":"fr-fr","time_range":"week"}`. Les filtres restent identiques dans les continuations ; une page récente peut néanmoins raconter un événement ancien. Les autres moteurs et `auto` refusent les filtres explicites.
 
 Contrat et exemples : [SEARCH_API](docs/SEARCH_API.md), [OpenAPI](docs/openapi.json), [client Python serveur pour plusieurs requêtes](examples/search_duckduckgo.py). Le schéma client est également disponible sur `GET /openapi.json` via le port API/HTTPS privé. Les paramètres régionaux sont transmis à Google et DuckDuckGo sans garantie de classement. Les publicités explicitement identifiables restent filtrées, les autres types restent `uncertain`. Aucun solveur CAPTCHA, spoofing ni rotation d’identité.
 

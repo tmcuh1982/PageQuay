@@ -1,10 +1,22 @@
 # Mémoire de travail — PageQuay (PQ)
 
-Dernière mise à jour : 2026-10-10, publication GitHub et synchronisation de la documentation.
+Dernière mise à jour : 2026-10-10, préparation du commit de release demandé vers GitHub.
+
+## 10 octobre — commit de release demandé
+
+Demande explicite de publier les changements courants sur GitHub. Lot : filtres pays / période DuckDuckGo, migration 004 et compatibilité des continuations/idempotence, menus console et options client, documentation/exemples avec nom générique ProjectX (`projectx`), correctif du diagnostic Google déjà présent dans le dossier. Publication cible `tmcuh1982/PageQuay`, branche main ; le commit du port HTTPS configurable déjà local fait aussi partie de la synchronisation. Version du contrat conservée à 0.2.0. Contrôles finaux : suite **142 passed / 14 skipped**, 6,40 s ; Ruff check/format, syntaxe Node et diff --check conformes. Les deux tests Chromium liés aux filtres ont passé lors de leur recette ; aucun nouveau diagnostic moteur externe lancé pour la publication.
+
+## 10 octobre — filtres pays / période DuckDuckGo
+
+Ajout de `region` (codes officiels DDG, null = dérivé de locale) et `time_range` (`any`, `day`, `week`, `month`, `year`) à POST /search et aux métadonnées. Console Recherche : menus Pays / région et Période activés pour DuckDuckGo ; client Python : --region et --time-range, filtres liés au checkpoint. Les autres moteurs et auto refusent les filtres explicites plutôt que les perdre lors d’un repli. Dates de publication/mise à jour/événement non vérifiées automatiquement ; fetched_at reste la collecte.
+
+- `kl` et `df` transmis dès la première navigation et réappliqués aux formulaires natifs, sans inventer tokens/offsets. `any` transmet explicitement df vide. Curseurs liés aux filtres à l’admission et à l’exécution ; migration 004 conserve les anciens curseurs. Hashes d’idempotence historiques préservés pour les filtres par défaut.
+- Validation : suite normale **142 passed / 14 skipped** hors sandbox réseau ; transport POST Chromium **1 passed** ; UI Chromium **1 passed** après correction des sélecteurs et de l’interception du test. Menus, corps des requêtes, changement de moteur, suppression région vide et rendu desktop/mobile vérifiés. Captures search-filters-desktop.png / search-filters-mobile.png inspectées ; Ruff, format, Node et diff --check conformes. Pas de succès DuckDuckGo filtré en direct revendiqué.
+- Déployé dans PageQuayService après contrôle de zéro job actif et sauvegarde privée des sources précédentes sous tmp. Bootout suivi d’un premier bootstrap trop rapide en erreur 5 ; deuxième bootstrap réussi. Sources installées identiques, migration appliquée, schéma public actualisé, login local 200 et admin sur API 404 confirmés. Profils/clés/configurations réels conservés ; aucun push GitHub pour cette modification.
 
 ## Objectif et autorisation
 
-L'utilisateur a autorisé le développement depuis l'archive et demandé `memory.md` et `decisions.md`. Nom produit **PageQuay / PQ**. Sources originales intactes dans `docs/definition/`.
+L'utilisateur a autorisé le développement depuis l'archive et demandé `memory.md` et `decisions.md`. Nom produit **PageQuay / PQ**. Documents de référence dans `docs/definition/`, avec noms d’exemple rendus génériques à la demande de l’utilisateur.
 
 ## État livré
 
@@ -140,9 +152,9 @@ Chromium macOS restaure nativement une fenêtre minimisée lors de context.new_p
 
 Validation finale : 73 tests réussis / 11 ignorés sans Chromium ; 3 tests Chromium visibles réussis (UI réelle, cycle de vie/profils et navigation distante minimisée avec actions/extraction/capture/restauration/isolation). Ruff check/format et git diff --check conformes. Captures UI et artefact PNG de fixture inspectés. Déploiement de browser.py/settings.py/admin.py/template/JS dans PageQuayService, sauvegarde des sources précédentes sous tmp, redémarrage après vérification de zéro job actif. Ready/login locaux 200 ; admin et contrôle fenêtre toujours 404 sur le port API 8766. Réglage de démarrage minimisé laissé désactivé jusqu’à choix dans Paramètres. Aucun projet/clé/profil réel modifié ; fenêtres fermées par le redémarrage du service.
 
-### Recherche DuckDuckGo et intégration UniversRobot — contrat 0.2.0
+### Recherche DuckDuckGo et intégration ProjectX — contrat 0.2.0
 
-Prompt joint appliqué : pagination native, quotas détaillés, idempotence, cycle de vie des onglets, OpenAPI publié et exemple Python serveur. Diagnostic prouvé : plafond min(request.limit, search_max_results), défaut10 ; quota PageQuay 6 tentatives par fenêtre fixe60s/projet/moteur partagé entre clés/admin, distinct du quota REST par clé. Configuration réelle UniversRobot relue : aucune surcharge, plafond10. Les anciennes observations ne prouvent pas la cause exacte de chaque ancien RATE_LIMITED ni un quota DuckDuckGo.
+Prompt joint appliqué : pagination native, quotas détaillés, idempotence, cycle de vie des onglets, OpenAPI publié et exemple Python serveur. Diagnostic prouvé : plafond min(request.limit, search_max_results), défaut10 ; quota PageQuay 6 tentatives par fenêtre fixe60s/projet/moteur partagé entre clés/admin, distinct du quota REST par clé. Configuration du projet de référence relue : aucune surcharge, plafond10. Les anciennes observations ne prouvent pas la cause exacte de chaque ancien RATE_LIMITED ni un quota DuckDuckGo.
 
 Search.cursor opaque aléatoire43caractères, snapshots SQLite migration003 (search_cursors/search_idempotency). Reliquats d’une page avant son formulaire Next natif GET/POST, aucun offset fabriqué ; actions HTTPS DuckDuckGo/html bornées, transport navigateur/proxy existant. Liens exact_url et rangs/source conservés en plus du url normalisé historique. Métadonnées compteurs/moteurs/continuation/has_more triétat/motif/partiel. Bornes par défaut10pages/200résultats/15min/100états de curseurs par projet, read200hits max/document. Répétitions/no progress arrêtées. Cursor lié projet/query/engine/locale, réservé atomiquement avec job, consommé après succès, libéré après échec/annulation/restart ; reset/purge invalident. État consommé/expiré effacé, tombstones1jour. Onglet interne propre par search, fermé dans finally, pas d’onglet entre continuations. Allocation protégée pour fermer l’onglet même si annulation arrive pendant sa création ; annulation d’un runner avant première instruction libère aussi réservation/file.
 
@@ -150,7 +162,7 @@ Idempotency-Key optionnel POST/search, namespace projet+clé, corps validé cano
 
 Livrables : docs/SEARCH_API.md, docs/openapi.json, examples/search_duckduckgo.py (stdlib, multiqueries, checkpoint0600 avant POST, retries idempotents bornés, Bearer uniquement environnement/header, redirects refusés). Versions package/API0.2.0 et docs mises à jour. Dernière suite Chromium visible complète :116passed/3skipped,72.84s ; Ruff42fichiers conforme. Exemple retesté5cas après ajustementcheckpoint/aideCLI. Diagnostic DDG réel :3queries (fr-FR/en-US) toutes CAPTCHA, challenge.required puis TIMEOUT5s, zéro onglet restant. Preuves docs/testing/duckduckgo-native-*.html + duckduckgo-pagination-live.json locales ; trois pages natives réelles non validées.
 
-Déployé aprèszérojobactif, backup privé sources+SQLite sous tmp (pq-search-02-backup-*),16fichiersruntime et LaunchAgent relancé. Ready/login locaux200 ; OpenAPI8766 version0.2.0 ; admin8766 toujours404. HTTPSréel : ready200/OpenAPI200/admin404/searchanonyme401. Aucun jeton réel lu/affiché ; aucun changement de clé/projet réel ni hausse de quota. Rejeu authentifié depuis UniversRobot surserviceinstallé non exécuté, les tests moteurs utilisent runtimejetable. Modifications locales non poussées à GitHub dans cette demande.
+Déployé aprèszérojobactif, backup privé sources+SQLite sous tmp (pq-search-02-backup-*),16fichiersruntime et LaunchAgent relancé. Ready/login locaux200 ; OpenAPI8766 version0.2.0 ; admin8766 toujours404. HTTPSréel : ready200/OpenAPI200/admin404/searchanonyme401. Aucun jeton réel lu/affiché ; aucun changement de clé/projet réel ni hausse de quota. Rejeu authentifié depuis le client du projet de référence surserviceinstallé non exécuté, les tests moteurs utilisent runtimejetable. Modifications locales non poussées à GitHub dans cette demande.
 
 ### Publication du lot 0.2
 

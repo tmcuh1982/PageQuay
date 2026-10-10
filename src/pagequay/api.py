@@ -95,7 +95,7 @@ async def search(
         str | None, Header(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$")
     ] = None,
 ):
-    """Search one bounded slice. DuckDuckGo continuations bind query/engine/locale/project.
+    """Search one bounded slice. DuckDuckGo continuations also bind region and time_range.
 
     limit remains an upper bound on results in this operation, capped by search_max_results.
     Idempotency-Key replays the same operation for 24 hours; another payload returns 409.

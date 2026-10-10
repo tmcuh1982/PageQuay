@@ -116,3 +116,7 @@ Autoriser l’opérateur local à changer les réglages de sécurité d’une cl
 ## Port HTTPS Tailscale configurable globalement
 
 Le port externe désigne le port HTTPS utilisé par les clients, indépendant de chaque projet et du port API loopback. Le réglage est géré globalement dans Paramètres, appliqué explicitement avec la CLI Tailscale Serve et persisté par --bg dans Tailscale. Lire l’état réel plutôt que conserver une préférence potentiellement différente de la route active. Les autres services sont préservés ; toute route partagée/occupée, Funnel ou Serve temporaire sur le port concerné est refusé. Le changement crée et vérifie la nouvelle route avant de retirer l’ancienne, puis vérifie l’état final ; récupération contrôlée en cas d’échec. La console reste locale et la cible est toujours le listener API.
+
+## Filtres d’actualité DuckDuckGo
+
+Exposer `region` comme code officiel pays/région-langue avec priorité sur la locale, et `time_range` comme choix lisible (`any/day/week/month/year`). Réappliquer uniquement `kl/df` aux continuations émises par le moteur ; conserver les tokens/offsets natifs. Lier ces filtres aux curseurs et checkpoints et préserver les hashes des requêtes historiques sans filtre. Refuser les filtres explicites pour auto/Brave/Google afin qu’un repli ne change pas leur sens. La date de collecte reste distincte de la publication et de l’événement ; aucune date n’est déduite de la seule présence dans des résultats récents.

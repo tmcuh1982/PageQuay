@@ -1,6 +1,6 @@
 # Recherche PageQuay — contrat 0.2.0
 
-Ce contrat ajoute des champs aux réponses et un paramètre optionnel aux requêtes de l’API `/v1`, sans modifier les états ni les chemins des jobs. `GET /openapi.json` publie le schéma des routes client et health sur le port API 8766 et via le HTTPS privé. Aucun login admin ni secret n’y figure. La copie versionnée est [openapi.json](openapi.json).
+Ce contrat ajoute des champs aux réponses et des paramètres optionnels aux requêtes de l’API `/v1`, sans modifier les états ni les chemins des jobs. `GET /openapi.json` publie le schéma des routes client et health sur le port API 8766 et via le HTTPS privé. Aucun login admin ni secret n’y figure. La copie versionnée est [openapi.json](openapi.json).
 
 ## Diagnostic des limites précédentes
 
@@ -16,20 +16,45 @@ Ce contrat ajoute des champs aux réponses et un paramètre optionnel aux requê
 
 Les fenêtres de quota sont fixes, commencent au premier appel admis et sont persistées dans SQLite. Elles ne sont pas des fenêtres glissantes ni des quotas de DuckDuckGo. Une continuation qui rend seulement un reliquat déjà stocké consomme le quota REST, mais pas de nouvelle tentative moteur ni d’onglet. Les redirections, ressources de la page et reprise du même CAPTCHA ne sont pas de nouvelles tentatives moteur. Les autres gardes REST existantes restent inchangées : captures 6/60 s par clé, messages WS plafonnés à min(quota clé, 60)/60 s, connexions WS bornées ; voir README.
 
-Le plafonnement observé 5/10/10/10 pour des demandes 5/10/20/50 est expliqué par le plafond PageQuay de 10. Les six succès suivis de quatre `RATE_LIMITED` sont compatibles avec le garde projet/moteur trouvé ; les anciennes réponses ne permettent pas de prouver rétrospectivement la cause de chaque échec. Aucune limite exacte de DuckDuckGo n’est déduite de ces observations. La configuration réelle d’UniversRobot relue sur le service avait `search_max_results=10` et aucune surcharge.
+Le plafonnement observé 5/10/10/10 pour des demandes 5/10/20/50 est expliqué par le plafond PageQuay de 10. Les six succès suivis de quatre `RATE_LIMITED` sont compatibles avec le garde projet/moteur trouvé ; les anciennes réponses ne permettent pas de prouver rétrospectivement la cause de chaque échec. Aucune limite exacte de DuckDuckGo n’est déduite de ces observations. La configuration du projet de référence relue sur le service avait `search_max_results=10` et aucune surcharge.
 
 ## Première tranche et continuation
 
 Une requête contient `query` (1–500 caractères), `engine`, `limit` (1–50) et `locale` (`fr-FR` par défaut). Plusieurs mots-clés font partie d’une même chaîne `query`. Pour plusieurs recherches distinctes, envoyer plusieurs opérations, chacune avec son propre curseur et sa clé d’idempotence ; aucun batch implicite ne multiplie les requêtes.
+
+### Pays / région et période pour l’actualité
+
+DuckDuckGo accepte deux filtres optionnels, également disponibles dans la console locale **Recherche** après sélection du moteur DuckDuckGo :
+
+| Champ | Valeurs | Défaut |
+| --- | --- | --- |
+| `region` | Code régional DuckDuckGo, par exemple `fr-fr` (France), `pl-pl` (Pologne), `us-en` (États-Unis), `uk-en` (Royaume-Uni), `wt-wt` (toutes les régions) | `null` : région dérivée de `locale` |
+| `time_range` | `any` (toutes les dates), `day` (dernier jour), `week`, `month`, `year` | `any` |
+
+Exemple pour rechercher en France sur la dernière semaine :
+
+```json
+{"query":"robot agriculture","engine":"duckduckgo","region":"fr-fr","time_range":"week","limit":10}
+```
+
+`region` remplace le contrôle régional dérivé de `locale`, ce qui permet de choisir un autre marché sans modifier celle-ci. Le code combine pays/région et langue, selon la [liste officielle DuckDuckGo](https://duckduckgo.com/duckduckgo-help-pages/settings/params) ; il ne garantit pas une restriction aux seuls sites du pays. Les valeurs explicites non reconnues sont refusées avec HTTP 422. Les anciennes locales restent acceptées et conservent leur transmission historique ; certaines combinaisons peuvent être ignorées par le moteur.
+
+La période est transmise via `df` (`d`, `w`, `m`, `y`, ou une valeur vide pour toutes les dates), avec la correspondance utilisée par l’[adaptateur HTML SearXNG](https://docs.searxng.org/_modules/searx/engines/duckduckgo.html). DuckDuckGo décrit ces [filtres de date](https://duckduckgo.com/duckduckgo-help-pages/features/dates) dans son aide. Chaque chargement transmet explicitement région et période, y compris les continuations natives, afin de ne pas dépendre du choix précédent du profil. Les tokens et offsets restent ceux du formulaire moteur ; aucun offset n’est inventé.
+
+Un filtre explicite (`region` non nul ou période autre que `any`) nécessite le moteur effectif DuckDuckGo. `auto`, Brave et Google sont refusés avec HTTP 422 avant admission ; aucun repli ne supprime silencieusement ces filtres. Si `engine` est omis, le moteur configuré du projet doit être DuckDuckGo.
+
+Les réponses et les résultats partiels rappellent `locale`, `region` et `time_range`. Conserver ces valeurs à chaque reprise ; changer région ou période invalide le curseur. Les filtres participent aussi à l’idempotence. Omettre les filtres et envoyer `region=null,time_range="any"` sont équivalents, y compris pour les associations d’idempotence antérieures à l’ajout des filtres. La migration SQLite conserve les curseurs existants sans filtre.
+
+**Fraîcheur :** `fetched_at` indique la collecte par PageQuay, pas la publication ni l’événement. Une page récemment publiée ou modifiée peut raconter un événement ancien. Pour une veille fiable, consulter l’article et distinguer date de publication, date de mise à jour et date de l’événement ; si elles sont absentes, conserver l’incertitude. Ces filtres ne constituent pas une vérification automatique de ces dates.
 
 `limit` conserve son sens : **maximum de résultats dans cette opération**, plafonné par la configuration du projet. Ce n’est ni un nombre de pages ni une garantie de remplissage. Un appel effectue au plus un chargement de page du moteur. Les résultats de cette page qui dépassent le plafond sont gardés dans le curseur ; des tranches suivantes peuvent les rendre avant de charger une autre page.
 
 Première requête, en HTTPS avec le Bearer fourni par l’environnement serveur et un en-tête `Idempotency-Key` choisi par le client :
 
 ```http
-POST /v1/projects/universrobot/search
+POST /v1/projects/projectx/search
 Content-Type: application/json
-Idempotency-Key: universrobot-run-123-query-1-slice-1
+Idempotency-Key: projectx-run-123-query-1-slice-1
 ```
 
 ```json
@@ -39,7 +64,7 @@ Idempotency-Key: universrobot-run-123-query-1-slice-1
 Réponse d’admission :
 
 ```json
-{"job_id":"JOB_ID","status":"queued","url":"/v1/projects/universrobot/jobs/JOB_ID","idempotency_replayed":false}
+{"job_id":"JOB_ID","status":"queued","url":"/v1/projects/projectx/jobs/JOB_ID","idempotency_replayed":false}
 ```
 
 Suivre le chemin relatif `url` avec le même Bearer. Dans un job `completed`, `result` conserve `project`, `query`, `results`, `engine_errors` et ajoute :
@@ -55,7 +80,7 @@ Suivre le chemin relatif `url` avec le même Bearer. Dans un job `completed`, `r
 | `duplicates_discarded` | Doublons cumulés détectés selon l’URL normalisée |
 | `stop_reason`, `partial` | Motif de fin de cette tranche et présence d’un arrêt partiel connu |
 
-Reprise : recopier le curseur reçu, conserver projet/query/engine/locale et choisir une **nouvelle** clé d’idempotence pour cette tranche. `limit` peut changer.
+Reprise : recopier le curseur reçu, conserver projet/query/engine/locale/region/time_range et choisir une **nouvelle** clé d’idempotence pour cette tranche. `limit` peut changer.
 
 ```json
 {"query":"robot agriculture","engine":"duckduckgo","limit":10,"locale":"fr-FR","cursor":"CURSEUR_OPAQUE_REÇU"}
@@ -88,7 +113,7 @@ Un document est limité par `max_content_bytes` (2 Mo par défaut), le parseur l
 ## Durée, rejeu et invalidation des curseurs
 
 - L’échéance est absolue depuis le premier chargement ; une reprise ne prolonge pas la chaîne. Expiration : HTTP 410 `CURSOR_EXPIRED`, ou le même code dans un job expiré pendant son attente en file.
-- Le curseur est lié au projet, à la query validée, au moteur DuckDuckGo et à la locale. Changer l’un d’eux : HTTP 409 `INVALID_CURSOR`, avant création du job. Une autre clé du même projet avec `search:read` peut le reprendre.
+- Le curseur est lié au projet, à la query validée, au moteur DuckDuckGo, à la locale, à la région explicite et à la période. Changer l’un d’eux : HTTP 409 `INVALID_CURSOR`, avant création du job. Une autre clé du même projet avec `search:read` peut le reprendre.
 - La réservation du curseur et la création du job sont atomiques. Sans rejeu idempotent, réutiliser un curseur réservé/consommé renvoie HTTP 409 `CURSOR_USED` et le chemin du job existant.
 - Une tentative échouée/annulée libère la réservation ; si elle n’est pas expirée, une nouvelle opération peut reprendre ce même curseur. Les erreurs de quota indiquent précisément si cette reprise reste possible. Les jobs interrompus au redémarrage deviennent `failed` et libèrent leur réservation ; les curseurs non expirés gardent leur état dans SQLite.
 - Un reset de profil invalide ses curseurs. Purger les contenus supprime leurs états/curseurs. Un redémarrage ordinaire du navigateur conserve le profil et les curseurs ; les paramètres natifs peuvent néanmoins expirer indépendamment chez DuckDuckGo, auquel cas PQ signale l’erreur réellement observée.
@@ -130,19 +155,19 @@ Un rejeu REST compte dans le quota de la clé, mais ne crée pas de nouveau job 
 
 Conserver la clé d’idempotence et le corps **avant** d’envoyer le POST. En cas de réception incertaine, réenvoyer exactement cette création avec la même clé ; ne pas changer de valeur tant que le résultat de réception n’est pas établi.
 
-## Cycle de vie et exemple UniversRobot
+## Cycle de vie et exemple ProjectX
 
 Chaque recherche possède son seul onglet interne. Il est fermé dans le nettoyage après succès, erreur, annulation ou délai humain, sans fermer les onglets d’autres opérations. Il reste accessible pendant `waiting_for_human`. Les curseurs ne retiennent pas d’onglet entre les jobs. Une tranche de résultats stockés n’en ouvre aucun.
 
-[search_duckduckgo.py](../examples/search_duckduckgo.py) est un client Python standard utilisable côté serveur UniversRobot. Il itère plusieurs requêtes, suit les jobs, traite les continuations et s’arrête sur une fin explicite/inconnue, un CAPTCHA, une erreur ou sa borne locale. Il sauvegarde un checkpoint privé (0600) avant création et après réception pour récupérer une création incertaine. Les reprises de quotas connus sont bornées ; les CAPTCHA demandent une intervention manuelle séparée.
+[search_duckduckgo.py](../examples/search_duckduckgo.py) est un client Python standard utilisable côté serveur pour ProjectX. Il itère plusieurs requêtes, suit les jobs, traite les continuations et s’arrête sur une fin explicite/inconnue, un CAPTCHA, une erreur ou sa borne locale. Il sauvegarde un checkpoint privé (0600) avant création et après réception pour récupérer une création incertaine. Les reprises de quotas connus sont bornées ; les CAPTCHA demandent une intervention manuelle séparée.
 
 ```sh
 # PQ_API_KEY est fourni par l’environnement ou le gestionnaire de secrets serveur.
 python3 examples/search_duckduckgo.py \
-  --url https://VOTRE-HOTE-PQ --project universrobot \
+  --url https://VOTRE-HOTE-PQ --project projectx \
   --query 'robot agriculture' --query 'robot irrigation' \
-  --locale fr-FR --limit 10 --max-slices 3 \
-  --checkpoint /chemin/prive/universrobot-ddg.json
+  --locale fr-FR --region fr-fr --time-range week --limit 10 --max-slices 3 \
+  --checkpoint /chemin/prive/projectx-ddg.json
 ```
 
 Relancer avec le même checkpoint et les mêmes arguments pour retrouver une opération dont la réception était incertaine. Après intervention humaine et reprise du job, le checkpoint permet d’en lire le résultat. Le nombre de tranches peut inclure des reliquats d’une page ; consulter `pages_fetched` pour vérifier une progression native. La clé Bearer ne figure ni dans le code, le checkpoint, les résultats, les URL, le curseur ou le frontend ; les redirections HTTP du client sont refusées.

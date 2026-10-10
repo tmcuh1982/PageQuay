@@ -7,8 +7,8 @@ Lancer les tests unitaires et d'intégration sur localhost. **Aucun compte Googl
 - [ ] Aucun admin initial anonyme ; CLI de création obligatoire ; hash Argon2id dans SQLite.
 - [ ] Login admin incorrect : rejet, ralentissement raisonnable, pas d'informations révélatrices.
 - [ ] Actions du panneau admin exigent cookie de session et CSRF ; protection XSS sur HTML distant.
-- [ ] Clé `universrobot` : accès universrobot autorisé selon scopes ; accès `projet-b` refusé.
-- [ ] Clé `projet-b` : impossibilité d'accéder aux onglets, jobs, captures et WS universrobot même avec des IDs connus.
+- [ ] Clé `projectx` : accès projectx autorisé selon scopes ; accès `projet-b` refusé.
+- [ ] Clé `projet-b` : impossibilité d'accéder aux onglets, jobs, captures et WS projectx même avec des IDs connus.
 - [ ] Clé expirée ou révoquée : 401/403 ; connexion WS existante fermée/invalidée au contrôle suivant.
 - [ ] Secret complet affiché uniquement à la création, absent des tables SQLite, logs et réponse de listing.
 - [ ] Demandes HTTP(S) vers localhost, 192.168.1.1, 10.0.0.1, 169.254.169.254 et IP privée après redirection : bloquées ; vérifier IPv6 et DNS pointant vers IP privée.
@@ -18,8 +18,8 @@ Lancer les tests unitaires et d'intégration sur localhost. **Aucun compte Googl
 ## Navigateurs et profils
 
 - [ ] Deux projets, deux répertoires persistants et deux navigateurs graphiques ouverts **simultanément**.
-- [ ] Cookie écrit dans universrobot n'apparaît pas dans projet-b sur un domaine de test local autorisé **exclusivement dans l'environnement de test** ; exception temporaire au blocage local explicite, jamais activée en production.
-- [ ] Relancer universrobot et constater que son cookie de test persiste ; cookies de projet-b inchangés.
+- [ ] Cookie écrit dans projectx n'apparaît pas dans projet-b sur un domaine de test local autorisé **exclusivement dans l'environnement de test** ; exception temporaire au blocage local explicite, jamais activée en production.
+- [ ] Relancer projectx et constater que son cookie de test persiste ; cookies de projet-b inchangés.
 - [ ] Une deuxième ouverture du même `user_data_dir` ne provoque pas un Chrome concurrent ou une corruption ; retour conflit ou réutilisation de l'instance existante.
 - [ ] Navigation autorisée vers site public, extraction DOM rendu/texte/liens/métadonnées, capture accessible au bon scope.
 - [ ] Action `click` ou `fill` refusée à une clé de lecture seule ; acceptée à une clé autorisée sur un site de test.

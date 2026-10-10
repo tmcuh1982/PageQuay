@@ -105,7 +105,22 @@ def save_checkpoint(path, state):
     path.chmod(0o600)
 
 
-def collect(client, queries, *, locale="fr-FR", limit=10, max_slices=3, checkpoint):
+def collect(
+    client,
+    queries,
+    *,
+    locale="fr-FR",
+    region=None,
+    time_range="any",
+    limit=10,
+    max_slices=3,
+    checkpoint,
+):
+    filters = {}
+    if region is not None:
+        filters["region"] = region
+    if time_range != "any":
+        filters["time_range"] = time_range
     inputs = {
         "base": client.base,
         "project": client.prefix,
@@ -113,6 +128,7 @@ def collect(client, queries, *, locale="fr-FR", limit=10, max_slices=3, checkpoi
         "locale": locale,
         "limit": limit,
         "max_slices": max_slices,
+        **filters,
     }
     if checkpoint.exists():
         state = json.loads(checkpoint.read_text())
@@ -143,6 +159,7 @@ def collect(client, queries, *, locale="fr-FR", limit=10, max_slices=3, checkpoi
                     "locale": locale,
                     "limit": limit,
                     "engine": "duckduckgo",
+                    **filters,
                 }
                 if entry["cursor"]:
                     body["cursor"] = entry["cursor"]
@@ -199,9 +216,13 @@ def collect(client, queries, *, locale="fr-FR", limit=10, max_slices=3, checkpoi
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default=os.environ.get("PQ_URL", "http://127.0.0.1:8766"))
-    parser.add_argument("--project", default=os.environ.get("PQ_PROJECT", "universrobot"))
+    parser.add_argument("--project", default=os.environ.get("PQ_PROJECT", "projectx"))
     parser.add_argument("--query", action="append", required=True)
     parser.add_argument("--locale", default="fr-FR")
+    parser.add_argument("--region", help="DuckDuckGo region, e.g. fr-fr, pl-pl, us-en, wt-wt")
+    parser.add_argument(
+        "--time-range", default="any", choices=["any", "day", "week", "month", "year"]
+    )
     parser.add_argument("--limit", type=int, default=10, choices=range(1, 51), metavar="1-50")
     parser.add_argument("--max-slices", type=int, default=3, choices=range(1, 31), metavar="1-30")
     parser.add_argument(
@@ -218,6 +239,8 @@ def main():
             client,
             args.query,
             locale=args.locale,
+            region=args.region,
+            time_range=args.time_range,
             limit=args.limit,
             max_slices=args.max_slices,
             checkpoint=args.checkpoint,

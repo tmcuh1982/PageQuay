@@ -100,6 +100,25 @@ def test_client_transport_retry_keeps_idempotency_and_key_in_header_only():
         client.call("GET", "https://evil.example/steal")
 
 
+def test_checkpoint_binds_filters_and_repeats_them_in_continuations(tmp_path):
+    client = SimulatedClient()
+    client.receipt_lost = False
+    checkpoint = tmp_path / "filtered.json"
+    example.collect(client, ["robot"], region="pl-pl", time_range="week", checkpoint=checkpoint)
+    assert len(client.calls) == 2
+    assert all(
+        body["region"] == "pl-pl" and body["time_range"] == "week" for body, _ in client.calls
+    )
+    for change in ({"region": "fr-fr"}, {"time_range": "day"}):
+        with pytest.raises(ValueError, match="different parameters"):
+            example.collect(
+                client,
+                ["robot"],
+                checkpoint=checkpoint,
+                **{"region": "pl-pl", "time_range": "week", **change},
+            )
+
+
 @pytest.mark.parametrize("header,known", [("17", True), ("bad-date", False), ("", False)])
 def test_upstream_429_has_known_or_unknown_retry(header, known):
     manager = object.__new__(BrowserManager)

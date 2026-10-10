@@ -31,6 +31,9 @@ def test_versioned_public_client_contract_on_api_listener(client):
     assert any(p["name"] == "idempotency-key" and p["in"] == "header" for p in search["parameters"])
     assert "Retry-After" in search["responses"]["429"]["headers"]
     assert "cursor" in schema["components"]["schemas"]["Search"]["properties"]
+    fields = schema["components"]["schemas"]["Search"]["properties"]
+    assert "pl-pl" in fields["region"]["enum"]
+    assert fields["time_range"]["enum"] == ["any", "day", "week", "month", "year"]
     result = schema["components"]["schemas"]["SearchResult"]["properties"]
     for name in (
         "next_cursor",

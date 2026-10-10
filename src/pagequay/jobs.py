@@ -102,6 +102,13 @@ class Jobs:
         reserve=None,
     ):
         now = time.time()
+        if kind == "search" and isinstance(payload, dict):
+            # Preserve hashes of unfiltered requests created before these fields existed.
+            payload = dict(payload)
+            if payload.get("region") is None:
+                payload.pop("region", None)
+            if payload.get("time_range", "any") == "any":
+                payload.pop("time_range", None)
         payload_hash = hashlib.sha256(
             json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
         ).hexdigest()

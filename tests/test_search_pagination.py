@@ -142,6 +142,8 @@ async def test_three_progressive_pages_and_exact_urls(search_client):
         ["q", payload["query"]],
         ["s", "2"],
         ["vqd", "engine-issued-token"],
+        ["kl", "fr-fr"],
+        ["df", ""],
     ]
     assert token not in json.dumps(result) and token not in json.dumps(fake.calls)
     assert token not in "\n".join(r["state"] for r in rt.db.all("SELECT state FROM search_cursors"))
@@ -180,6 +182,166 @@ async def test_keywords_locales_and_legacy_limit_cap(search_client, query, local
     assert row["result"]["returned_count"] == 5
     assert [r["rank"] for r in row["result"]["results"]] == [11, 12, 13, 14, 15]
     assert len(fake.calls) == 1 and len(fake.closed) == 1
+
+
+@pytest.mark.parametrize(
+    "region,period,code",
+    [
+        ("fr-fr", "day", "d"),
+        ("pl-pl", "week", "w"),
+        ("us-en", "month", "m"),
+        ("uk-en", "year", "y"),
+        ("wt-wt", "any", ""),
+    ],
+)
+async def test_region_period_survive_remainder_and_native_pagination(
+    search_client, region, period, code
+):
+    client, rt, fake, *_ = search_client
+    fake.pages = [html_page([1, 2], next_offset=2), html_page([3], no_more=True)]
+    payload = {
+        "query": "robot agriculture",
+        "engine": "duckduckgo",
+        "locale": "fr-FR",
+        "region": region,
+        "time_range": period,
+        "limit": 1,
+    }
+    first = (await complete(client, payload))["result"]
+    assert first["region"] == region and first["time_range"] == period
+    params = parse_qs(urlsplit(fake.calls[0][1]).query, keep_blank_values=True)
+    assert params["kl"] == [region] and params["df"] == [code]
+    for changed in ({"region": "ca-fr"}, {"time_range": "week" if period != "week" else "day"}):
+        response = await client.post(
+            "/v1/projects/universrobot/search",
+            json={**payload, "cursor": first["next_cursor"], **changed},
+        )
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "INVALID_CURSOR"
+    second = (await complete(client, {**payload, "cursor": first["next_cursor"]}))["result"]
+    assert len(fake.calls) == 1  # Stored remainder still carries the filter binding.
+    third = (await complete(client, {**payload, "cursor": second["next_cursor"]}))["result"]
+    assert third["region"] == region and third["time_range"] == period
+    form = fake.calls[1][1]
+    assert [value for name, value in form["fields"] if name == "kl"] == [region]
+    assert [value for name, value in form["fields"] if name == "df"] == [code]
+    assert [value for name, value in form["fields"] if name == "vqd"] == ["engine-issued-token"]
+    assert third["has_more"] is False and not fake.tabs
+    # Binding survives state cleanup: reusing a consumed filtered cursor reports CURSOR_USED.
+    response = await client.post(
+        "/v1/projects/universrobot/search", json={**payload, "cursor": second["next_cursor"]}
+    )
+    assert response.json()["error"]["code"] == "CURSOR_USED"
+    assert (
+        rt.db.one(
+            "SELECT state FROM search_cursors WHERE token_hash=?", (digest(second["next_cursor"]),)
+        )["state"]
+        == "{}"
+    )
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"region": "fr-FR"},
+        {"region": "zz-zz"},
+        {"time_range": "past_week"},
+        {"engine": "google", "time_range": "day"},
+        {"engine": "brave", "region": "pl-pl"},
+        {"engine": "auto", "time_range": "week"},
+    ],
+)
+async def test_invalid_or_unsupported_filters_rejected_before_admission(search_client, extra):
+    client, rt, fake, *_ = search_client
+    response = await client.post(
+        "/v1/projects/universrobot/search",
+        json={"query": "robot agriculture", "engine": "duckduckgo", **extra},
+    )
+    assert response.status_code == 422
+    assert not fake.calls and not rt.db.all("SELECT * FROM jobs")
+
+
+async def test_project_default_engine_must_support_filters(search_client):
+    client, rt, fake, project, *_ = search_client
+    rt.db.execute(
+        "UPDATE projects SET config=? WHERE id=?",
+        (json.dumps({"search_default_engine": "google"}), project["id"]),
+    )
+    response = await client.post(
+        "/v1/projects/universrobot/search", json={"query": "robot", "time_range": "week"}
+    )
+    assert response.status_code == 422 and not fake.calls
+
+
+async def test_filters_participate_in_idempotency_and_defaults_replay(search_client):
+    client, _, fake, *_ = search_client
+    fake.pages = [html_page([1])]
+    payload = {"query": "robot agriculture", "engine": "duckduckgo"}
+    headers = {"Idempotency-Key": "filter-binding"}
+    first = await complete(client, payload, headers=headers)
+    same = await complete(client, {**payload, "region": None, "time_range": "any"}, headers=headers)
+    assert first["id"] == same["id"] and len(fake.calls) == 1
+    for filters in ({"time_range": "week"}, {"region": "pl-pl"}):
+        response = await client.post(
+            "/v1/projects/universrobot/search", json={**payload, **filters}, headers=headers
+        )
+        assert response.status_code == 409 and response.json()["error"]["code"] == "CONFLICT"
+
+
+def test_continuation_overrides_stale_filters_without_changing_native_tokens():
+    html = (
+        html_page([1], next_offset=2)
+        .replace('action="/html/"', 'action="/html/?kl=us-en&amp;df=y"')
+        .replace(
+            '<input type="submit"',
+            '<input type="hidden" name="kl" value="us-en">'
+            '<input type="hidden" name="df" value="y"><input type="submit"',
+        )
+    )
+    form, more, reason = ddg_continuation(
+        html, ADAPTERS["duckduckgo"].base, "robot agriculture", region="pl-pl", time_range="any"
+    )
+    assert more and reason is None and not urlsplit(form["url"]).query
+    assert dict(form["fields"]) == {
+        "q": "robot agriculture",
+        "s": "2",
+        "vqd": "engine-issued-token",
+        "kl": "pl-pl",
+        "df": "",
+    }
+
+
+def test_filter_migration_preserves_existing_cursor(tmp_path):
+    from pagequay.storage import Storage
+
+    db = Storage(tmp_path)
+    project = db.create_project("legacy", "Legacy")
+    # Reproduce the preceding schema with a pending native continuation.
+    db.execute("ALTER TABLE search_cursors DROP COLUMN region")
+    db.execute("ALTER TABLE search_cursors DROP COLUMN time_range")
+    db.execute("DELETE FROM schema_migrations WHERE version='004_search_filters.sql'")
+    state = json.dumps({"next_form": {"url": "https://html.duckduckgo.com/html/", "fields": []}})
+    db.execute(
+        "INSERT INTO search_cursors VALUES (?,?,?,?,?,?,?,?,NULL)",
+        (
+            "legacy-token-hash",
+            project["id"],
+            "robot",
+            "duckduckgo",
+            "fr-FR",
+            time.time() + 900,
+            project["last_reset"],
+            state,
+        ),
+    )
+    db.close()
+    db = Storage(tmp_path)
+    try:
+        row = db.one("SELECT * FROM search_cursors WHERE token_hash='legacy-token-hash'")
+        assert row["region"] is None and row["time_range"] == "any"
+        assert row["state"] == state and row["locale"] == "fr-FR"
+    finally:
+        db.close()
 
 
 @pytest.mark.parametrize(

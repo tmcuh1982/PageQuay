@@ -16,6 +16,7 @@ from .auth import SCOPES, digest
 from .errors import PQError
 from .external_access import ExternalPort
 from .models import KeyCreate, KeyUpdate, Navigate, ProjectCreate, Search
+from .search_options import DDG_REGIONS, TIME_LABELS
 from .settings import Policy
 
 router = APIRouter()
@@ -223,6 +224,8 @@ async def page(request: Request, view: str = "", key_id: str | None = None):
         "keys": keys,
         "editing_key": editing_key,
         "scopes": sorted(SCOPES),
+        "search_regions": DDG_REGIONS,
+        "search_periods": TIME_LABELS,
         "audit": audit,
         "policy": rt.db.policy().model_dump(),
         "global_json": rt.db.policy().model_dump_json(indent=2),

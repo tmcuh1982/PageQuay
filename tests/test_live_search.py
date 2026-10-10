@@ -148,7 +148,7 @@ async def test_live_google_api_and_content(tmp_path, request):
                 report["diagnostic_url"] = tab.page.url
                 report["diagnostic_title"] = await tab.page.title()
                 report["diagnostic_excerpt"] = (await tab.page.locator("body").inner_text())[:1500]
-            await tab.page.screenshot(path=str(OUTPUT / "google-live.png"))
+                await tab.page.screenshot(path=str(OUTPUT / "google-live.png"))
     (OUTPUT / "google-live.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     )

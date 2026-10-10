@@ -10,7 +10,8 @@ Version **0.2.0**, MVP développé et vérifié localement sur macOS Apple Silic
 - Informations de la clé appelante via REST : scopes, expiration, quotas configurés/effectifs et solde de la fenêtre courante.
 - REST et WebSocket, jobs asynchrones, navigation/actions, captures et artefacts temporaires protégés.
 - Adaptateurs Google, DuckDuckGo et Brave ; un challenge humain suspend le job pour une intervention manuelle.
-- Continuations DuckDuckGo opaques, quotas détaillés, POST /search idempotent, nettoyage des onglets et exemple Python pour UniversRobot.
+- Continuations DuckDuckGo opaques, quotas détaillés, POST /search idempotent, nettoyage des onglets et exemple Python pour ProjectX.
+- Filtres DuckDuckGo pays / région et période, conservés dans les continuations ; menus dans la console et options dans le client Python.
 - Fenêtres minimisables/restaurables et option de lancement minimisé ; nouvelles ouvertures conservent la minimisation.
 - Extraction texte/HTML/liens/métadonnées et JSON structuré du DOM rendu, avec arbre filtré optionnel.
 - Extraction des composants Shadow DOM ouverts et des documents d'iframes, collecte bornée et résultats partiels signalés.
@@ -22,10 +23,12 @@ Les contrats détaillés sont dans [OpenAPI](openapi.json), [recherche](SEARCH_A
 
 | Vérification | Résultat observé |
 | --- | --- |
-| Dernière suite locale avec Chromium visible | 116 réussis, 3 diagnostics externes ignorés ; voir le rapport 0.2 |
+| Suite finale de cette publication sans Chromium | 142 réussis, 14 tests navigateur/diagnostics externes ignorés |
+| Console des filtres et transport POST avec Chromium | 2 tests réussis séparément ; menus, corps POST et rendu desktop/mobile vérifiés |
+| Dernière suite complète avec Chromium visible, avant les filtres | 116 réussis, 3 diagnostics externes ignorés ; voir le rapport 0.2 |
 | Suite Chromium visible hors UI | 56 réussis, 2 ignorés avant le dernier renforcement des bornes |
 | Extraction structurée/OpenAPI après ce renforcement | 8 réussis, dont le cas de 5 000 éléments cachés |
-| Contrôle Ruff de tout le projet | Check et format conformes, 42 fichiers Python source/tests/exemples |
+| Contrôle Ruff de tout le projet | Check et format conformes, 46 fichiers Python source/tests/exemples |
 | Page publique via API HTTP sur le mini | Navigation directe, extraction texte et JSON/DOM téléchargés |
 | Recherche Google/DDG en direct | Challenges détectés ; trois queries DDG récentes bloquées, trois pages natives réelles non validées |
 | SSH MacBook Air → mini | Fonctionnement confirmé par l'utilisateur ; parcours API depuis l'Air non exécuté par l'agent |
@@ -48,5 +51,7 @@ La reconnexion du plugin n'a pas levé son erreur 403. La publication utilise do
 Les captures de navigation, diagnostics bruts, environnements, secrets, bases et profils restent locaux et sont ignorés par Git. Le rapport de tests et les exemples JSON issus de fixtures sont versionnés. La publication du dépôt concerne les sources ; elle n'expose pas le service PQ ni les données de ses navigateurs.
 
 Le lot de publication 0.2 comprend les fenêtres minimisables, la séparation console/API, la gestion des clés et les continuations DuckDuckGo, avec leurs tests, contrats et exemples. Ces fonctionnalités sont aussi déployées dans le service installé.
+
+Cette mise à jour ajoute les filtres pays / période DuckDuckGo et généralise les noms dans la documentation et les exemples à **ProjectX** (`projectx`). Le contrat reste en version 0.2.0, avec paramètres optionnels et migration additive 004. Les filtres sont déployés dans le service local ; aucun succès de recherche filtrée sur le moteur réel n’est revendiqué.
 
 Pour reprendre : [procédure de publication](PUBLISHING.md), [mémoire de travail](../memory.md) et [décisions](../decisions.md). La visibilité publique et la connexion directe sont déjà confirmées. Pour chaque modification future, publier puis vérifier le commit et le contenu distants avant d'annoncer la synchronisation.

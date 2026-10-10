@@ -85,7 +85,7 @@
     "/v1/projects/{slug}/search": {
       "post": {
         "summary": "Search",
-        "description": "Search one bounded slice. DuckDuckGo continuations bind query/engine/locale/project.\n\nlimit remains an upper bound on results in this operation, capped by search_max_results.\nIdempotency-Key replays the same operation for 24 hours; another payload returns 409.\nSee the versioned docs/SEARCH_API.md for cursor lifecycle, quotas and partial failures.",
+        "description": "Search one bounded slice. DuckDuckGo continuations also bind region and time_range.\n\nlimit remains an upper bound on results in this operation, capped by search_max_results.\nIdempotency-Key replays the same operation for 24 hours; another payload returns 409.\nSee the versioned docs/SEARCH_API.md for cursor lifecycle, quotas and partial failures.",
         "operationId": "search_v1_projects__slug__search_post",
         "parameters": [
           {
@@ -1279,6 +1279,102 @@
             "title": "Locale",
             "default": "fr-FR"
           },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "enum": [
+              "wt-wt",
+              "za-en",
+              "de-de",
+              "xa-ar",
+              "xa-en",
+              "ar-es",
+              "au-en",
+              "at-de",
+              "be-fr",
+              "be-nl",
+              "br-pt",
+              "bg-bg",
+              "ca-en",
+              "ca-fr",
+              "ct-ca",
+              "cl-es",
+              "cn-zh",
+              "co-es",
+              "kr-kr",
+              "hr-hr",
+              "dk-da",
+              "es-es",
+              "ee-et",
+              "us-en",
+              "ue-es",
+              "fi-fi",
+              "fr-fr",
+              "gr-el",
+              "hk-tzh",
+              "hu-hu",
+              "in-en",
+              "id-id",
+              "id-en",
+              "ie-en",
+              "il-he",
+              "it-it",
+              "jp-jp",
+              "xl-es",
+              "lv-lv",
+              "lt-lt",
+              "my-ms",
+              "my-en",
+              "mx-es",
+              "no-no",
+              "nz-en",
+              "nl-nl",
+              "pe-es",
+              "ph-en",
+              "ph-tl",
+              "pl-pl",
+              "pt-pt",
+              "cz-cs",
+              "ro-ro",
+              "uk-en",
+              "ru-ru",
+              "sg-en",
+              "sk-sk",
+              "sl-sl",
+              "se-sv",
+              "ch-de",
+              "ch-fr",
+              "ch-it",
+              "tw-tzh",
+              "th-th",
+              "tr-tr",
+              "ua-uk",
+              "ve-es",
+              "vn-vi",
+              null
+            ],
+            "title": "Region",
+            "description": "DuckDuckGo region (country/language); overrides locale's region. Use wt-wt for all regions. Requires the DuckDuckGo engine."
+          },
+          "time_range": {
+            "type": "string",
+            "enum": [
+              "any",
+              "day",
+              "week",
+              "month",
+              "year"
+            ],
+            "title": "Time Range",
+            "description": "DuckDuckGo date filter; any means all dates. A recent result does not guarantee a recent event.",
+            "default": "any"
+          },
           "cursor": {
             "anyOf": [
               {
@@ -1292,7 +1388,7 @@
               }
             ],
             "title": "Cursor",
-            "description": "Opaque DuckDuckGo continuation; keep query, engine and locale unchanged."
+            "description": "Opaque DuckDuckGo continuation; keep query, engine, locale, region and time_range unchanged."
           }
         },
         "additionalProperties": false,
@@ -1314,6 +1410,13 @@
             "limit": 10,
             "locale": "fr-FR",
             "query": "robot agriculture"
+          },
+          {
+            "engine": "duckduckgo",
+            "limit": 10,
+            "query": "robot agriculture",
+            "region": "fr-fr",
+            "time_range": "week"
           }
         ]
       },
@@ -1434,6 +1537,33 @@
             "type": "string",
             "title": "Query"
           },
+          "locale": {
+            "type": "string",
+            "title": "Locale"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region",
+            "description": "Requested region override, or null to use locale"
+          },
+          "time_range": {
+            "type": "string",
+            "enum": [
+              "any",
+              "day",
+              "week",
+              "month",
+              "year"
+            ],
+            "title": "Time Range"
+          },
           "results": {
             "items": {
               "$ref": "#/components/schemas/SearchHit"
@@ -1535,6 +1665,9 @@
         "required": [
           "project",
           "query",
+          "locale",
+          "region",
+          "time_range",
           "results",
           "engine_errors",
           "engine",

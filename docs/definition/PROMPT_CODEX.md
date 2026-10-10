@@ -8,7 +8,7 @@ Tu es un ingénieur logiciel senior spécialisé en Python, FastAPI, Playwright,
 
 **Objectif produit** : offrir à plusieurs projets logiciels un service de **recherche sur le Web et de navigation pilotable par API** en réutilisant des profils de navigateur **persistants et complètement séparés**, tout en proposant une **petite interface Web d'administration** pour gérer projets, profils, clés API, activité et politiques de rétention.
 
-Exemples de clients : UniversRobot, un agent de recherche, un outil d'extraction, un programme interne. Ils appellent HBG sur le réseau privé ; **la navigation externe réelle est exécutée par le Mac mini**, via sa propre connexion Internet. Le service ne doit dépendre d'aucun fournisseur SaaS payant, proxy résidentiel commercial ou clé API de moteur de recherche.
+Exemples de clients : ProjectX, un agent de recherche, un outil d'extraction, un programme interne. Ils appellent HBG sur le réseau privé ; **la navigation externe réelle est exécutée par le Mac mini**, via sa propre connexion Internet. Le service ne doit dépendre d'aucun fournisseur SaaS payant, proxy résidentiel commercial ou clé API de moteur de recherche.
 
 **À LIVRER** : le code source complet, tests automatisés, migrations SQLite, interface d'administration réellement utilisable, documentation d'installation macOS, scripts de démarrage/arrêt et un service `launchd` adapté au mode graphique (Chrome visible). Ne te limite pas à générer une architecture théorique ou des TODO.
 
@@ -193,7 +193,7 @@ Le résultat n'est **pas terminé** avant les tests reproductibles ci-dessous (v
 
 - Installation locale à partir des instructions et démarrage sans abonnement.
 - Admin initial créé sans mot de passe par défaut ; console inaccessible sans login.
-- Création de `universrobot` et `projet-b` ; les deux navigateurs actifs simultanément avec deux répertoires de profil distincts.
+- Création de `projectx` et `projet-b` ; les deux navigateurs actifs simultanément avec deux répertoires de profil distincts.
 - Sessions/cookies d'un projet invisibles depuis l'autre sur un site local de test.
 - Deux clés API différentes, chacune bornée à son projet. Un appel croisé est refusé (y compris job, onglet et WebSocket).
 - Une clé révoquée/expirée est immédiatement inutilisable ; secret affiché une seule fois et absent de SQLite en clair.

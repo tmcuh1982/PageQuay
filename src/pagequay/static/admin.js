@@ -113,6 +113,15 @@ function displayJob(data, project, jobId) {
     image.src = `/admin/projects/${project}/artifacts/${capture.artifact_id}`; output.append(image);
   } else if (result && !result.results) output.append(node("pre", JSON.stringify(result, null, 2)));
 }
+document.querySelectorAll('form[data-api-project="search"]').forEach(form => {
+  const engine = form.querySelector('[name="engine"]');
+  function updateFilters() {
+    const enabled = engine.value === "duckduckgo";
+    form.querySelectorAll('[data-ddg-filter]').forEach(control => control.disabled = !enabled);
+  }
+  engine.addEventListener("change", updateFilters);
+  updateFilters();
+});
 async function watchJob(project, jobId) {
   clearTimeout(polling);
   try {
@@ -129,6 +138,7 @@ document.querySelectorAll("form[data-api],form[data-api-project]").forEach(form 
     let project = fields.get("project"); let url = form.dataset.api;
     if (form.dataset.apiProject) { url = `/admin/projects/${project}/${form.dataset.apiProject}`; delete body.project; }
     if (!form.hasAttribute("data-json")) {
+      if (form.dataset.apiProject === "search" && body.region === "") delete body.region;
       form.querySelectorAll("[data-number]").forEach(el => body[el.name] = el.hasAttribute("data-nullable") && el.value === "" ? null : Number(el.value));
       form.querySelectorAll("[data-boolean]").forEach(el => body[el.name] = el.checked);
       form.querySelectorAll("[data-timestamp]").forEach(el => {

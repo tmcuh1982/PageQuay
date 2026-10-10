@@ -57,6 +57,8 @@ async def test_native_post_form_uses_browser_proxy_and_cleans_owned_tab(tmp_path
                     ["q", 'robots "énergie" & agriculture'],
                     ["s", "30"],
                     ["vqd", "native-token"],
+                    ["kl", "pl-pl"],
+                    ["df", "w"],
                     ["duplicate", "a"],
                     ["duplicate", "b"],
                 ],
@@ -68,6 +70,8 @@ async def test_native_post_form_uses_browser_proxy_and_cleans_owned_tab(tmp_path
                     "q": ['robots "énergie" & agriculture'],
                     "s": ["30"],
                     "vqd": ["native-token"],
+                    "kl": ["pl-pl"],
+                    "df": ["w"],
                     "duplicate": ["a", "b"],
                 }
             ]

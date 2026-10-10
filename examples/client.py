@@ -6,7 +6,7 @@ import time
 import httpx
 
 base = os.environ.get("PQ_URL", "http://127.0.0.1:8765")
-slug = os.environ.get("PQ_PROJECT", "universrobot")
+slug = os.environ.get("PQ_PROJECT", "projectx")
 with httpx.Client(
     base_url=base, headers={"Authorization": "Bearer " + os.environ["PQ_API_KEY"]}
 ) as client:

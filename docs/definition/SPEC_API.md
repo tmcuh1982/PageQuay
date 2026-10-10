@@ -32,7 +32,7 @@ Réponse finale du job :
 ```json
 {
   "status": "completed",
-  "project": "universrobot",
+  "project": "projectx",
   "query": "robotique agricole 2026",
   "results": [
     {
@@ -97,7 +97,7 @@ Réponse finale du job :
 ```json
 {
   "event": "challenge.required",
-  "project": "universrobot",
+  "project": "projectx",
   "job_id": "opaque-id",
   "tab_id": "opaque-tab-id",
   "at": "2026-10-09T18:00:00Z"

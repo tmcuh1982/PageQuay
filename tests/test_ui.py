@@ -178,6 +178,59 @@ async def test_admin_browser_forms_and_responsive_layout(tmp_path):
                 response = await page.goto(base + "/admin/" + view)
                 assert response.status == 200
                 assert await page.locator("h1").count() == 1
+                if view == "search":
+                    await page.locator(
+                        'form[data-api-project="search"] [name="project"]'
+                    ).select_option("universrobot")
+                    search_url = base + "/admin/projects/universrobot/search"
+                    submitted = []
+
+                    async def capture_search(route, request, submitted=submitted):
+                        submitted.append(route.request.post_data_json)
+                        await route.fulfill(json={"job_id": "filter-ui"})
+
+                    await page.route(search_url, capture_search)
+                    await page.route(
+                        base + "/admin/projects/universrobot/jobs/filter-ui",
+                        lambda route: route.fulfill(
+                            json={"status": "completed", "result": {"results": []}}
+                        ),
+                    )
+                    country = page.get_by_label("Pays / région")
+                    period = page.get_by_label("Période")
+                    assert await country.is_disabled() and await period.is_disabled()
+                    await page.get_by_label("Moteur").select_option("duckduckgo")
+                    assert await country.is_enabled() and await period.is_enabled()
+                    await country.select_option("pl-pl")
+                    await period.select_option("week")
+                    await page.get_by_label("Votre recherche", exact=True).fill("robot agriculture")
+                    async with page.expect_response(search_url):
+                        await page.get_by_role("button", name="Lancer la recherche").click()
+                    assert submitted[-1]["region"] == "pl-pl"
+                    assert submitted[-1]["time_range"] == "week"
+                    await page.screenshot(
+                        path=str(output / "search-filters-desktop.png"), full_page=True
+                    )
+                    await page.set_viewport_size({"width": 390, "height": 844})
+                    assert await page.evaluate(
+                        "document.documentElement.scrollWidth <= window.innerWidth"
+                    )
+                    await page.screenshot(
+                        path=str(output / "search-filters-mobile.png"), full_page=True
+                    )
+                    await page.set_viewport_size({"width": 1440, "height": 1050})
+                    await page.get_by_label("Moteur").select_option("google")
+                    assert await country.is_disabled() and await period.is_disabled()
+                    async with page.expect_response(search_url):
+                        await page.get_by_role("button", name="Lancer la recherche").click()
+                    assert "region" not in submitted[-1] and "time_range" not in submitted[-1]
+                    await page.get_by_label("Moteur").select_option("duckduckgo")
+                    await country.select_option("")
+                    await period.select_option("any")
+                    async with page.expect_response(search_url):
+                        await page.get_by_role("button", name="Lancer la recherche").click()
+                    assert "region" not in submitted[-1] and submitted[-1]["time_range"] == "any"
+                    await page.unroute(search_url, capture_search)
             await page.goto(base + "/admin/settings")
             toggle = page.get_by_label("Démarrer les fenêtres minimisées", exact=True)
             await toggle.check()

@@ -3,6 +3,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .auth import SCOPES
+from .search_options import DDG_REGIONS
 
 ContentFormat = Literal["text", "html", "links", "metadata", "structured"]
 
@@ -98,6 +99,13 @@ class Search(Strict):
                     "locale": "fr-FR",
                     "cursor": "A" * 43,
                 },
+                {
+                    "query": "robot agriculture",
+                    "engine": "duckduckgo",
+                    "region": "fr-fr",
+                    "time_range": "week",
+                    "limit": 10,
+                },
             ]
         }
     )
@@ -106,13 +114,32 @@ class Search(Strict):
     query: str = Field(min_length=1, max_length=500)
     limit: int = Field(10, ge=1, le=50)
     locale: str = Field("fr-FR", pattern=r"^[a-z]{2}-[A-Z]{2}$")
+    region: str | None = Field(
+        None,
+        description="DuckDuckGo region (country/language); overrides locale's region. "
+        "Use wt-wt for all regions. Requires the DuckDuckGo engine.",
+        json_schema_extra={"enum": [*DDG_REGIONS, None]},
+    )
+    time_range: Literal["any", "day", "week", "month", "year"] = Field(
+        "any",
+        description="DuckDuckGo date filter; any means all dates. "
+        "A recent result does not guarantee a recent event.",
+    )
     cursor: str | None = Field(
         None,
         min_length=43,
         max_length=43,
         pattern=r"^[A-Za-z0-9_-]{43}$",
-        description="Opaque DuckDuckGo continuation; keep query, engine and locale unchanged.",
+        description="Opaque DuckDuckGo continuation; keep query, engine, locale, "
+        "region and time_range unchanged.",
     )
+
+    @field_validator("region")
+    @classmethod
+    def supported_region(cls, value):
+        if value is not None and value not in DDG_REGIONS:
+            raise ValueError("Unsupported DuckDuckGo region")
+        return value
 
 
 class SearchHit(Strict):
@@ -131,6 +158,9 @@ class SearchHit(Strict):
 class SearchResult(Strict):
     project: str
     query: str
+    locale: str
+    region: str | None = Field(description="Requested region override, or null to use locale")
+    time_range: Literal["any", "day", "week", "month", "year"]
     results: list[SearchHit]
     engine_errors: list[dict[str, Any]]
     engine: str

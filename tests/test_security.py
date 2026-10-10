@@ -360,6 +360,7 @@ def test_profile_flock_and_migrations(tmp_path):
         "001_initial.sql",
         "002_reset_intents.sql",
         "003_search_continuations.sql",
+        "004_search_filters.sql",
     }
     assert (tmp_path / "pagequay.sqlite3").stat().st_mode & 0o777 == 0o600
     db.close()

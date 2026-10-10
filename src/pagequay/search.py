@@ -12,6 +12,7 @@ from playwright.async_api import Error as PlaywrightError
 from .auth import digest
 from .errors import PQError
 from .models import Navigate
+from .search_options import TIME_FILTERS, ddg_region
 
 TRACKING = {"gclid", "fbclid", "msclkid"}
 
@@ -40,13 +41,13 @@ class Adapter:
     def __init__(self, name, base):
         self.name, self.base = name, base
 
-    def url(self, query, locale):
+    def url(self, query, locale, *, region=None, time_range="any"):
         parameters = {"q": query}
         if self.name == "google":
             parameters.update(hl=locale.split("-")[0], gl=locale.split("-")[1].lower())
         elif self.name == "duckduckgo":
-            region, language = locale.split("-")[1].lower(), locale.split("-")[0]
-            parameters["kl"] = ("uk" if region == "gb" else region) + "-" + language
+            parameters["kl"] = ddg_region(locale, region)
+            parameters["df"] = TIME_FILTERS[time_range]
         # Brave: no claim of reliable locale support for undocumented controls.
         return self.base + "?" + urlencode(parameters)
 
@@ -166,7 +167,19 @@ def fingerprint(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
-def ddg_continuation(html, source_url, query):
+def ddg_form_controls(form, controls):
+    parsed = urlsplit(form["url"])
+    pairs = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key not in controls
+    ]
+    fields = [field for field in form["fields"] if field[0] not in controls]
+    fields.extend([key, value] for key, value in controls.items())
+    return {**form, "url": urlunsplit(parsed._replace(query=urlencode(pairs))), "fields": fields}
+
+
+def ddg_continuation(html, source_url, query, *, region=None, time_range=None):
     """Only follow an actual Next form from the HTML engine, never invent offsets."""
     soup = BeautifulSoup(html, "html.parser")
     for form in soup.select("form"):
@@ -202,6 +215,15 @@ def ddg_continuation(html, source_url, query):
         ]
         if submit.get("name"):
             fields.append([submit["name"], submit.get("value", "")])
+        # Reapply only search controls; offsets and native engine tokens stay unchanged.
+        controls = {}
+        if region is not None:
+            controls["kl"] = region
+        if time_range is not None:
+            controls["df"] = TIME_FILTERS[time_range]
+        if controls:
+            filtered = ddg_form_controls({"url": url, "fields": fields}, controls)
+            url, fields = filtered["url"], filtered["fields"]
         if (
             [value for name, value in fields if name == "q"] != [query]
             or len(fields) > 40
@@ -228,7 +250,16 @@ class SearchService:
     def engine(self, project, request):
         return request.engine or self.db.policy(project).search_default_engine
 
+    def validate_filters(self, project, request):
+        if (request.region is not None or request.time_range != "any") and self.engine(
+            project, request
+        ) != "duckduckgo":
+            raise PQError(
+                "INVALID_INPUT", "Region and date filters require the DuckDuckGo engine", 422
+            )
+
     def claim(self, project, request, job):
+        self.validate_filters(project, request)
         if not request.cursor:
             return
         row = self.db.one(
@@ -240,6 +271,8 @@ class SearchService:
             or row["query"] != request.query
             or row["engine"] != self.engine(project, request)
             or row["locale"] != request.locale
+            or row["region"] != request.region
+            or row["time_range"] != request.time_range
         ):
             raise PQError("INVALID_CURSOR", "Continuation does not match this search", 409)
         current = self.db.project(project["slug"])
@@ -272,7 +305,9 @@ class SearchService:
             return None
         token = secrets.token_urlsafe(32)
         self.db.execute(
-            "INSERT INTO search_cursors VALUES (?,?,?,?,?,?,?,?,NULL)",
+            "INSERT INTO search_cursors "
+            "(token_hash,project_id,query,engine,locale,expires_at,profile_reset,state,"
+            "region,time_range,claimed_job_id) VALUES (?,?,?,?,?,?,?,?,?,?,NULL)",
             (
                 digest(token),
                 project["id"],
@@ -282,6 +317,8 @@ class SearchService:
                 state["expires_at"],
                 self.db.project(project["slug"])["last_reset"],
                 json.dumps(state),
+                request.region,
+                request.time_range,
             ),
         )
         return token
@@ -304,6 +341,9 @@ class SearchService:
         return {
             "project": project["slug"],
             "query": request.query,
+            "locale": request.locale,
+            "region": request.region,
+            "time_range": request.time_range,
             "results": results,
             "engine_errors": failures or [],
             "engine": engine,
@@ -331,11 +371,26 @@ class SearchService:
             phase="fetching_search_page",
         )
         if form:
+            # Also covers continuations stored before the filter migration.
+            form = ddg_form_controls(
+                form,
+                {
+                    "kl": ddg_region(request.locale, request.region),
+                    "df": TIME_FILTERS[request.time_range],
+                },
+            )
             await self.browser.submit_search_form(project, tab.id, form, job)
         else:
             await self.browser.navigate(
                 project,
-                Navigate(url=ADAPTERS[name].url(request.query, request.locale)),
+                Navigate(
+                    url=ADAPTERS[name].url(
+                        request.query,
+                        request.locale,
+                        region=request.region,
+                        time_range=request.time_range,
+                    )
+                ),
                 job,
                 tab.id,
             )
@@ -394,7 +449,13 @@ class SearchService:
             results = ADAPTERS["duckduckgo"].parse(html, 200)
             signature = fingerprint([row["url"] for row in results])
             state["pages"] += 1
-            next_form, more, reason = ddg_continuation(html, tab.page.url, request.query)
+            next_form, more, reason = ddg_continuation(
+                html,
+                tab.page.url,
+                request.query,
+                region=ddg_region(request.locale, request.region),
+                time_range=request.time_range,
+            )
             seen = set(state["seen"])
             fresh = []
             for row in results:
@@ -476,6 +537,7 @@ class SearchService:
         )
 
     async def search(self, project, request, job):
+        self.validate_filters(project, request)
         engine = self.engine(project, request)
         policy = self.db.policy(project)
         tab, committed, state = None, False, None
@@ -495,6 +557,8 @@ class SearchService:
                     row["engine"] != engine
                     or row["query"] != request.query
                     or row["locale"] != request.locale
+                    or row["region"] != request.region
+                    or row["time_range"] != request.time_range
                     or row["profile_reset"] != self.db.project(project["slug"])["last_reset"]
                 ):
                     raise PQError("INVALID_CURSOR", "Search binding changed while queued", 409)
