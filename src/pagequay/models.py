@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -19,7 +19,7 @@ class ProjectCreate(Strict):
 class KeyCreate(Strict):
     name: str = Field(min_length=1, max_length=100)
     scopes: list[str] = Field(default_factory=lambda: ["search:read", "content:read"])
-    expires_at: float | None = None
+    expires_at: float | None = Field(default=None, allow_inf_nan=False)
     rate_limit: int = Field(60, ge=1, le=600)
 
     @field_validator("scopes")
@@ -28,6 +28,38 @@ class KeyCreate(Strict):
         if not value or not set(value) <= SCOPES:
             raise ValueError("Invalid scopes")
         return value
+
+
+class KeyUpdate(KeyCreate):
+    scopes: list[str]
+    expires_at: float | None = Field(allow_inf_nan=False)
+    rate_limit: int = Field(ge=1, le=600)
+
+
+class KeyInfoProject(Strict):
+    slug: str
+    name: str
+
+
+class KeyInfoRateLimit(Strict):
+    configured_requests_per_minute: int
+    project_requests_per_minute: int
+    effective_requests_per_minute: int
+    window_seconds: Literal[60]
+    remaining_requests: int = Field(ge=0)
+    resets_at: float = Field(description="Unix timestamp in seconds (UTC)")
+
+
+class KeyInfo(Strict):
+    key_id: str
+    name: str
+    prefix: str
+    project: KeyInfoProject
+    scopes: list[str]
+    expires_at: float | None = Field(
+        description="Unix timestamp in seconds (UTC); null means never"
+    )
+    rate_limit: KeyInfoRateLimit
 
 
 class Navigate(Strict):
@@ -50,8 +82,90 @@ class Actions(Strict):
 
 
 class Search(Strict):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "query": "robot agriculture",
+                    "engine": "duckduckgo",
+                    "limit": 10,
+                    "locale": "fr-FR",
+                },
+                {
+                    "query": "robot agriculture",
+                    "engine": "duckduckgo",
+                    "limit": 10,
+                    "locale": "fr-FR",
+                    "cursor": "A" * 43,
+                },
+            ]
+        }
+    )
     engine: Literal["auto", "duckduckgo", "google", "brave"] | None = None
     strategy: Literal["fallback", "merge"] | None = None
     query: str = Field(min_length=1, max_length=500)
     limit: int = Field(10, ge=1, le=50)
     locale: str = Field("fr-FR", pattern=r"^[a-z]{2}-[A-Z]{2}$")
+    cursor: str | None = Field(
+        None,
+        min_length=43,
+        max_length=43,
+        pattern=r"^[A-Za-z0-9_-]{43}$",
+        description="Opaque DuckDuckGo continuation; keep query, engine and locale unchanged.",
+    )
+
+
+class SearchHit(Strict):
+    rank: int
+    engine_rank: int
+    page_number: int | None = None
+    title: str
+    url: str = Field(description="Legacy normalized URL, retained for compatibility")
+    exact_url: str = Field(description="Exact target URL after unwrapping the engine redirect")
+    snippet: str
+    source_engines: list[str]
+    fetched_at: float
+    result_type: str
+
+
+class SearchResult(Strict):
+    project: str
+    query: str
+    results: list[SearchHit]
+    engine_errors: list[dict[str, Any]]
+    engine: str
+    engines_used: list[str]
+    requested_count: int
+    effective_limit: int
+    returned_count: int
+    next_cursor: str | None
+    has_more: bool | None = Field(description="null means no usable continuation or unknown end")
+    stop_reason: str | None
+    partial: bool
+    pages_fetched: int
+    duplicates_discarded: int
+    cursor_expires_at: float | None
+
+
+class SearchAccepted(Strict):
+    job_id: str
+    status: Literal["queued", "running", "waiting_for_human", "completed", "failed", "cancelled"]
+    url: str
+    idempotency_replayed: bool = False
+
+
+class JobResponse(Strict):
+    id: str
+    kind: str
+    status: Literal["queued", "running", "waiting_for_human", "completed", "failed", "cancelled"]
+    created_at: float
+    updated_at: float
+    result: SearchResult | dict[str, Any] | None
+    error: dict[str, Any] | None
+    tab_id: str | None
+
+
+class ErrorResponse(Strict):
+    error: dict[str, Any] = Field(
+        description="code/message/request_id and optional structured details"
+    )

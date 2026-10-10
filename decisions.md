@@ -93,3 +93,22 @@ La mise à jour du README distant est tentée par l'API Contents avec son SHA co
 La reconfiguration du plugin n'a pas levé le refus 403. Installer le client GitHub officiel puis effectuer sa connexion par code navigateur, validée par l'utilisateur sous `tmcuh1982`, fournit l'accès en écriture nécessaire. Le helper de credentials est configuré uniquement dans le dépôt PageQuay, sans token dans les arguments, sources ou documents.
 
 Push Git normal réussi : historique initial et commits locaux conservés ; code et documentation publiés ensemble sur `main`. Le statut bloqué dans les documents est remplacé par le résultat observé. GitHub CLI a stocké ses identifiants hors du dépôt dans un fichier privé 0600, plutôt que dans le stockage système sécurisé. Les futurs pushes peuvent utiliser cette connexion ; la visibilité publique ne nécessite aucune nouvelle confirmation.
+
+## 10 octobre — console locale, API Tailscale sur une socket distincte
+
+L’utilisateur exclut l’administration du tailnet. Deux sockets loopback (8765 console, 8766 API) partagent le processus/runtime pour conserver les mêmes profils, jobs et limites. Le port réel fourni par Uvicorn détermine le filtrage de routes, sans confiance dans Host ou les headers proxy. Tailscale Serve doit viser 8766 uniquement. Cookies et origines admin adaptés au HTTP loopback. Déploiement dans une copie privée hors Documents pour éviter le refus d’accès macOS au LaunchAgent ; mise à jour de cette copie requise lors des futurs déploiements.
+
+### Formulaires de connexion périmés
+
+Conserver le nonce de login pendant les ouvertures successives de la page pour éviter qu’un onglet invalide un autre. Utiliser un cookie distinct du cookie legacy après passage HTTPS→HTTP local. Un nonce absent/incohérent n’authentifie jamais : retour 403 avec formulaire récupérable et message français ; une origine étrangère reste une erreur CSRF.
+
+### Clés modifiables sans rotation
+
+Autoriser l’opérateur local à changer les réglages de sécurité d’une clé existante sans remplacer son secret. Préserver le projet et la révocation, garder le compteur de quota pour appliquer une réduction dès l’appel suivant, annuler les jobs affectés par un retrait de scope. Une échéance future ou aucune échéance permet à l’opérateur de remettre en service une clé expirée ; la révocation reste définitive pour cette clé.
+
+## Recherche 0.2 — curseurs et idempotence
+
+- Conserver `limit` comme plafond par job et `search_max_results=10` pour les clients existants. La pagination ajoute un curseur, rend d’abord le reliquat puis suit les champs réellement émis par DuckDuckGo ; un numéro de page serait insuffisant pour les paramètres natifs. Les autres moteurs/modes restent sans curseur.
+- Snapshots bornés en SQLite, sans onglet conservé entre jobs, afin de nettoyer les recherches et permettre les reprises après redémarrage. Expiration absolue de la chaîne, réservation atomique, rejeu consommé409 et idempotence24h par projet/clé. État consommé/expiré effacé ; paramètres moteur potentiellement expirables indépendamment.
+- Garder le quota moteur partagé 6/60s, identifier sa portée et le distinguer d’un throttling tiers. Aucun sommeil de quota côté serveur ; client borné avec Retry-After. Conserver les résultats/provenances partiels des jobs échoués.
+- Publier un contrat client 0.2 via `/openapi.json` sur le port API, sans routes admin. Les essais live CAPTCHA ne constituent pas une validation de pagination native ; cette réserve reste explicite malgré la simulation et la fixture de transport réussies.

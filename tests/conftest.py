@@ -3,6 +3,7 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
+from pagequay.admin import LOGIN_CSRF_COOKIE
 from pagequay.auth import PASSWORDS
 from pagequay.main import create_app
 from pagequay.settings import Policy, Settings
@@ -64,7 +65,7 @@ def projects(client):
 def login(client):
     response = client.get("/admin/login")
     assert response.status_code == 200
-    nonce = client.cookies["pq_login_csrf"]
+    nonce = client.cookies[LOGIN_CSRF_COOKIE]
     response = client.post(
         "/admin/login",
         data={"username": "admin", "password": "TestPassword-42-Only!", "csrf": nonce},

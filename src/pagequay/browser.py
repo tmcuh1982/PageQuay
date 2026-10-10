@@ -3,6 +3,8 @@ import json
 import time
 from contextlib import suppress
 from dataclasses import dataclass, field
+from email.utils import parsedate_to_datetime
+from html import escape
 from urllib.parse import urlsplit
 
 from playwright.async_api import Error as PlaywrightError
@@ -36,6 +38,7 @@ class BrowserState:
     blocked_navigations: set = field(default_factory=set)
     creation_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     spare_page: object = None
+    headless: bool = False
 
 
 async def challenge_detected(page):
@@ -86,7 +89,17 @@ class BrowserManager:
             return self.states[project["id"]]
         global_policy = self.db.policy()
         if len(self.states) >= global_policy.max_concurrent_browsers:
-            raise PQError("RATE_LIMITED", "Concurrent browser limit reached", 429)
+            raise PQError(
+                "RATE_LIMITED",
+                "Concurrent browser limit reached",
+                429,
+                details={
+                    "scope": "browser_capacity",
+                    "cause": "pagequay_capacity",
+                    "retry_after_seconds": None,
+                    "retry_at": None,
+                },
+            )
         lock = ProfileLock(self.db.root, project["id"])
         lock.acquire()
         policy = self.db.policy(project)
@@ -114,7 +127,7 @@ class BrowserManager:
                 ],
             )
             context.set_default_timeout(policy.navigation_timeout_seconds * 1000)
-            state = BrowserState(project, context, lock, proxy)
+            state = BrowserState(project, context, lock, proxy, headless=policy.headless)
 
             async def guard(route):
                 try:
@@ -133,7 +146,6 @@ class BrowserManager:
                 await ws.close()
 
             await context.route_web_socket("**/*", block_websocket)
-            self.states[project["id"]] = state
             context.on("page", lambda page: self._register(state, page))
             context.on("close", lambda _: self._closed(state))
             for page in context.pages:
@@ -141,6 +153,9 @@ class BrowserManager:
                     state.spare_page = page
                 else:
                     self._register(state, page)
+            if policy.browser_start_minimized and not state.headless:
+                await self._set_windows(state, "minimized")
+            self.states[project["id"]] = state
             self.events.emit(project, "browser.started")
             self.db.audit("browser.started", project["id"])
             return state
@@ -261,6 +276,56 @@ class BrowserManager:
             raise PQError("CONFLICT", "Tab operation is running", 409)
         await tab.page.close()
 
+    async def _window(self, state, page, window_state=None):
+        session = await state.context.new_cdp_session(page)
+        try:
+            window = await session.send("Browser.getWindowForTarget")
+            if window_state is not None:
+                await session.send(
+                    "Browser.setWindowBounds",
+                    {"windowId": window["windowId"], "bounds": {"windowState": window_state}},
+                )
+                # Native macOS minimize/restore animations complete after the CDP reply.
+                async with asyncio.timeout(5):
+                    while True:
+                        result = await session.send(
+                            "Browser.getWindowBounds", {"windowId": window["windowId"]}
+                        )
+                        window["bounds"] = result["bounds"]
+                        if window["bounds"]["windowState"] == window_state:
+                            break
+                        await asyncio.sleep(0.05)
+            return window
+        finally:
+            with suppress(PlaywrightError):
+                await session.detach()
+
+    async def _set_windows(self, state, window_state):
+        seen = set()
+        for page in state.context.pages:
+            if page.is_closed():
+                continue
+            window = await self._window(state, page)
+            if window["windowId"] not in seen:
+                await self._window(state, page, window_state)
+                seen.add(window["windowId"])
+
+    async def window_control(self, project, *, minimized):
+        async with self.lifecycle:
+            state = self.states.get(project["id"])
+            if state is None:
+                raise PQError("CONFLICT", "Démarrez d’abord le navigateur de ce projet.", 409)
+            if state.headless:
+                raise PQError("CONFLICT", "Le mode sans interface n’a pas de fenêtre.", 409)
+            async with state.creation_lock:
+                try:
+                    await self._set_windows(state, "minimized" if minimized else "normal")
+                except (PlaywrightError, TimeoutError) as exc:
+                    raise PQError(
+                        "UPSTREAM_UNAVAILABLE", "Impossible de modifier les fenêtres.", 502
+                    ) from exc
+            self.db.audit("browser.minimized" if minimized else "browser.restored", project["id"])
+
     async def new_tab(self, project):
         state = await self.state(project)
         async with state.creation_lock:
@@ -269,11 +334,35 @@ class BrowserManager:
                 "UPDATE projects SET last_activity=? WHERE id=?", (state.last_used, project["id"])
             )
             if len(state.tabs) >= self.db.policy(project).max_tabs_per_project:
-                raise PQError("RATE_LIMITED", "Tab limit reached", 429)
+                raise PQError(
+                    "RATE_LIMITED",
+                    "Tab limit reached",
+                    429,
+                    details={
+                        "scope": "project_tabs",
+                        "cause": "pagequay_capacity",
+                        "retry_after_seconds": None,
+                        "retry_at": None,
+                    },
+                )
             if state.spare_page is not None and not state.spare_page.is_closed():
                 page, state.spare_page = state.spare_page, None
             else:
-                page = await state.context.new_page()
+                # Chromium restores minimized windows when Playwright creates a tab.
+                # Remember actual native state, including minimization from the macOS Dock.
+                minimized = {}
+                if not state.headless:
+                    for existing in state.context.pages:
+                        if not existing.is_closed():
+                            window = await self._window(state, existing)
+                            if window["bounds"]["windowState"] == "minimized":
+                                minimized[window["windowId"]] = existing
+                try:
+                    page = await state.context.new_page()
+                finally:
+                    for existing in minimized.values():
+                        if not existing.is_closed():
+                            await self._window(state, existing, "minimized")
             self._register(state, page)
             tab = next((tab for tab in state.tabs.values() if tab.page is page), None)
             if tab is None:
@@ -287,7 +376,10 @@ class BrowserManager:
             capture = None
             with suppress(PlaywrightError, PQError):
                 capture = self.artifacts.put(
-                    project, await tab.page.screenshot(), "image/png", "screenshot:read"
+                    project,
+                    await self._screenshot(project, tab.page),
+                    "image/png",
+                    "screenshot:read",
                 )
             await job.wait_for_human(tab.id, capture)
 
@@ -300,12 +392,13 @@ class BrowserManager:
                 state = self.states[project["id"]]
                 state.blocked_navigations.discard(tab.page)
                 blocked_before = state.proxy.blocked_count
-                await tab.page.goto(
+                response = await tab.page.goto(
                     request.url,
                     wait_until=request.wait_until,
                     timeout=self.db.policy(project).navigation_timeout_seconds * 1000,
                 )
                 await self.human_guard(project, tab, job)
+                self._upstream_limit(response)
                 self.events.emit(project, "tab.navigated", tab_id=tab.id)
                 return {"tab_id": tab.id, "url": tab.page.url, "title": await tab.page.title()}
             except PlaywrightTimeout as exc:
@@ -321,6 +414,57 @@ class BrowserManager:
                     else ("BROWSER_CRASHED" if tab.page.is_closed() else "UPSTREAM_UNAVAILABLE")
                 )
                 raise PQError(code, "Navigation failed", 502) from exc
+
+    def _upstream_limit(self, response):
+        if response is None or response.status != 429:
+            return
+        raw = response.headers.get("retry-after", "")
+        retry_at, seconds = None, None
+        try:
+            if raw.isdigit():
+                seconds = min(int(raw), 86400)
+                retry_at = time.time() + seconds
+            elif raw:
+                retry_at = parsedate_to_datetime(raw).timestamp()
+                seconds = max(0, int(retry_at - time.time()) + 1)
+        except (ValueError, TypeError, OverflowError):
+            pass
+        raise PQError(
+            "RATE_LIMITED",
+            "Upstream server returned HTTP 429",
+            429,
+            details={
+                "scope": "upstream_engine",
+                "cause": "upstream_http_429",
+                "retry_after_seconds": seconds,
+                "retry_at": retry_at,
+            },
+        )
+
+    async def submit_search_form(self, project, tab_id, form, job):
+        """Submit only a server-captured engine form through the guarded browser transport."""
+        await self.network_factory(self.db.policy(project)).resolve(form["url"])
+        tab = self.tab(project, tab_id)
+        job.set_tab(tab_id)
+        timeout = self.db.policy(project).navigation_timeout_seconds * 1000
+        fields = "".join(
+            f'<input type="hidden" name="{escape(name, quote=True)}" '
+            f'value="{escape(value, quote=True)}">'
+            for name, value in form["fields"]
+        )
+        html = (
+            f'<form id="pq-search-next" action="{escape(form["url"], quote=True)}" '
+            f'method="{form["method"]}">{fields}<button type="submit">Next</button></form>'
+        )
+        async with tab.lock:
+            await tab.page.set_content(html, wait_until="domcontentloaded", timeout=timeout)
+            async with tab.page.expect_navigation(
+                wait_until="domcontentloaded", timeout=timeout
+            ) as nav:
+                await tab.page.locator("#pq-search-next button").click(timeout=timeout)
+            response = await nav.value
+            await self.human_guard(project, tab, job)
+            self._upstream_limit(response)
 
     async def actions(self, project, tab_id, request, job):
         tab = self.tab(project, tab_id)
@@ -413,12 +557,30 @@ class BrowserManager:
                 media = "application/json"
             return self.artifacts.put(project, data.encode(), media)
 
+    async def _screenshot(self, project, page):
+        state = self.states[project["id"]]
+        if state.headless:
+            return await page.screenshot(full_page=False)
+        async with state.creation_lock:
+            window = await self._window(state, page)
+            minimized = window["bounds"]["windowState"] == "minimized"
+            # macOS suspends the repaint required for screenshots in minimized windows.
+            # Restore only for the capture, then put the window back even on cancellation.
+            if minimized:
+                await self._window(state, page, "normal")
+            try:
+                return await page.screenshot(full_page=False)
+            finally:
+                if minimized and not page.is_closed():
+                    with suppress(PlaywrightError, TimeoutError):
+                        await self._window(state, page, "minimized")
+
     async def screenshot(self, project, tab_id, job):
         tab = self.tab(project, tab_id)
         job.set_tab(tab_id)
         async with tab.lock:
             return self.artifacts.put(
-                project, await tab.page.screenshot(full_page=False), "image/png", "screenshot:read"
+                project, await self._screenshot(project, tab.page), "image/png", "screenshot:read"
             )
 
     async def shutdown(self):

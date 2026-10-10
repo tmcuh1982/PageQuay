@@ -22,3 +22,7 @@ docs/testing/*
 !docs/testing/structured-complex.json
 !docs/testing/structured-complex-compact.json
 pagequay-*-probe*
+
+# Private client checkpoint: queries/cursors/results (no API key).
+pagequay-ddg-checkpoint.json
+pagequay-ddg-checkpoint.json.tmp

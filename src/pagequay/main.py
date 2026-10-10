@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import ipaddress
 import secrets
 from contextlib import asynccontextmanager, suppress
@@ -58,6 +59,20 @@ class SafetyMiddleware:
             return await JSONResponse(
                 error_body("FORBIDDEN", "Loopback transport required"), status_code=403
             )(scope, receive, send)
+        # The actual destination socket distinguishes Serve from local administration.
+        # Host and forwarded headers cannot grant access to administration on this port.
+        if (scope.get("server") or ("", None))[1] == self.settings.api_port:
+            path = scope["path"]
+            if not (
+                path.startswith("/v1/")
+                or path in {"/health/live", "/health/ready", "/openapi.json"}
+            ):
+                if scope["type"] == "websocket":
+                    return await send({"type": "websocket.close", "code": 1008})
+                return await JSONResponse(
+                    error_body("NOT_FOUND", "Route not available on the API listener"),
+                    status_code=404,
+                )(scope, receive, send)
         if scope["type"] == "websocket":
             return await self.app(scope, receive, send)
         request_id = secrets.token_hex(12)
@@ -145,18 +160,25 @@ def create_app(settings=None, *, network_factory=NetworkPolicy):
 
     app = FastAPI(
         title="PageQuay",
-        version="0.1.0",
+        version="0.2.0",
         lifespan=lifespan,
         docs_url="/docs" if settings.development else None,
         redoc_url=None,
-        openapi_url="/openapi.json" if settings.development else None,
+        openapi_url=None,
     )
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
     app.add_middleware(SafetyMiddleware, settings=settings)
 
     @app.exception_handler(PQError)
     async def handle_error(request: Request, exc: PQError):
-        return JSONResponse(error_body(exc.code, exc.message), status_code=exc.status)
+        headers = {}
+        if exc.status == 429 and exc.details and exc.details.get("retry_after_seconds") is not None:
+            headers["Retry-After"] = str(exc.details["retry_after_seconds"])
+        return JSONResponse(
+            error_body(exc.code, exc.message, details=exc.details),
+            status_code=exc.status,
+            headers=headers,
+        )
 
     @app.exception_handler(RequestValidationError)
     async def invalid_input(request: Request, exc: RequestValidationError):
@@ -199,4 +221,15 @@ def create_app(settings=None, *, network_factory=NetworkPolicy):
         return schema
 
     app.openapi = schema_with_bearer
+
+    @app.get("/openapi.json", include_in_schema=False)
+    async def client_contract():
+        schema = copy.deepcopy(app.openapi())
+        schema["paths"] = {
+            path: value
+            for path, value in schema["paths"].items()
+            if path.startswith("/v1/") or path.startswith("/health/")
+        }
+        return schema
+
     return app

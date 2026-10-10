@@ -1,6 +1,7 @@
 import asyncio
 import hmac
 import json
+import re
 import secrets
 import time
 from datetime import UTC
@@ -13,10 +14,11 @@ from pydantic import ValidationError
 
 from .auth import SCOPES, digest
 from .errors import PQError
-from .models import KeyCreate, Navigate, ProjectCreate, Search
+from .models import KeyCreate, KeyUpdate, Navigate, ProjectCreate, Search
 from .settings import Policy
 
 router = APIRouter()
+LOGIN_CSRF_COOKIE = "pq_login_nonce"
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 templates.env.filters["datetime"] = lambda value: (
     time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(value)) if value else "—"
@@ -65,27 +67,35 @@ async def home():
     return RedirectResponse("/admin", status_code=303)
 
 
-@router.get("/admin/login")
-async def login_page(request: Request):
-    nonce = secrets.token_urlsafe(32)
+def login_response(request: Request, *, error=None, status_code=200):
+    nonce = request.cookies.get(LOGIN_CSRF_COOKIE, "")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{43}", nonce):
+        nonce = secrets.token_urlsafe(32)
     response = templates.TemplateResponse(
         request=request,
         name="login.html",
+        status_code=status_code,
         context={
             "nonce": nonce,
-            "error": None,
+            "error": error,
             "initialized": bool(request.app.state.rt.db.one("SELECT id FROM admins LIMIT 1")),
         },
     )
     response.set_cookie(
-        "pq_login_csrf",
+        LOGIN_CSRF_COOKIE,
         nonce,
         httponly=True,
         samesite="strict",
         secure=request.app.state.rt.settings.secure_cookies,
         max_age=600,
+        path="/admin",
     )
     return response
+
+
+@router.get("/admin/login")
+async def login_page(request: Request):
+    return login_response(request)
 
 
 @router.post("/admin/login")
@@ -93,14 +103,16 @@ async def login(request: Request):
     rt = request.app.state.rt
     form = await request.form()
     origin = request.headers.get("origin")
-    nonce = request.cookies.get("pq_login_csrf", "")
+    nonce = request.cookies.get(LOGIN_CSRF_COOKIE, "")
     supplied = str(form.get("csrf", ""))
-    if (
-        not nonce
-        or not hmac.compare_digest(nonce, supplied)
-        or (origin and origin not in rt.settings.allowed_origins)
-    ):
+    if origin and origin not in rt.settings.allowed_origins:
         raise PQError("FORBIDDEN", "Invalid login CSRF", 403)
+    if not nonce or not hmac.compare_digest(nonce, supplied):
+        return login_response(
+            request,
+            error="Le formulaire de connexion a expiré. Veuillez vous reconnecter ci-dessous.",
+            status_code=403,
+        )
     username, password = str(form.get("username", "")), str(form.get("password", ""))
     if len(username) > 100 or len(password) > 512:
         raise PQError("INVALID_INPUT", "Invalid credentials fields")
@@ -108,13 +120,7 @@ async def login(request: Request):
         # Argon2 does not block other requests while checking the password.
         token = await rt.auth.login(username, password, request.client.host)
     except PQError as exc:
-        response = templates.TemplateResponse(
-            request=request,
-            name="login.html",
-            context={"nonce": nonce, "error": exc.message, "initialized": True},
-            status_code=exc.status,
-        )
-        return response
+        return login_response(request, error=exc.message, status_code=exc.status)
     old = request.cookies.get("pq_session")
     if old:
         rt.db.execute("DELETE FROM sessions WHERE token_hash=?", (digest(old),))
@@ -127,7 +133,7 @@ async def login(request: Request):
         secure=rt.settings.secure_cookies,
         max_age=rt.settings.session_absolute_hours * 3600,
     )
-    response.delete_cookie("pq_login_csrf")
+    response.delete_cookie(LOGIN_CSRF_COOKIE, path="/admin")
     return response
 
 
@@ -142,7 +148,10 @@ async def logout(request: Request):
 
 @router.get("/admin")
 @router.get("/admin/{view}")
-async def page(request: Request, view: str = ""):
+@router.get("/admin/keys/{key_id}/edit")
+async def page(request: Request, view: str = "", key_id: str | None = None):
+    if key_id is not None:
+        view = "keys"
     if view not in dict(NAVIGATION):
         raise PQError("NOT_FOUND", "Page not found", 404)
     try:
@@ -153,6 +162,7 @@ async def page(request: Request, view: str = ""):
     for project in projects:
         state = rt.browser.states.get(project["id"])
         project["browser_active"] = bool(state)
+        project["browser_visible"] = bool(state and not state.headless)
         project["tabs"] = rt.browser.list_tabs(project)
         project["config_dict"] = json.loads(project["config"])
         project["effective"] = rt.db.policy(project).model_dump()
@@ -196,12 +206,21 @@ async def page(request: Request, view: str = ""):
         "k.expires_at,k.revoked_at,k.rate_limit,p.slug FROM api_keys k "
         "JOIN projects p ON p.id=k.project_id ORDER BY k.created_at DESC"
     )
+    editing_key = None
+    if key_id is not None:
+        editing_key = next((key for key in keys if key["id"] == key_id), None)
+        if editing_key is None:
+            raise PQError("NOT_FOUND", "Clé introuvable", 404)
+        if editing_key["revoked_at"] is not None:
+            raise PQError("CONFLICT", "Une clé révoquée ne peut pas être modifiée", 409)
+        editing_key["scopes_list"] = json.loads(editing_key["scopes"])
     context = {
         "view": view,
         "navigation": NAVIGATION,
         "csrf": value["csrf"],
         "projects": projects,
         "keys": keys,
+        "editing_key": editing_key,
         "scopes": sorted(SCOPES),
         "audit": audit,
         "policy": rt.db.policy().model_dump(),
@@ -264,6 +283,17 @@ async def revoke_key(key_id: str, request: Request):
     return {"status": "revoked"}
 
 
+@router.post("/admin/keys/{key_id}/update")
+async def update_key(key_id: str, request: Request):
+    rt, _ = await mutation(request)
+    body = validate(KeyUpdate, await json_body(request))
+    rt.auth.update_key(key_id, **body.model_dump())
+    for job in list(rt.jobs.active.values()):
+        if job.key_id == key_id and job.scope not in body.scopes:
+            job.task.cancel()
+    return {"status": "updated", "redirect_url": "/admin/keys"}
+
+
 @router.post("/admin/keys/{key_id}/rotate")
 async def rotate_key(key_id: str, request: Request):
     rt, _ = await mutation(request)
@@ -286,6 +316,7 @@ async def browser_control(slug: str, operation: str, request: Request):
     project = rt.db.project(slug)
     if operation == "purge":
         rt.artifacts.purge(project, all_content=True)
+        rt.db.execute("DELETE FROM search_cursors WHERE project_id=?", (project["id"],))
         rt.db.execute(
             "UPDATE jobs SET result=NULL WHERE project_id=? "
             "AND status IN ('completed','failed','cancelled')",
@@ -294,6 +325,8 @@ async def browser_control(slug: str, operation: str, request: Request):
         rt.db.audit("content.purged", project["id"])
     elif operation in {"start", "stop", "restart"}:
         await getattr(rt.browser, operation)(project)
+    elif operation in {"minimize", "restore"}:
+        await rt.browser.window_control(project, minimized=operation == "minimize")
     else:
         raise PQError("NOT_FOUND", "Unknown operation", 404)
     return {"status": operation + "_completed"}
@@ -382,7 +415,12 @@ async def search(slug: str, request: Request):
     model = validate(Search, await json_body(request))
     project = rt.db.project(slug)
     return rt.jobs.submit(
-        project, None, "search", "search:read", lambda job: rt.search.search(project, model, job)
+        project,
+        None,
+        "search",
+        "search:read",
+        lambda job: rt.search.search(project, model, job),
+        reserve=lambda job: rt.search.claim(project, model, job),
     )
 
 

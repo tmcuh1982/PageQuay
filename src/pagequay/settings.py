@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +10,10 @@ class Policy(BaseModel):
     search_default_engine: Literal["duckduckgo", "brave", "google", "auto"] = "auto"
     search_auto_strategy: Literal["fallback", "merge"] = "fallback"
     search_max_results: int = Field(10, ge=1, le=50)
+    search_max_pages: int = Field(10, ge=1, le=30)
+    search_max_total_results: int = Field(200, ge=1, le=1000)
+    search_cursor_ttl_minutes: int = Field(15, ge=1, le=60)
+    search_max_cursors_per_project: int = Field(100, ge=1, le=1000)
     max_tabs_per_project: int = Field(8, ge=1, le=30)
     max_concurrent_browsers: int = Field(3, ge=1, le=10)
     max_concurrent_jobs: int = Field(4, ge=1, le=20)
@@ -18,6 +22,7 @@ class Policy(BaseModel):
     per_key_rate_limit: int = Field(60, ge=1, le=600)
     navigation_timeout_seconds: int = Field(30, ge=1, le=120)
     headless: bool = False
+    browser_start_minimized: bool = False
     browser_start_on_demand: bool = True
     browser_idle_timeout_minutes: int = Field(30, ge=1, le=1440)
     content_cache_ttl_minutes: int = Field(60, ge=1, le=10080)
@@ -45,6 +50,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="PQ_", env_file=".env", extra="ignore")
     data_dir: Path = Path.home() / "Library/Application Support/PageQuay"
     port: int = Field(8765, ge=1024, le=65535)
+    api_port: int = Field(8766, ge=1024, le=65535)
     allowed_hosts: list[str] = ["127.0.0.1", "localhost"]
     allowed_origins: list[str] = ["http://127.0.0.1:8765", "http://localhost:8765"]
     secure_cookies: bool = False
@@ -58,6 +64,12 @@ class Settings(BaseSettings):
     human_timeout_seconds: int = 600
     websocket_lifetime_seconds: int = 600
     policy: Policy = Field(default_factory=Policy)
+
+    @model_validator(mode="after")
+    def separate_listener_ports(self):
+        if self.api_port == self.port:
+            raise ValueError("Administration and API listeners require distinct ports")
+        return self
 
     @field_validator("allowed_hosts", "allowed_origins")
     @classmethod

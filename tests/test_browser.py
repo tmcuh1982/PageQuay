@@ -216,6 +216,7 @@ async def test_real_two_profiles_api_retention_challenge_and_crash(tmp_path, sit
             await asyncio.sleep(0.1)
             assert a["id"] not in rt.browser.states and b["id"] in rt.browser.states
             assert (await sb.context.cookies())[0]["value"] == "B"
+
             await rt.browser.reset(a)
             sa = await rt.browser.start(a)
             assert not await sa.context.cookies()
@@ -225,3 +226,84 @@ async def test_real_two_profiles_api_retention_challenge_and_crash(tmp_path, sit
             assert b["id"] not in rt.browser.states
             sb = await rt.browser.start(b)
             assert (await sb.context.cookies())[0]["value"] == "B"
+
+
+@pytest.mark.skipif(os.environ.get("PQ_TEST_HEADED") != "1", reason="Use --browser --headed")
+async def test_minimized_window_remote_navigation_and_restore(tmp_path, site):
+    port, _ = site
+    settings = Settings(
+        data_dir=tmp_path,
+        policy=Policy(headless=False, browser_start_minimized=True, per_key_rate_limit=600),
+        allowed_hosts=["testserver"],
+    )
+    app = create_app(
+        settings,
+        network_factory=lambda policy: NetworkPolicy(
+            policy, test_allowed_hosts={"localhost"}, test_ports={port}
+        ),
+    )
+    async with app.router.lifespan_context(app):
+        rt = app.state.rt
+        project = rt.db.create_project("minimized", "Minimized")
+        other = rt.db.create_project("visible", "Visible")
+        rt.db.execute(
+            "UPDATE projects SET config=? WHERE id=?",
+            ('{"browser_start_minimized": false}', other["id"]),
+        )
+        _, token = rt.auth.create_key(
+            project, "Remote", ["browser:interact", "content:read", "screenshot:read"]
+        )
+        headers = {"Authorization": "Bearer " + token}
+        state = await rt.browser.start(project)
+        other_state = await rt.browser.start(other)
+
+        async def window_state(state):
+            return (await rt.browser._window(state, state.context.pages[0]))["bounds"][
+                "windowState"
+            ]
+
+        assert await window_state(state) == "minimized"
+        assert await window_state(other_state) == "normal"
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app, client=("127.0.0.1", 1234)),
+            base_url="http://testserver",
+        ) as client:
+            for _ in range(2):
+                response = await client.post(
+                    "/v1/projects/minimized/tabs",
+                    json={"url": f"http://localhost:{port}/"},
+                    headers=headers,
+                )
+                assert response.status_code == 202, response.text
+                job = await poll(client, "minimized", response.json()["job_id"], headers)
+                tab_id = job["result"]["tab_id"]
+                assert await window_state(state) == "minimized"
+            response = await client.post(
+                f"/v1/projects/minimized/tabs/{tab_id}/actions",
+                json={"actions": [{"type": "click", "selector": "#details"}]},
+                headers=headers,
+            )
+            await poll(client, "minimized", response.json()["job_id"], headers)
+            response = await client.get(
+                f"/v1/projects/minimized/tabs/{tab_id}/content?format=text", headers=headers
+            )
+            job = await poll(client, "minimized", response.json()["job_id"], headers)
+            assert "Clicked" in (await client.get(job["result"]["url"], headers=headers)).text
+            response = await client.get(
+                f"/v1/projects/minimized/tabs/{tab_id}/screenshot", headers=headers
+            )
+            job = await poll(client, "minimized", response.json()["job_id"], headers)
+            assert (await client.get(job["result"]["url"], headers=headers)).content.startswith(
+                b"\x89PNG"
+            )
+            assert await window_state(state) == "minimized"
+        await rt.browser.window_control(project, minimized=False)
+        assert await window_state(state) == "normal"
+        await rt.browser.new_tab(project)
+        assert await window_state(state) == "normal"
+        # Native minimization (the yellow macOS button) also survives the next remote tab.
+        await rt.browser._window(state, state.context.pages[0], "minimized")
+        await rt.browser.new_tab(project)
+        assert await window_state(state) == "minimized"
+        await rt.browser.window_control(project, minimized=True)
+        assert await window_state(other_state) == "normal"

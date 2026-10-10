@@ -6,6 +6,12 @@ Dans la racine du dépôt : `./scripts/start.sh`. Arrêt foreground : Ctrl-C. `.
 
 Mode visible : une session utilisateur macOS graphique doit rester ouverte. Un LaunchDaemon système ne remplace pas cette session. La disponibilité dépend du sommeil du Mac, de son réseau et de sa session ; régler l'énergie dans Réglages système selon le besoin. PageQuay ne modifie pas `pmset`. Une session distante déjà autorisée peut servir aux interventions humaines ; aucun accès distant n'est installé par PQ.
 
+## Fenêtres minimisées
+
+La console locale propose **Minimiser** et **Restaurer** dans Projets / Profils et Sessions / Onglets pour les navigateurs visibles déjà démarrés. La navigation distante et l’extraction continuent dans une fenêtre minimisée ; ouvrir un nouvel onglet conserve cet état. Une capture restaure brièvement la fenêtre pour permettre le rendu macOS, puis la minimise à nouveau, y compris en cas d’échec de la capture.
+
+Dans Paramètres, **Démarrer les fenêtres minimisées** ajoute `browser_start_minimized: true` aux valeurs globales. Enregistrer puis redémarrer les navigateurs pour appliquer cette option de lancement. Une surcharge JSON par projet peut activer ou désactiver le réglage. L’option est désactivée par défaut et ignorée en mode `headless`. Pour une vérification humaine, restaurer la fenêtre avant d’intervenir.
+
 ## LaunchAgent utilisateur
 
 Le fichier `scripts/local.pagequay.gateway.plist.example` doit être adapté : chemins absolus du dépôt et du dossier de données, sans `~` ni variables shell. Le dossier `logs/` doit exister, avec permissions 0700, et les sorties 0600. Vérifier le fichier avec `plutil -lint`. Copier le résultat vers `~/Library/LaunchAgents/local.pagequay.gateway.plist`, puis :
@@ -18,31 +24,37 @@ curl --fail http://127.0.0.1:8765/health/live
 
 Décharger : `./scripts/stop.sh`, qui utilise `launchctl bootout`. Le fichier reste présent ; le supprimer seulement si vous souhaitez empêcher le chargement aux connexions futures. Recharger avec `bootstrap` pour repartir. Ne pas faire tourner en parallèle une instance foreground et celle du LaunchAgent utilisant les mêmes profils.
 
-Le mode Aqua est spécifié dans le plist. L'installation effective au login et la récupération après reboot restent une recette manuelle sur la machine cible ; aucun LaunchAgent n'est enregistré automatiquement lors du développement.
+Le mode Aqua est spécifié dans le plist. Le démarrage après reboot reste à vérifier sur la machine cible. Si macOS refuse la lecture du dépôt sous `Documents`, utiliser une copie d’exécution hors de ce dossier et un environnement Python dont les imports ne pointent pas vers `Documents`.
 
-## Tailscale Serve HTTPS
+Sur le Mac mini de cette session, le LaunchAgent utilisateur a été installé explicitement. Il lance `~/Library/Application Support/PageQuayService/.venv/bin/python -m pagequay.cli serve`, avec le dossier de travail `PageQuayService`, `RunAtLoad` et `KeepAlive`. Les sources d’exécution et `.env` sont copiées depuis le dépôt ; toute mise à jour doit donc être déployée aussi dans cette copie avant de relancer le service. Les données restent dans `~/Library/Application Support/PageQuay`, distinctes du runtime. Aucun mot de passe administrateur n’est créé par cette installation.
+
+## Administration locale et Tailscale Serve HTTPS
 
 Installer et connecter Tailscale selon ses [instructions officielles](https://tailscale.com/docs/features/tailscale-serve). Activer HTTPS pour le tailnet si nécessaire. Avant Serve, limiter dans les ACL/grants Tailscale qui peut joindre ce Mac et son port HTTPS. `Serve` rend le service accessible dans le tailnet ; `Funnel` l'exposerait publiquement et ne doit pas être activé pour PQ.
+
+La CLI ouvre deux sockets loopback dans le même processus : `127.0.0.1:8765` pour la console locale et `127.0.0.1:8766` pour l’API. `PQ_PORT` et `PQ_API_PORT` permettent de choisir deux ports distincts. Le port API accepte uniquement `/v1/`, `/health/live`, `/health/ready` et le contrat client `/openapi.json` ; la console, son login, ses mutations et ses assets sont refusés, même avec un cookie admin ou un Host localhost. Le contrôle utilise le port de destination réel, sans faire confiance aux en-têtes du client.
 
 Configurer `.env` avec le hostname **exact** du Mac :
 
 ```dotenv
 PQ_ALLOWED_HOSTS=["127.0.0.1","localhost","mac-mini.votre-tailnet.ts.net"]
-PQ_ALLOWED_ORIGINS=["https://mac-mini.votre-tailnet.ts.net"]
-PQ_SECURE_COOKIES=true
+PQ_ALLOWED_ORIGINS=["http://127.0.0.1:8765","http://localhost:8765"]
+PQ_SECURE_COOKIES=false
+PQ_PORT=8765
+PQ_API_PORT=8766
 ```
 
 Redémarrer PQ puis lancer explicitement :
 
 ```sh
-tailscale serve --bg http://127.0.0.1:8765
+tailscale serve --bg http://127.0.0.1:8766
 tailscale serve status
 tailscale funnel status
 ```
 
-Contrôles à effectuer : état Serve indique HTTPS/tailnet-only ; Funnel n'a aucune route active ; la destination est `127.0.0.1:8765` ; un appareil autorisé du tailnet atteint `/admin` et doit se connecter ; un appareil refusé par ACL ne l'atteint pas ; depuis un appareil hors tailnet le service est inaccessible. Aucun NAT, UPnP ou port routeur à ouvrir. `tailscale serve reset` retire les routes Serve de cette machine : examiner l'état auparavant si elle héberge d'autres services.
+Contrôles à effectuer : état Serve indique HTTPS/tailnet-only ; Funnel n'a aucune route active ; la destination est `127.0.0.1:8766` ; un appareil autorisé du tailnet atteint `/health/ready` et les routes API avec sa clé, tandis que `/admin`, `/admin/login` et les mutations admin renvoient 404 ; un appareil refusé par ACL ne l'atteint pas ; depuis un appareil hors tailnet le service est inaccessible. Aucun NAT, UPnP ou port routeur à ouvrir. `tailscale serve reset` retire les routes Serve de cette machine : examiner l'état auparavant si elle héberge d'autres services.
 
-Avec Secure cookies, utiliser l'URL HTTPS pour le login ; HTTP loopback ne renverra pas le cookie Secure. Aucun en-tête `X-Forwarded-For`/`Proto` d'un client n'accorde un accès privilégié. La procédure et les ACL restent **non validées en réseau réel** tant que la recette de la machine cible n'a pas été exécutée.
+Ouvrir la console **sur le Mac** à `http://127.0.0.1:8765/admin`. Les cookies HTTP locaux utilisent `PQ_SECURE_COOKIES=false` ; l’authentification API distante reste par Bearer sur HTTPS et n’utilise pas ces cookies. Ne jamais configurer Serve, Funnel ou un autre proxy vers le port admin 8765. Aucun en-tête `X-Forwarded-For`/`Proto` d'un client n'accorde un accès privilégié. La procédure et les ACL restent **non validées en réseau réel** tant que la recette de la machine cible n'a pas été exécutée.
 
 ## Sauvegarde / restauration
 
@@ -62,5 +74,5 @@ Les verrous flock peuvent rester sous forme de fichiers après copie : ils n'ont
 - `NAVIGATION_BLOCKED` : schéma, port, DNS, adresse privée ou listes de domaines interdits. Une page publique peut charger des sous-ressources bloquées ; c'est attendu.
 - `UPSTREAM_CHANGED` / `UPSTREAM_UNAVAILABLE` : mise en page de moteur, erreur réseau ou page non reconnue. Le diagnostic en direct est séparé des fixtures ; ne pas ajouter de contournement anti-bot.
 - `waiting_for_human` : intervenir sur le Mac puis reprendre ou annuler. Le budget humain est limité ; la détection est imparfaite.
-- `RATE_LIMITED` : espacer les appels et le polling ; utiliser les événements WS pour réduire la fréquence. Par défaut, 60 requêtes par clé/minute, polling compris.
+- `RATE_LIMITED` : lire `error.details.scope/cause`, attendre `Retry-After` ou `retry_at` s’ils sont connus ; une capacité pleine n’a pas de délai prévisible. Le quota moteur de 6 tentatives/60 s est partagé par projet et moteur. Pour reprendre une continuation échouée, utiliser un nouveau `Idempotency-Key` si `can_resume_continuation=true`. Espacer les appels et le polling ; utiliser les événements WS pour réduire la fréquence. Par défaut, 60 requêtes par clé/minute, polling compris.
 - État de listener : `lsof -nP -iTCP:8765 -sTCP:LISTEN` doit indiquer loopback uniquement. Aucun port CDP n'est configuré ; Playwright utilise son transport interne.

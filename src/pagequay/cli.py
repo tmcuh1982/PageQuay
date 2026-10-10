@@ -1,6 +1,7 @@
 import argparse
 import getpass
 import os
+import socket
 import sys
 
 import uvicorn
@@ -19,7 +20,7 @@ def main():
     if args.command == "serve":
         from .main import create_app
 
-        uvicorn.run(
+        config = uvicorn.Config(
             create_app(settings),
             host="127.0.0.1",
             port=settings.port,
@@ -30,6 +31,17 @@ def main():
             ws_ping_interval=20,
             ws_ping_timeout=20,
         )
+        sockets = []
+        try:
+            for port in (settings.port, settings.api_port):
+                listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sockets.append(listener)
+                listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                listener.bind(("127.0.0.1", port))
+            uvicorn.Server(config).run(sockets=sockets)
+        finally:
+            for listener in sockets:
+                listener.close()
         return
     db = Storage(settings.data_dir)
     try:

@@ -109,3 +109,70 @@ Liens relatifs du README, de `docs/STATUS.md` et de `docs/PUBLISHING.md` contrô
 ## Publication débloquée — 10 octobre
 
 Le connecteur reste en erreur 403 après reconnexion, mais l'authentification GitHub CLI directe a été validée par l'utilisateur. Login vérifié : `tmcuh1982`. Helper Git configuré dans ce dépôt, premier push réussi de `5e85c7b` à `ad0c861`, référence distante relue identique ; les sources et documents sont maintenant publiés. Les paragraphes précédents décrivent l'historique des essais. README et documents de statut actualisés ensuite. Aucune modification de code ni nouvelle recette navigateur, Google/Air ou déploiement lors de la publication.
+
+## Administration locale et démarrage automatique — 10 octobre
+
+À la demande de l’utilisateur, console réservée à la machine et API prévue pour Tailscale : `pq serve` ouvre 127.0.0.1:8765 et 127.0.0.1:8766 dans un seul processus/runtime. Sur 8766, seules `/v1/`, `/health/live` et `/health/ready` passent ; les routes admin et assets sont refusés selon le port de destination réel, indépendamment de Host, des en-têtes forwarded ou des cookies.
+
+`pytest -q` hors sandbox réseau : **51 passed, 10 skipped**, warning Starlette/httpx inchangé. Contrôle Ruff conforme. Le nouveau test vérifie le refus des pages/mutations admin avec session valide et Host local, l’absence de mutation en base, les endpoints API/health, l’auth Bearer obligatoire et le refus WebSocket admin. Après explicitation du cookie de session dans le test, ce cas a été réexécuté avec succès. La première suite sous sandbox avait trois échecs liés aux sockets localhost interdites ; la suite complète avec sockets autorisées passe.
+
+Déploiement réellement effectué sur le Mac mini : LaunchAgent `local.pagequay.gateway`, RunAtLoad/KeepAlive, runtime privé sous `~/Library/Application Support/PageQuayService` pour éviter le blocage macOS du dossier Documents ; données séparées sous `~/Library/Application Support/PageQuay`. Service arrêté puis rechargé. HTTP réel : 8765 `/admin/login` → 200 ; 8766 `/health/ready` → 200 ; `/admin` et `/admin/login` → 404 ; API sans clé → 401. Configuration locale avec origines loopback et cookies non Secure pour HTTP loopback. Aucun compte administrateur réel créé automatiquement.
+
+Tailscale connecté mais Serve **non activé** dans le tailnet ; aucune configuration Serve présente. Les commandes précédentes en attente vers 8765 ont été terminées. La future commande doit viser `tailscale serve --bg http://127.0.0.1:8766`. Accès entre machines, ACL et reboot restent non testés.
+
+## Connexion locale CSRF — 10 octobre
+
+Après signalement de `Invalid login CSRF` dans Safari sur 127.0.0.1:8765, réglages du runtime confirmés : cookies non Secure et origines loopback. Correction des cas de formulaire périmé : nouveau cookie `pq_login_nonce` sous `/admin`, indépendant de l’ancien cookie qui pouvait avoir été Secure ; nonce conservé entre ouvertures de la page ; mismatch/missing-cookie renvoie un formulaire neuf avec message français et 403, sans authentifier. Les origines étrangères restent rejetées. La cause précise du cookie/formulaire Safari initial n’a pas été inspectée.
+
+53 tests standard réussis/10 ignorés ; test UI Chromium complet réussi avec compte jetable. Cas vérifiés : ancien cookie Secure, deux formulaires, nonce périmé sans session accordée, reprise normale. Runtime mis à jour et redémarré. HTTP réel sans mot de passe : cookie local correct, nonce stable, contrôle CSRF franchi avec identifiant volontairement trop long (400 avant vérification de credentials), admin sur port API toujours 404. Formulaire Safari rechargé ; connexion avec le compte réel à effectuer par l’utilisateur.
+
+## Aide à la création des clés API — 10 octobre
+
+Formulaire enrichi : explication des appels comptabilisés sur 60 secondes, exemple 60, erreur 429 et plafond du projet sélectionné. Expiration explicitement optionnelle : case décochée par défaut, valeur vide et champ désactivé ; décocher efface la date et le JSON envoyé contient `expires_at: null`. Champ obligatoire lorsqu’activé. Liste des clés : « Sans expiration » au lieu d’un tiret. Safari affichait une date indicative dans un datetime-local vide ; le contrôle désactivé utilise désormais un champ texte vide avec placeholder « Sans expiration », puis redevient datetime-local à l’activation.
+
+Test UI Chromium enrichi et réussi : activation/saisie/désactivation, payload nul et stockage SQLite nul, puis création d’une clé avec date, affichage et absence de débordement sur mobile. Captures desktop/mobile inspectées. Fichiers template/JS/CSS déployés dans le runtime sans interruption ; fichiers statiques servis vérifiés. Safari réel vérifié : case décochée et champ désactivé sans date, placeholder « Sans expiration ». Admin toujours refusée sur le port API 8766.
+
+## Modification de la sécurité des clés — 10 octobre
+
+Ajout de GET `/admin/keys/{id}/edit` et POST `/admin/keys/{id}/update` : formulaires préremplis, édition du nom/scopes/quota/expiration, secret et projet conservés. Validation complète des champs et refus des dates passées/non finies, scopes inconnus/vides, quotas hors bornes ou champs supplémentaires. Clé révoquée non modifiable ; clé expirée récupérable par changement explicite de son échéance. Retrait d’un scope annule uniquement les jobs qui le nécessitent. Audit `key.updated`, compteur de quota conservé.
+
+**63 passed, 10 skipped** pour la suite standard ; UI Chromium enrichie **1 passed**. Dix nouveaux cas vérifient CSRF/auth/admin local, conservation du secret, nouveaux droits, quota abaissé immédiatement, invalidité sans modification partielle, expiration/révocation et annulation ciblée des jobs. UI : valeurs préremplies, ajout/retrait de droits, changement du quota, expiration activée puis désactivée, secret réutilisable, annulation sans sauvegarde, captures desktop/mobile inspectées. Un premier contrôle UI a révélé un libellé implicite ambigu du projet désactivé ; aria-label explicite ajouté, contrôle UI final réussi. Table des clés défilante sur mobile pour garder les actions lisibles. OpenAPI exporté actualisé.
+
+Déployé dans la copie d’exécution du Mac mini, puis service redémarré après vérification de l’absence de jobs actifs. Health ready 200 ; mutation anonyme locale 401, même route sur le port API 8766 refusée 404. Les réglages de toutes les clés réelles ont été comparés avant/après déploiement et sont inchangés ; seuls les comptes/clés jetables de test ont été modifiés.
+
+## Informations de la clé appelante — 10 octobre
+
+GET `/v1/projects/{slug}/key-info` avec Bearer : identité publique de la clé, projet, scopes, expiration nullable, quotas clé/projet/effectif, solde après cet appel et timestamp Unix UTC de remise à zéro. Réponse explicitement filtrée et typée dans OpenAPI, Cache-Control no-store. Aucun droit supplémentaire requis ; quota REST commun appliqué, sans contournement quand épuisé. Clé expirée/révoquée ou autre projet/projet désactivé refusés. Les limites des opérations et messages WebSocket restent distinctes.
+
+**70 passed, 10 skipped** pour la suite standard ; Ruff check/format conformes (52 fichiers Python), export OpenAPI comparé au schéma généré et authentification Bearer vérifiée. Sept nouveaux cas : métadonnées uniquement de la clé appelante, absence de secret/hash ou données de l’autre clé, transport API avec admin refusée, mises à jour visibles, plafond du projet, compteur commun et réinitialisation, session admin insuffisante, expiration/révocation/projet désactivé. Exemple Python standard-library ajouté avec refus des redirections pour conserver le Bearer sur l’adresse configurée. Aucun changement UI, suite Chromium non relancée.
+
+Déploiement de api.py/models.py dans PageQuayService après absence de jobs actifs, LaunchAgent arrêté puis rechargé. HTTP réel : ready 200, key-info sans Bearer 401, admin et login sur 8766 refusés 404, login local sur 8765 disponible 200. Métadonnées de toutes les clés réelles identiques avant/après ; réponse authentifiée vérifiée avec les clés jetables des tests. Serve Tailscale n’a pas été activé par ce changement.
+
+## Diagnostic d’accès Tailscale — 10 octobre
+
+Sur le Mac mini : PageQuay écoute sur les deux sockets loopback, ready sur8766 renvoie200. Tailscale Running, aucune alerte et ShieldsUp=false ; aucune configuration Serve/Funnel. Le hostname Tailscale est déjà accepté : requêtes locales avec ce Host, ready200, key-info anonyme401, admin/login404 sur8766.
+
+Commande `tailscale serve --bg http://127.0.0.1:8766` lancée. Elle attend une activation : « Serve is not enabled on your tailnet ». Page officielle ouverte sur le Mac mini ; connexion utilisateur nécessaire. Après signalement d’une404, Safari montrait un compte Apple dans un réseau sans machines, distinct du réseau GitHub du réseau attendu du Mac mini. Reconnexion au compte GitHub du réseau attendu demandée à l’utilisateur. Aucun Serve/Funnel actif confirmé à ce stade, aucun paramètre de sécurité de la console modifié.
+
+### Activation Serve effectuée
+
+L’utilisateur s’est connecté au compte GitHub du réseau attendu puis a activé Serve dans son réseau. La page officielle a affiché « Tailscale Serve is ready to use ». La commande initiale a reçu un conflit etag indiquant une modification concurrente ; l’état courant a ensuite été lu et vérifié : HTTPS443 vers http://127.0.0.1:8766, configuration persistante (aucune section Foreground), aucune route AllowFunnel active. Aucune route vers8765.
+
+Adresse : https://VOTRE_MACHINE.VOTRE_TAILNET.ts.net. HTTP réel via cette adresse depuis le Mac mini, validation TLS normale : ready200, key-info sans Bearer401, /admin404, /admin/login404, /static/admin.js404. Aucun contournement de certificat ni secret utilisé. Contrôle depuis un autre appareil et validation des ACL non effectués par l’agent ; redémarrage macOS non testé. Aucun changement de code ni nouveau test logiciel nécessaire pour cette activation réseau.
+
+## 10 octobre — fenêtres minimisées
+
+- `pytest -q` : **73 passed, 11 skipped** ; les cas Chromium restent opt-in. Avertissement de dépréciation Starlette/httpx inchangé.
+- `pytest -q tests/test_ui.py tests/test_browser.py --browser --headed` : **3 passed**. Vérifiés sur Chromium/macOS : case de lancement minimisé, boutons locaux, conservation de la minimisation lors des ouvertures API successives, minimisation native, restauration, isolation entre projets, navigation/actions/extraction et capture.
+- Les captures doivent restaurer brièvement la fenêtre pour permettre le rendu macOS ; elle est ensuite minimisée à nouveau. Une capture PNG de fixture et l’interface ont été inspectées visuellement.
+- Ruff check/format et diff sans espaces invalides conformes. Service installé mis à jour et redémarré sans job actif ; ready/login locaux 200, contrôles admin refusés sur le port API (404).
+
+## 10 octobre — recherche DuckDuckGo, contrat 0.2.0
+
+- Validation finale : `pytest -q --browser --headed` → **116 passed, 3 skipped**, 72,84 s. Les trois diagnostics externes sont opt-in ; avertissement Starlette/httpx inchangé. La suite couvre compatibilité, trois pages simulées progressives, reliquats, locales/mots-clés, URL exactes/rangs/provenance, doublons et répétitions, curseurs liés/expirés/consommés, quotas HTTP et jobs, idempotence concurrente et SQLite rouvert, CAPTCHA, délais/annulation (y compris avant lancement et pendant allocation), rétention et onglets des autres opérations.
+- Fixture Chromium réelle : soumission POST avec champs cachés Unicode/répétés à travers le proxy de PQ ; isolation et fermeture des onglets. Les tests de navigation/extraction et de minimisation existants passent.
+- Exemple Python : tests de récupération d’une réception incertaine par checkpoint et même Idempotency-Key, progression/arrêt, clé exclusivement dans le header, retries bornés et mauvais chemins refusés. Après amélioration finale du checkpoint et de l’aide CLI : **5 passed** ciblés, sans nouvelle modification du backend.
+- Ruff check et format conformes (42 fichiers Python) ; diff sans espaces invalides. Schéma versionné relu identique à l’export client 0.2.0, liens documentaires vérifiés.
+- Essais extérieurs : `pytest -q tests/test_live_search.py::test_live_duckduckgo_native_continuations --live -s` → diagnostic rapporté, **aucun résultat réel obtenu**. Trois queries/locales : robot agriculture/fr-FR, agricultural robotics manufacturers/en-US, robots agricoles France/fr-FR. Toutes ont rencontré le challenge natif DuckDuckGo ; événement `challenge.required`, délai humain de test 5 s, erreur TIMEOUT et fermeture des onglets. Les HTML et JSON bruts sont locaux et ignorés par Git. **Trois pages natives sur DuckDuckGo réel restent non validées** ; aucun solveur/repli non demandé.
+- Déploiement : sauvegarde privée des sources et de SQLite, vérification de zéro job actif, 16 fichiers synchronisés dans PageQuayService et LaunchAgent rechargé. Migration additive 003 appliquée, paramètres existants et clés/projets réels conservés. Le plafond UniversRobot reste 10, le quota moteur PageQuay reste 6/60 s ; aucune augmentation silencieuse.
+- Contrôles du service installé : local ready/login 200, OpenAPI sur8766 200/version0.2.0, admin/login404 sur8766. Sur HTTPS Tailscale avec certificat validé : ready200, OpenAPI200 avec cursor/idempotence et chemins uniquement client/health, admin/login404, POST search anonyme401. **Une recherche authentifiée depuis UniversRobot sur le service installé n’a pas été rejouée**, faute de clé cliente fournie ; les essais moteurs utilisent un runtime/projet temporaire, et les créations/reprises authentifiées sont testées sur fixtures.

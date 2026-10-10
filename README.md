@@ -2,7 +2,7 @@
 
 Passerelle Web privée et auto-hébergée : un projet possède son propre profil Chromium persistant, ses onglets, ses clés API et ses contenus temporaires. API FastAPI REST + WebSocket et administration HTML/CSS/JavaScript locaux, sans build frontend, Docker ni abonnement.
 
-**Version 0.1 — MVP fonctionnel, recette partielle.** Consulter [le rapport de tests](docs/testing/REPORT.md) pour distinguer les vérifications exécutées et les limites. Les sources initiales sont conservées dans `docs/definition/`. L'état de travail et les choix sont dans `memory.md` et `decisions.md`.
+**Version 0.2 — recherche paginée, recette externe partielle.** Consulter [le rapport de tests](docs/testing/REPORT.md) pour distinguer les vérifications exécutées et les limites. Les sources initiales sont conservées dans `docs/definition/`. L'état de travail et les choix sont dans `memory.md` et `decisions.md`.
 
 ## Documentation et état du projet
 
@@ -16,7 +16,8 @@ Passerelle Web privée et auto-hébergée : un projet possède son propre profil
 | [Sécurité](SECURITY.md) | Protections et limites du MVP |
 | [Rapport de tests](docs/testing/REPORT.md) | Résultats observés et recettes non exécutées |
 | [Mémoire](memory.md) / [Décisions](decisions.md) | Suivi du développement et choix techniques |
-| [OpenAPI](docs/openapi.json) | Contrat API exporté |
+| [Recherche paginée](docs/SEARCH_API.md) | Continuations DuckDuckGo, quotas, idempotence et exemple UniversRobot |
+| [OpenAPI](docs/openapi.json) | Contrat API client 0.2.0, également disponible via `/openapi.json` |
 
 Au 10 octobre 2026, le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
 
@@ -36,7 +37,7 @@ Le programme demande un identifiant et un mot de passe d'au moins 14 caractères
 
 Avec une copie déjà présente, commencer dans sa racine sans relancer `git clone`.
 
-Le script installe les dépendances et Chromium ; `uv.lock` conserve les versions exactes des dépendances Python. Dans l'environnement de développement, cette installation a déjà été vérifiée. L'initialisation de l'administrateur reste à effectuer par chaque opérateur. La commande `pq serve` applique les migrations SQL au démarrage, lie **uniquement `127.0.0.1`**, utilise un seul processus et désactive les access logs. Ctrl-C arrête proprement le service et conserve les profils.
+Le script installe les dépendances et Chromium ; `uv.lock` conserve les versions exactes des dépendances Python. Dans l'environnement de développement, cette installation a déjà été vérifiée. L'initialisation de l'administrateur reste à effectuer par chaque opérateur. La commande `pq serve` applique les migrations SQL au démarrage, lie **uniquement `127.0.0.1`** sur deux ports (8765 pour la console locale, 8766 pour l’API seule destinée à Tailscale), utilise un seul processus et désactive les access logs. Ctrl-C arrête proprement le service et conserve les profils.
 
 Sans uv, le script utilise un venv et `pip install -e '.[dev]'` ; cette voie respecte les bornes du pyproject, mais pas les versions exactes du lockfile.
 
@@ -58,6 +59,12 @@ Ne changez pas de dossier de données entre l'initialisation et le démarrage. `
 4. Utiliser **Recherche** ou **Sessions / Onglets** pour tester manuellement. Les opérations longues créent un job ; son état et son résultat apparaissent dans la console.
 5. En cas de challenge, intervenir dans la fenêtre Chromium sur le Mac puis confirmer **Reprendre**. L'onglet reste ouvert ; aucune résolution automatique.
 
+Dans **Projets / Profils** ou **Sessions / Onglets**, **Minimiser** réduit les fenêtres du navigateur du projet dans le Dock ; **Restaurer** les réaffiche. Les tâches distantes continuent pendant la minimisation. Une capture réaffiche brièvement la fenêtre pour permettre son rendu, puis la minimise à nouveau. Une fenêtre minimisée avec le bouton jaune macOS reste minimisée après l’ouverture d’un nouvel onglet distant. Dans **Paramètres**, cocher **Démarrer les fenêtres minimisées** puis enregistrer pour appliquer ce comportement au prochain démarrage ; `browser_start_minimized` peut aussi être surchargé par projet dans sa configuration JSON. Le mode sans interface (`headless`) n’a pas de fenêtre à minimiser. Pour un challenge, restaurer la fenêtre puis intervenir manuellement.
+
+Dans **Créer une clé API**, « Requêtes / minute » limite les appels effectués avec cette clé sur 60 secondes : lancer une opération, suivre son job et télécharger son résultat comptent séparément. Le plafond effectif est le minimum entre la valeur de la clé et celle du projet, affichée dans le formulaire. Au dépassement, l’API renvoie 429. L’expiration est désactivée par défaut : cocher **Définir une date d’expiration** pour choisir une échéance ; décocher efface et désactive le champ. La liste affiche explicitement **Sans expiration** pour les clés concernées.
+
+Dans la liste **Clés de vos projets**, **Modifier la sécurité** ouvre un formulaire prérempli : nom, autorisations, quota et expiration sont modifiables sans changer le secret ni le projet. Enregistrer applique les nouveaux réglages ; retirer un droit annule les jobs qui en dépendent. Une clé révoquée ne peut pas être modifiée. Une clé expirée peut recevoir une échéance future ou revenir à « Sans expiration ». **Annuler** conserve les réglages existants.
+
 La révocation interrompt les jobs de la clé et ferme ses WebSockets lors de la revalidation suivante (au plus une seconde). La rotation crée un nouveau secret et révoque immédiatement l'ancien. Une clé API n'ouvre jamais la console administrateur.
 
 ## API v1
@@ -66,6 +73,7 @@ Toutes les routes de cette table utilisent `Authorization: Bearer <clé>` et con
 
 | Méthode / chemin sous `/v1/projects/{slug}` | Droit | Résultat |
 | --- | --- | --- |
+| GET `/key-info` | Clé du projet, aucun scope supplémentaire | Droits, expiration et quota effectif de la clé appelante |
 | POST `/search` | `search:read` | 202, job de recherche |
 | POST `/tabs` | `browser:interact` | 202, job d'ouverture/navigation |
 | GET `/tabs`, GET `/tabs/{id}` | `browser:read` | Liste / état |
@@ -82,11 +90,45 @@ Toutes les routes de cette table utilisent `Authorization: Bearer <clé>` et con
 
 `GET /health/live` et `/health/ready` ne renvoient que l'état minimal. `/docs` et `/openapi.json` sont désactivés par défaut ; `PQ_DEVELOPMENT=true` les active sur le transport local. Un schéma exporté est disponible dans `docs/openapi.json`.
 
+### Informations de la clé appelante
+
+`GET /v1/projects/{slug}/key-info` permet à un client de découvrir ses propres réglages avec son Bearer habituel. Exemple local sur le port API :
+
+```sh
+curl --fail-with-body http://127.0.0.1:8766/v1/projects/universrobot/key-info \
+  -H "Authorization: Bearer $PQ_API_KEY"
+```
+
+Réponse illustrative après le premier appel avec une clé à 60 requêtes/minute :
+
+```json
+{
+  "key_id": "identifiant-de-la-cle",
+  "name": "Mon application",
+  "prefix": "pq_exemple",
+  "project": {"slug": "universrobot", "name": "UniversRobot"},
+  "scopes": ["content:read", "search:read"],
+  "expires_at": null,
+  "rate_limit": {
+    "configured_requests_per_minute": 60,
+    "project_requests_per_minute": 60,
+    "effective_requests_per_minute": 60,
+    "window_seconds": 60,
+    "remaining_requests": 59,
+    "resets_at": 1800000060.0
+  }
+}
+```
+
+Le client doit utiliser `effective_requests_per_minute` : c’est le minimum entre quota de la clé et plafond du projet. `remaining_requests` tient compte de cet appel et de tous les autres appels REST acceptés avec la même clé, y compris le suivi des jobs et les téléchargements. La fenêtre fixe de 60 secondes commence au premier appel accepté ; `resets_at` est son échéance en secondes Unix UTC. Le solde décrit l’instant de la réponse, sans réserver de requêtes pour le client. L’appel renvoie 429 si le quota est déjà épuisé.
+
+`expires_at` est une date en secondes Unix UTC ou `null` pour **sans expiration**. `scopes` contient les droits accordés, détaillés dans la table des routes. Les réglages modifiés depuis l’administration apparaissent au prochain appel ; une clé expirée/révoquée renvoie 401, une clé d’un autre projet ou un projet désactivé renvoie 403. Aucun secret ni hash n’est retourné. Les limites propres aux opérations (captures, moteurs de recherche) et aux messages WebSocket s’appliquent en plus de ce quota REST. Le client Python autonome [key_info.py](examples/key_info.py) utilise `PQ_URL`, `PQ_PROJECT` et `PQ_API_KEY`.
+
 Actions : `click`, `fill`, `select`, `scroll`, `wait_for_selector`, `wait_for_navigation`. Cette dernière attend l'état de chargement de la navigation courante ; pour un clic qui navigue, le clic Playwright attend lui-même sa navigation. Au plus 20 actions, sélecteurs et valeurs bornés, délais par action limités. Aucun `eval`, CDP, shell, upload ou chemin de fichier fourni par le client.
 
 `format=structured` renvoie un JSON versionné à partir du **DOM rendu** : blocs ordonnés, listes imbriquées, tableaux HTML/ARIA, liens, images, contrôles/formulaires, métadonnées/JSON-LD et documents des iframes. Les Shadow DOM ouverts et leurs slots sont parcourus. `include_dom=true` ajoute un arbre DOM filtré avec IDs de nœuds ; cette option est réservée au format `structured`. Les valeurs des input/textarea, scripts, styles et contenus cachés sont exclus. Pour les applications qui chargent des éléments plus tard, utiliser d'abord les actions `wait_for_selector`/scroll/click nécessaires, puis extraire à nouveau. Voir [le contrat et les limites](docs/EXTRACTION.md), [l'exemple JSON](docs/testing/structured-complex-compact.json) et [l'exemple avec arbre](docs/testing/structured-complex.json).
 
-Erreurs structurées `{"error":{"code":"…","message":"…","request_id":"…"}}`. Codes : `UNAUTHORIZED`, `FORBIDDEN`, `INVALID_INPUT`, `NOT_FOUND`, `RATE_LIMITED`, `NAVIGATION_BLOCKED`, `TIMEOUT`, `BROWSER_CRASHED`, `CHALLENGE_REQUIRED`, `CONFLICT`, `INTERNAL_ERROR`, `UPSTREAM_CHANGED`, `UPSTREAM_UNAVAILABLE`. Les erreurs asynchrones apparaissent dans le job. Les états sont `queued`, `running`, `waiting_for_human`, `completed`, `failed`, `cancelled`. Un redémarrage de service marque les jobs interrompus comme échoués ; aucune action n'est rejouée automatiquement.
+Erreurs structurées `{"error":{"code":"…","message":"…","request_id":"…"}}`. Codes : `UNAUTHORIZED`, `FORBIDDEN`, `INVALID_INPUT`, `NOT_FOUND`, `RATE_LIMITED`, `NAVIGATION_BLOCKED`, `TIMEOUT`, `BROWSER_CRASHED`, `CHALLENGE_REQUIRED`, `CONFLICT`, `INVALID_CURSOR`, `CURSOR_EXPIRED`, `CURSOR_USED`, `INTERNAL_ERROR`, `UPSTREAM_CHANGED`, `UPSTREAM_UNAVAILABLE`. Les erreurs asynchrones apparaissent dans le job. Les états sont `queued`, `running`, `waiting_for_human`, `completed`, `failed`, `cancelled`. Un redémarrage de service marque les jobs interrompus comme échoués ; aucune action n'est rejouée automatiquement.
 
 Exemple curl (clé saisie sans l'inscrire dans l'historique) :
 
@@ -103,7 +145,11 @@ Les exemples Python et WebSocket sont dans `examples/`. Ne jamais transmettre de
 
 ## Recherche et rétention
 
-DuckDuckGo, Brave Search et Google disposent d'adaptateurs séparés testés sur fixtures. `auto` essaie DuckDuckGo, puis Brave puis Google si nécessaire ; `merge` fusionne les résultats et conserve leur provenance. Six recherches par moteur/projet/minute, résultats plafonnés, pas de solveur CAPTCHA, spoofing ni rotation d'identité. Les mises en page peuvent changer. Les publicités explicitement identifiables sont filtrées ; le type des autres résultats reste `uncertain`. Le paramètre locale influence Google ; aucune fiabilité régionale n'est prétendue pour les autres moteurs.
+DuckDuckGo, Brave Search et Google disposent d’adaptateurs séparés testés sur fixtures. `auto` autorise le repli/la fusion ; un moteur explicite ne bascule jamais vers un autre. DuckDuckGo accepte un `cursor` opaque pour rendre le reliquat d’une page puis suivre son formulaire natif « Next ». `limit` reste un maximum de résultats par job, plafonné à 10 par défaut ; pour autoriser 50, régler `search_max_results=50` dans le projet. Le résultat indique `next_cursor`, `has_more` (true/false/null), moteurs, quantités, rangs, URL exacte et motif d’arrêt. Les chaînes sont bornées à 10 pages / 200 résultats / 15 minutes par défaut. Les essais réels récents ont rencontré un CAPTCHA ; trois pages natives sont validées en simulation, pas encore sur DuckDuckGo réel.
+
+Le quota **PageQuay** est de 6 tentatives de page par fenêtre fixe de 60 secondes pour chaque couple projet/moteur, partagé par les clés et l’admin ; il ne décrit pas un quota DuckDuckGo. Les reliquats stockés ne consomment pas de tentative moteur. Le quota REST par clé reste distinct et compte notamment le suivi des jobs. HTTP 429 fournit `Retry-After` lorsqu’il est connu ; les erreurs des jobs indiquent portée/cause/délai, reprise possible et résultats partiels. `Idempotency-Key` sur POST /search permet de retrouver la même opération pendant 24 heures, y compris après redémarrage. Les onglets internes sont fermés après succès, échec ou annulation.
+
+Contrat et exemples : [SEARCH_API](docs/SEARCH_API.md), [OpenAPI](docs/openapi.json), [client Python serveur pour plusieurs requêtes](examples/search_duckduckgo.py). Le schéma client est également disponible sur `GET /openapi.json` via le port API/HTTPS privé. Les paramètres régionaux sont transmis à Google et DuckDuckGo sans garantie de classement. Les publicités explicitement identifiables restent filtrées, les autres types restent `uncertain`. Aucun solveur CAPTCHA, spoofing ni rotation d’identité.
 
 | Opération / durée | Effet |
 | --- | --- |

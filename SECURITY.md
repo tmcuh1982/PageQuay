@@ -6,7 +6,7 @@ Application privée pour un opérateur et des clients connus. Les pages Web sont
 
 Sessions serveur : token aléatoire de 256 bits, hash SHA-256 dans SQLite, durée absolue de 12 h et inactivité de 30 min ; nouvelle session au login, précédente invalidée, logout et CSRF pour chaque mutation UI. Cookies HttpOnly, SameSite Strict et Secure lorsque configuré pour HTTPS. Login CSRF également protégé et limité à cinq tentatives par transport/cinq minutes avec limite globale. Mots de passe Argon2id, minimum 14 caractères. Les erreurs ne renvoient pas les valeurs invalides des formulaires.
 
-Clés API : 256 bits CSPRNG, hash SHA-256, comparaison en temps constant après lookup, projet unique et scopes explicites. Pour des secrets aléatoires de cette entropie, un hash rapide ne rend pas la recherche exhaustive réaliste ; les mots de passe humains ont, eux, un hash lent Argon2id. Préfixe d'identification non secret, affichage complet une fois, expiration/révocation revalidées pour requêtes, jobs actifs et WebSockets. Pas de secrets complets dans le journal d'audit.
+Clés API : 256 bits CSPRNG, hash SHA-256, comparaison en temps constant après lookup, projet unique et scopes explicites. Pour des secrets aléatoires de cette entropie, un hash rapide ne rend pas la recherche exhaustive réaliste ; les mots de passe humains ont, eux, un hash lent Argon2id. Préfixe d'identification non secret, affichage complet une fois, expiration/révocation revalidées pour requêtes, jobs actifs et WebSockets. La modification d’une clé est réservée à une session admin locale avec CSRF : secret/projet conservés, aucune réactivation d’une clé révoquée, date future ou absence d’expiration, au moins un scope reconnu et quota borné. Le compteur de quota est conservé ; les jobs utilisant un droit retiré sont annulés et les requêtes suivantes revalident les droits. Audit `key.updated` sans secret. Pas de secrets complets dans le journal d’audit.
 
 ## Egress navigateur
 
@@ -18,7 +18,7 @@ Ce dispositif **n'est pas un pare-feu OS** : un navigateur compromis, une extens
 
 ## Administration, stockage et contenu
 
-Listener imposé à 127.0.0.1 par la CLI, transport non loopback refusé par l'application, Host et Origin explicites, aucun proxy header client automatiquement accepté. Accès distant via Tailscale Serve HTTPS, identité/ACL tailnet puis login admin. Pas de Funnel. CSP locale, anti-framing, nosniff, no-store, referrer policy, réponse maximale, queues/onglets/navigateurs/actions/rate limits/artefacts bornés.
+Deux listeners imposés à 127.0.0.1 par la CLI : administration locale sur 8765, API seule sur 8766. Le port de destination réel de la socket limite 8766 à `/v1/` et aux deux routes health, pour HTTP et WebSocket ; aucun Host, proxy header ou cookie admin ne lève cette restriction. Transport non loopback refusé par l’application, Host et Origin explicites. Accès distant via Tailscale Serve HTTPS vers **8766 uniquement**, identité/ACL tailnet puis clé API. Le port admin ne doit jamais être publié par un proxy. Pas de Funnel. CSP locale, anti-framing, nosniff, no-store, referrer policy, réponse maximale, queues/onglets/navigateurs/actions/rate limits/artefacts bornés.
 
 Templates Jinja échappés ; JavaScript utilise `textContent`, pas `innerHTML` pour le contenu externe. HTML extrait distribué comme pièce jointe avec CSP sandbox. Captures protégées par session admin ou scope projet. Pages distantes jamais intégrées en iframe. Si un client transmet du contenu à un LLM, traiter ce contenu comme des données non fiables et ne pas suivre ses instructions.
 

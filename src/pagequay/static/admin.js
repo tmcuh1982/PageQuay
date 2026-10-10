@@ -29,6 +29,58 @@ document.querySelector("#copy-secret").addEventListener("click", async () => {
 document.querySelector("#dismiss-secret").addEventListener("click", () => {
   document.querySelector("#secret-value").textContent = ""; location.reload();
 });
+document.querySelectorAll('form[data-key-settings]').forEach(form => {
+  const toggle = form.querySelector("[data-key-expiration]");
+  const date = form.querySelector("[data-key-expiration-date]");
+  const help = form.querySelector("[data-key-expiration-help]");
+  const project = form.querySelector('[data-key-project]');
+  if (date.dataset.initialTimestamp) {
+    const initial = new Date(Number(date.dataset.initialTimestamp) * 1000);
+    const pad = value => String(value).padStart(2, "0");
+    date.type = "datetime-local";
+    date.value = `${initial.getFullYear()}-${pad(initial.getMonth()+1)}-${pad(initial.getDate())}T${pad(initial.getHours())}:${pad(initial.getMinutes())}:${pad(initial.getSeconds())}`;
+    date.dataset.initialLocalValue = date.value;
+    date.step = "1";
+  }
+  function updateExpiration() {
+    date.disabled = !toggle.checked;
+    date.required = toggle.checked;
+    if (toggle.checked) {
+      date.type = "datetime-local";
+      date.removeAttribute("placeholder");
+    } else {
+      date.value = "";
+      date.type = "text";
+      date.placeholder = "Sans expiration";
+    }
+    help.textContent = toggle.checked
+      ? "Choisissez une date future, dans le fuseau horaire de ce navigateur. La clé sera automatiquement refusée à partir de cette date."
+      : "Sans expiration : le champ est vide et désactivé. La clé reste valide jusqu’à sa révocation ou sa rotation.";
+  }
+  function updateRateHelp() {
+    const limit = project.selectedOptions[0]?.dataset.rateLimit;
+    form.querySelector("[data-key-project-rate-help]").textContent = limit
+      ? `Plafond de ce projet : ${limit} requêtes par minute et par clé. La limite effective est la plus petite entre ce plafond et la valeur saisie ci-dessus.`
+      : "Créez un projet pour choisir le plafond de cette clé.";
+  }
+  toggle.addEventListener("change", updateExpiration);
+  project.addEventListener("change", updateRateHelp);
+  updateExpiration(); updateRateHelp();
+});
+document.querySelectorAll("[data-policy-toggle]").forEach(toggle => {
+  const config = toggle.closest("form").querySelector('[name="config"]');
+  config.addEventListener("input", () => {
+    try { toggle.checked = JSON.parse(config.value)[toggle.dataset.policyToggle] === true; }
+    catch { /* Keep the current selection while JSON is being edited. */ }
+  });
+  toggle.addEventListener("change", () => {
+    try {
+      const policy = JSON.parse(config.value);
+      policy[toggle.dataset.policyToggle] = toggle.checked;
+      config.value = JSON.stringify(policy, null, 2);
+    } catch { note("Corrigez la configuration JSON avant de modifier cette option.", true); }
+  });
+});
 function displayJob(data, project, jobId) {
   document.querySelector("#job-panel").classList.remove("hidden");
   document.querySelector("#job-status").textContent = data.status;
@@ -79,13 +131,20 @@ document.querySelectorAll("form[data-api],form[data-api-project]").forEach(form 
     if (!form.hasAttribute("data-json")) {
       form.querySelectorAll("[data-number]").forEach(el => body[el.name] = Number(el.value));
       form.querySelectorAll("[data-boolean]").forEach(el => body[el.name] = el.checked);
-      form.querySelectorAll("[data-timestamp]").forEach(el => body[el.name] = el.value ? new Date(el.value).getTime()/1000 : null);
-      if (form.querySelector('[name="scopes"]')) body.scopes = fields.getAll("scopes");
+      form.querySelectorAll("[data-timestamp]").forEach(el => {
+        body[el.name] = null;
+        if (!el.disabled && el.value) body[el.name] = el.dataset.initialTimestamp && el.value === el.dataset.initialLocalValue
+          ? Number(el.dataset.initialTimestamp) : new Date(el.value).getTime()/1000;
+      });
+      if (form.querySelector('[name="scopes"]')) {
+        body.scopes = fields.getAll("scopes");
+        if (!body.scopes.length) throw new Error("Choisissez au moins une autorisation. Pour bloquer tous les accès, révoquez la clé.");
+      }
     }
     const result = await post(url, body);
     if (result.secret) showSecret(result.secret);
     else if (result.job_id) watchJob(project, result.job_id);
-    else { note("Opération effectuée."); location.reload(); }
+    else { note("Opération effectuée."); if (result.redirect_url === "/admin/keys") location.href = result.redirect_url; else location.reload(); }
   } catch (e) { note(e.message, true); }
   finally { button.disabled = false; }
 }));

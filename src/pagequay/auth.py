@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import math
 import secrets
 import time
 
@@ -33,13 +34,26 @@ class Auth:
     def __init__(self, db, settings):
         self.db, self.settings = db, settings
 
-    def rate(self, bucket, limit, seconds=60):
+    def rate(self, bucket, limit, seconds=60, *, scope=None):
         now = time.time()
         row = self.db.one("SELECT * FROM limits WHERE bucket=?", (bucket,))
         if not row or row["window"] + seconds <= now:
             self.db.execute("INSERT OR REPLACE INTO limits VALUES (?,?,1)", (bucket, now))
         elif row["count"] >= limit:
-            raise PQError("RATE_LIMITED", "Request limit reached; retry later", 429)
+            retry_at = row["window"] + seconds
+            raise PQError(
+                "RATE_LIMITED",
+                "PageQuay request quota exhausted; retry after the window resets",
+                429,
+                details={
+                    "scope": scope or bucket.split(":", 1)[0],
+                    "cause": "pagequay_quota",
+                    "limit": limit,
+                    "window_seconds": seconds,
+                    "retry_after_seconds": max(1, math.ceil(retry_at - now)),
+                    "retry_at": retry_at,
+                },
+            )
         else:
             self.db.execute("UPDATE limits SET count=count+1 WHERE bucket=?", (bucket,))
 
@@ -77,6 +91,22 @@ class Auth:
             raise PQError("UNAUTHORIZED", "Invalid credentials", 401)
         return self.revalidate(key["id"])
 
+    def update_key(self, key_id, name, scopes, expires_at, rate_limit):
+        key = self.db.one("SELECT id,project_id,revoked_at FROM api_keys WHERE id=?", (key_id,))
+        if not key:
+            raise PQError("NOT_FOUND", "Clé introuvable", 404)
+        if key["revoked_at"] is not None:
+            raise PQError("CONFLICT", "Une clé révoquée ne peut pas être modifiée", 409)
+        if not scopes or not set(scopes) <= SCOPES:
+            raise PQError("INVALID_INPUT", "Unknown or empty scopes")
+        if expires_at is not None and expires_at <= time.time():
+            raise PQError("INVALID_INPUT", "Choisissez une date d’expiration future")
+        self.db.execute(
+            "UPDATE api_keys SET name=?,scopes=?,expires_at=?,rate_limit=? WHERE id=?",
+            (name, json.dumps(sorted(set(scopes))), expires_at, rate_limit, key_id),
+        )
+        self.db.audit("key.updated", key["project_id"], key_id)
+
     def revalidate(self, key_id):
         key = self.db.one("SELECT * FROM api_keys WHERE id=?", (key_id,))
         if not key or key["revoked_at"] or (key["expires_at"] and key["expires_at"] <= time.time()):
@@ -94,6 +124,7 @@ class Auth:
             self.rate(
                 "key:" + key["id"],
                 min(key["rate_limit"], self.db.policy(project).per_key_rate_limit),
+                scope="api_key",
             )
             self.db.execute("UPDATE api_keys SET last_used=? WHERE id=?", (time.time(), key["id"]))
         return key

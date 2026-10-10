@@ -2,13 +2,23 @@ import asyncio
 import json
 import time
 from contextlib import suppress
+from typing import Annotated
 
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Header, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 
 from .errors import PQError, error_body
-from .models import Actions, ContentFormat, Navigate, Search
+from .models import (
+    Actions,
+    ContentFormat,
+    ErrorResponse,
+    JobResponse,
+    KeyInfo,
+    Navigate,
+    Search,
+    SearchAccepted,
+)
 
 router = APIRouter(prefix="/v1")
 
@@ -28,11 +38,79 @@ def submit(rt, project, key, kind, scope, operation):
     return rt.jobs.submit(project, key["id"], kind, scope, operation)
 
 
-@router.post("/projects/{slug}/search", status_code=202)
-async def search(slug: str, body: Search, request: Request):
+@router.get("/projects/{slug}/key-info", response_model=KeyInfo)
+async def key_info(slug: str, request: Request, response: Response):
+    """Read the calling key's current permissions and REST quota, including this request."""
+    rt, project, key = access(request, slug)
+    project_limit = rt.db.policy(project).per_key_rate_limit
+    effective_limit = min(key["rate_limit"], project_limit)
+    window = rt.db.one("SELECT window,count FROM limits WHERE bucket=?", ("key:" + key["id"],))
+    response.headers["Cache-Control"] = "no-store"
+    return {
+        "key_id": key["id"],
+        "name": key["name"],
+        "prefix": key["prefix"],
+        "project": {"slug": project["slug"], "name": project["name"]},
+        "scopes": key["scopes"],
+        "expires_at": key["expires_at"],
+        "rate_limit": {
+            "configured_requests_per_minute": key["rate_limit"],
+            "project_requests_per_minute": project_limit,
+            "effective_requests_per_minute": effective_limit,
+            "window_seconds": 60,
+            "remaining_requests": max(0, effective_limit - window["count"]),
+            "resets_at": window["window"] + 60,
+        },
+    }
+
+
+@router.post(
+    "/projects/{slug}/search",
+    status_code=202,
+    response_model=SearchAccepted,
+    responses={
+        409: {
+            "model": ErrorResponse,
+            "description": "Cursor binding/use conflict or idempotency conflict",
+        },
+        410: {"model": ErrorResponse, "description": "Expired cursor"},
+        422: {"model": ErrorResponse, "description": "Invalid request fields"},
+        429: {
+            "model": ErrorResponse,
+            "description": "HTTP admission quota/capacity limit",
+            "headers": {
+                "Retry-After": {
+                    "schema": {"type": "integer"},
+                    "description": "Seconds to retry, only when known",
+                }
+            },
+        },
+    },
+)
+async def search(
+    slug: str,
+    body: Search,
+    request: Request,
+    idempotency_key: Annotated[
+        str | None, Header(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$")
+    ] = None,
+):
+    """Search one bounded slice. DuckDuckGo continuations bind query/engine/locale/project.
+
+    limit remains an upper bound on results in this operation, capped by search_max_results.
+    Idempotency-Key replays the same operation for 24 hours; another payload returns 409.
+    See the versioned docs/SEARCH_API.md for cursor lifecycle, quotas and partial failures.
+    """
     rt, project, key = access(request, slug, "search:read")
-    return submit(
-        rt, project, key, "search", "search:read", lambda job: rt.search.search(project, body, job)
+    return rt.jobs.submit(
+        project,
+        key["id"],
+        "search",
+        "search:read",
+        lambda job: rt.search.search(project, body, job),
+        idempotency_key=idempotency_key,
+        payload=body.model_dump(),
+        reserve=lambda job: rt.search.claim(project, body, job),
     )
 
 
@@ -150,7 +228,7 @@ async def artifact(slug: str, artifact_id: str, request: Request):
     )
 
 
-@router.get("/projects/{slug}/jobs/{job_id}")
+@router.get("/projects/{slug}/jobs/{job_id}", response_model=JobResponse)
 async def job(slug: str, job_id: str, request: Request):
     rt, project, key = access(request, slug)
     row = rt.jobs.get(project, job_id)

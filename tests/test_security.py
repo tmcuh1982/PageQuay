@@ -2,7 +2,10 @@ import time
 
 import pytest
 from conftest import login
+from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
+from pagequay.admin import LOGIN_CSRF_COOKIE
 from pagequay.auth import PASSWORDS, digest
 from pagequay.errors import PQError
 from pagequay.models import ProjectCreate
@@ -19,6 +22,45 @@ def test_health_no_public_docs_or_anonymous_admin(client):
     assert client.get("/docs").status_code == 404
     assert client.get("/admin", follow_redirects=False).status_code == 303
     assert client.post("/admin/projects", json={"slug": "a-b", "name": "A"}).status_code == 401
+
+
+def test_api_listener_blocks_admin_even_with_local_host_and_admin_session(client, projects):
+    _, _, _, _, _, token_b = projects
+    headers = login(client)
+    settings = client.app.state.rt.settings
+    api_client = TestClient(
+        client.app,
+        base_url=f"http://127.0.0.1:{settings.api_port}",
+        client=("127.0.0.1", 1234),
+    )
+    api_client.cookies.update(client.cookies)
+    headers["Cookie"] = "pq_session=" + client.cookies["pq_session"]
+    headers["Host"] = "testserver"
+    headers["X-Forwarded-Host"] = "localhost:8765"
+    for path in ("/", "/admin", "/admin/login", "/admin/keys", "/static/admin.js", "/docs"):
+        assert api_client.get(path, headers=headers).status_code == 404
+    assert (
+        api_client.post(
+            "/admin/projects", json={"slug": "remote-admin", "name": "Forbidden"}, headers=headers
+        ).status_code
+        == 404
+    )
+    assert not client.app.state.rt.db.one("SELECT id FROM projects WHERE slug='remote-admin'")
+    assert api_client.get("/health/ready", headers=headers).status_code == 200
+    assert (
+        api_client.get(
+            "/v1/projects/projet-b/tabs", headers={**headers, **bearer(token_b)}
+        ).status_code
+        == 200
+    )
+    assert api_client.get("/v1/projects/projet-b/tabs", headers=headers).status_code == 401
+    with pytest.raises(WebSocketDisconnect) as exc:
+        with api_client.websocket_connect(
+            f"ws://127.0.0.1:{settings.api_port}/admin", headers=headers
+        ):
+            pass
+    assert exc.value.code == 1008
+    assert client.get("/admin/keys").status_code == 200
 
 
 def test_csrf_login_and_mutations(client):
@@ -41,6 +83,40 @@ def test_csrf_login_and_mutations(client):
     assert "<script>alert(1)</script>" not in page.text
     assert "frame-ancestors 'none'" in page.headers["content-security-policy"]
     assert page.headers["cache-control"] == "no-store"
+
+
+def test_login_multiple_forms_and_stale_secure_cookie(client):
+    client.cookies.set("pq_login_csrf", "legacy-secure-cookie")
+    for cookie in client.cookies.jar:
+        if cookie.name == "pq_login_csrf":
+            cookie.secure = True
+    first = client.get("/admin/login")
+    nonce = client.cookies[LOGIN_CSRF_COOKIE]
+    second = client.get("/admin/login")
+    assert client.cookies[LOGIN_CSRF_COOKIE] == nonce
+    assert f'value="{nonce}"' in first.text and f'value="{nonce}"' in second.text
+    response = client.post(
+        "/admin/login",
+        data={"username": "admin", "password": "TestPassword-42-Only!", "csrf": nonce},
+        headers={"Origin": "http://testserver"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert client.get("/admin/keys").status_code == 200
+
+
+def test_expired_login_form_recovers_without_bypassing_csrf(client):
+    response = client.post(
+        "/admin/login",
+        data={"username": "admin", "password": "TestPassword-42-Only!", "csrf": "expired"},
+        headers={"Origin": "http://testserver"},
+    )
+    assert response.status_code == 403
+    assert "formulaire de connexion a expiré" in response.text
+    assert "pq_session" not in client.cookies
+    assert LOGIN_CSRF_COOKIE in client.cookies
+    assert client.get("/admin", follow_redirects=False).status_code == 303
+    assert login(client)
 
 
 def test_api_project_scopes_and_admin_separation(client, projects):
@@ -280,7 +356,11 @@ def test_profile_flock_and_migrations(tmp_path):
     second.release()
     db.close()
     db = Storage(tmp_path)
-    assert len(db.all("SELECT * FROM schema_migrations")) == 2
+    assert {row["version"] for row in db.all("SELECT * FROM schema_migrations")} == {
+        "001_initial.sql",
+        "002_reset_intents.sql",
+        "003_search_continuations.sql",
+    }
     assert (tmp_path / "pagequay.sqlite3").stat().st_mode & 0o777 == 0o600
     db.close()
 
