@@ -101,3 +101,7 @@ Les pages virtualisées/non chargées, les closed shadows et la sémantique visu
 ## Préparation GitHub — 10 octobre
 
 `pytest -q` : **50 passed, 10 skipped**, 2,61 s ; tests navigateur/UI et diagnostics tiers opt-in ignorés, warning Starlette/httpx inchangé. Ruff check et format sur l'ensemble du projet conformes (47 fichiers Python). Aide du client SSH vérifiée après ajout de `--remote-root` ; aucun nouveau test entre machines revendiqué. Captures et diagnostics bruts exclus du dépôt public, résultats conservés dans ce rapport.
+
+## Mise à jour documentaire — 10 octobre
+
+Liens relatifs du README, de `docs/STATUS.md` et de `docs/PUBLISHING.md` contrôlés : aucune cible manquante. Aucun code modifié et aucune suite navigateur relancée pour cette mise à jour. La lecture du README GitHub confirme son contenu initial ; l'API de modification du fichier a refusé l'écriture avec **403 Resource not accessible by integration**. La documentation locale est actualisée ; la publication distante reste non effectuée.

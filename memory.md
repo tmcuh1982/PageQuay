@@ -1,6 +1,6 @@
 # Mémoire de travail — PageQuay (PQ)
 
-Dernière mise à jour : 2026-10-10, préparation de la publication GitHub.
+Dernière mise à jour : 2026-10-10, documentation locale et tentative de mise à jour GitHub.
 
 ## Objectif et autorisation
 
@@ -82,3 +82,10 @@ Contrat et sources : `docs/EXTRACTION.md`. Reprise : utiliser le JSON par défau
 - Commit local du MVP : `ced0201`, parent distant initial `5e85c7b`. Le push HTTPS a échoué faute d'identifiants GitHub dans le terminal. La validation automatique avait ensuite refusé le transfert via l'application, faute de confirmation de l'exposition publique.
 - L'utilisateur a explicitement répondu **« Publier dans le dépôt public existant »**. Ce choix autorise la publication sur `tmcuh1982/PageQuay` public. Transfert via la connexion GitHub de l'application, puis récupération Git HTTPS en lecture pour synchroniser l'historique local ; aucun identifiant terminal créé ni secret copié.
 - Nouvelle tentative après confirmation : GitHub a refusé `create_tree` avec **403 Resource not accessible by integration**. Les outils de connexion retournent `installations: []` et `accounts: []` pour ce compte. Le plugin GitHub est installé et le compte OAuth est connecté, mais l'accès en écriture du connecteur au dépôt n'est pas opérationnel. Aucun arbre/commit distant créé ni code publié. Le dépôt distant reste sur `5e85c7b` (README initial). Reconfiguration de la connexion GitHub avec accès au dépôt PageQuay demandée à l'utilisateur ; reprendre l'envoi après configuration, sans redemander la visibilité publique déjà confirmée.
+
+## Mise à jour de la documentation locale et GitHub — 10 octobre
+
+- Demande explicite : actualiser la documentation sur GitHub et dans le dossier local. README enrichi d'un sommaire, d'un état de disponibilité des sources et d'instructions d'installation portables ; diagnostics exclus du dépôt clairement identifiés.
+- Nouveaux `docs/STATUS.md` (fonctionnalités, preuves de validation, recettes restantes, état distant) et `docs/PUBLISHING.md` (accès requis, fichiers publiables, synchronisation et vérification). Ils distinguent publication des sources, déploiement du service et simple publication des documents.
+- Liens relatifs du README et des deux nouveaux documents contrôlés : aucune cible manquante. Mise à jour documentaire seulement, aucune suite navigateur relancée.
+- GitHub recontrôlé : dépôt public et droit utilisateur push/admin ; aucune installation de l'application détectée. README distant toujours une seule ligne. Tentative de mise à jour via l'API Contents (`update_file`, avec le SHA du README relu juste avant) : même **403 Resource not accessible by integration**. La documentation distante n'a pas changé ; les documents locaux sont prêts à publier quand l'accès en écriture sera opérationnel. L'accord de visibilité publique reste acquis.

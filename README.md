@@ -4,9 +4,25 @@ Passerelle Web privée et auto-hébergée : un projet possède son propre profil
 
 **Version 0.1 — MVP fonctionnel, recette partielle.** Consulter [le rapport de tests](docs/testing/REPORT.md) pour distinguer les vérifications exécutées et les limites. Les sources initiales sont conservées dans `docs/definition/`. L'état de travail et les choix sont dans `memory.md` et `decisions.md`.
 
+## Documentation et état du projet
+
+| Document | Utilité |
+| --- | --- |
+| [État actuel](docs/STATUS.md) | Fonctionnalités livrées, tests effectués et étapes restant à valider |
+| [Architecture](docs/ARCHITECTURE.md) | Composants, flux, profils et contrôle réseau |
+| [Extraction JSON et DOM](docs/EXTRACTION.md) | Contrat structuré, exemples, bornes et limites des pages complexes |
+| [Exploitation](docs/OPERATIONS.md) | macOS, LaunchAgent, accès Tailscale, sauvegarde et dépannage |
+| [Publication GitHub](docs/PUBLISHING.md) | Synchronisation du dossier local et du dépôt public |
+| [Sécurité](SECURITY.md) | Protections et limites du MVP |
+| [Rapport de tests](docs/testing/REPORT.md) | Résultats observés et recettes non exécutées |
+| [Mémoire](memory.md) / [Décisions](decisions.md) | Suivi du développement et choix techniques |
+| [OpenAPI](docs/openapi.json) | Contrat API exporté |
+
+Au 10 octobre 2026, le MVP et sa documentation sont prêts dans le dossier de développement. La publication publique sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay) est autorisée, mais l'écriture GitHub reste bloquée par l'accès du connecteur (`403 Resource not accessible by integration`). Le dernier état distant vérifié ne contient que le README initial ; une copie GitHub seule ne permet donc pas encore l'installation. Le statut détaillé et la procédure de reprise sont dans les documents ci-dessus.
+
 ## Installation macOS
 
-Python 3.12–3.14 et [uv](https://docs.astral.sh/uv/) sont nécessaires pour la procédure verrouillée. Le développement initial utilise Python 3.14 sur Apple Silicon. Dans un terminal :
+Python 3.12–3.14 et [uv](https://docs.astral.sh/uv/) sont nécessaires pour la procédure verrouillée. Le développement initial utilise Python 3.14 sur Apple Silicon. Depuis une copie complète des sources, dans un terminal (adapter le chemin à votre installation) :
 
 ```sh
 cd ~/Documents/Codex/PageQuay
@@ -17,7 +33,7 @@ cd ~/Documents/Codex/PageQuay
 
 Le programme demande un identifiant et un mot de passe d'au moins 14 caractères dans un terminal interactif. Aucun compte initial ou mot de passe par défaut. Ouvrir ensuite [la console locale](http://127.0.0.1:8765/admin).
 
-Les dépendances de cet environnement sont déjà installées et `uv.lock` conserve leurs versions exactes. L'initialisation de l'administrateur reste à effectuer par l'opérateur. La commande `pq serve` applique les migrations SQL au démarrage, lie **uniquement `127.0.0.1`**, utilise un seul processus et désactive les access logs. Ctrl-C arrête proprement le service et conserve les profils.
+Le script installe les dépendances et Chromium ; `uv.lock` conserve les versions exactes des dépendances Python. Dans l'environnement de développement, cette installation a déjà été vérifiée. L'initialisation de l'administrateur reste à effectuer par chaque opérateur. La commande `pq serve` applique les migrations SQL au démarrage, lie **uniquement `127.0.0.1`**, utilise un seul processus et désactive les access logs. Ctrl-C arrête proprement le service et conserve les profils.
 
 Sans uv, le script utilise un venv et `pip install -e '.[dev]'` ; cette voie respecte les bornes du pyproject, mais pas les versions exactes du lockfile.
 
@@ -101,15 +117,15 @@ La maintenance passe toutes les 30 secondes. La consultation d'un artefact véri
 
 ```sh
 uv sync --frozen --extra dev
-.venv/bin/ruff check src tests
-.venv/bin/ruff format --check src tests
+.venv/bin/ruff check .
+.venv/bin/ruff format --check .
 .venv/bin/pytest -q
 .venv/bin/pytest tests/test_browser.py tests/test_ui.py --browser --headed -q
 .venv/bin/pytest tests/test_structured.py --browser --headed -q
 .venv/bin/pytest tests/test_live_search.py --live -q -s
 ```
 
-Les tests réels ouvrent des navigateurs de test et un serveur localhost. L'exception LAN est injectée uniquement dans leur dépendance réseau et n'est pas configurable dans le service de production. Sans `--browser`, les tests Chromium sont explicitement ignorés. `--live` est un diagnostic extérieur : lire `docs/testing/duckduckgo-live.json` et `docs/testing/google-live.json`, le succès du test ne signifie pas que le moteur a répondu avec des résultats.
+Les tests réels ouvrent des navigateurs de test et un serveur localhost. L'exception LAN est injectée uniquement dans leur dépendance réseau et n'est pas configurable dans le service de production. Sans `--browser`, les tests Chromium sont explicitement ignorés. `--live` est un diagnostic extérieur : les fichiers `docs/testing/duckduckgo-live.json` et `docs/testing/google-live.json` sont générés localement et exclus du dépôt public. Lire [le rapport versionné](docs/testing/REPORT.md) pour leurs résultats ; le succès d'un test de diagnostic ne signifie pas que le moteur a répondu avec des résultats.
 
 Pour tester Google depuis un autre Mac une fois le service privé configuré, copier `examples/probe_google.py` sur ce Mac puis lancer `python3 probe_google.py --url https://HOSTNAME-PQ --project SLUG`. Le client utilise uniquement la bibliothèque standard ; il demande la clé de façon masquée (ou lit `PQ_API_KEY`). Scopes requis : `search:read`, `browser:interact`, `content:read`. Le rapport `pagequay-google-probe.json` identifie la machine cliente ; en cas de succès, le texte téléchargé est enregistré dans `pagequay-google-probe.txt`. Il s'arrête sur un challenge humain et sort avec code 1 si le parcours n'aboutit pas. HTTPS ou HTTP loopback via tunnel SSH uniquement ; ce client n'installe pas le service ni Tailscale Serve.
 

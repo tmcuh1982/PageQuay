@@ -81,3 +81,9 @@ Les secrets, environnements, bases, profils, sauvegardes et diagnostics/captures
 L'utilisateur a ensuite explicitement confirmé **« Publier dans le dépôt public existant »**, levant le refus initial lié à la visibilité. Le terminal n'ayant pas d'identifiants HTTPS, la publication utilise la connexion GitHub de l'application, puis Git récupère les commits publics pour aligner le dossier local. Aucun identifiant terminal ni secret n'est créé ou copié.
 
 État actuel : nouvelle tentative autorisée refusée par GitHub (**403 Resource not accessible by integration**), aucune installation/account d'application détecté par le connecteur. Publication toujours non effectuée ; reconfiguration de la connexion avec accès au dépôt requise. La confirmation publique reste acquise, le blocage concerne uniquement l'accès technique GitHub.
+
+## D018 — Documentation locale et distante cohérente (10 octobre 2026)
+
+À la demande de l'utilisateur, le README devient le point d'entrée vers architecture, extraction, exploitation, tests et suivi. `docs/STATUS.md` distingue fonctionnalités livrées, tests exécutés, recette distante non effectuée et état de publication. `docs/PUBLISHING.md` décrit les accès et contrôles nécessaires pour synchroniser les documents et les sources, sans assimiler une mise à jour documentaire à un déploiement du service.
+
+La mise à jour du README distant est tentée par l'API Contents avec son SHA courant ; GitHub refuse aussi cette voie avec 403. Conserver et versionner la documentation locale prête, sans annoncer une mise à jour GitHub non effectuée. Une fois l'accès opérationnel, publier les documents liés ensemble et vérifier leur contenu distant.
