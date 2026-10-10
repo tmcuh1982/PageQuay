@@ -56,6 +56,18 @@ Contrôles à effectuer : état Serve indique HTTPS/tailnet-only ; Funnel n'a au
 
 Ouvrir la console **sur le Mac** à `http://127.0.0.1:8765/admin`. Les cookies HTTP locaux utilisent `PQ_SECURE_COOKIES=false` ; l’authentification API distante reste par Bearer sur HTTPS et n’utilise pas ces cookies. Ne jamais configurer Serve, Funnel ou un autre proxy vers le port admin 8765. Aucun en-tête `X-Forwarded-For`/`Proto` d'un client n'accorde un accès privilégié. La procédure et les ACL restent **non validées en réseau réel** tant que la recette de la machine cible n'a pas été exécutée.
 
+### Port HTTPS externe depuis la console
+
+Dans **Paramètres → Accès externe**, le champ **Port HTTPS externe** configure le port HTTPS vu par les clients, de 1 à 65535 (443 par défaut). La console lit le port et l’adresse actifs dans Tailscale, sans confondre ce port avec la destination loopback `PQ_API_PORT`. **Appliquer le port HTTPS** crée la nouvelle route privée vers le port API, vérifie sa configuration, retire l’ancienne route PageQuay, puis confirme l’état final. Aucun redémarrage de PageQuay ni des navigateurs n’est nécessaire. `--bg` conserve la configuration Serve après redémarrage de Tailscale.
+
+**Choix recommandé pour un port alternatif : 8443**, facile à retenir pour HTTPS. L’adresse cliente devient alors `https://mac-mini.votre-tailnet.ts.net:8443`. **8080 reste possible en HTTPS**, par exemple `https://mac-mini.votre-tailnet.ts.net:8080`, même s’il évoque généralement HTTP par convention : le protocole est déterminé par la [configuration HTTPS de Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli/serve), pas par le numéro du port. Choisir un port disponible et autorisé par les règles d’accès du tailnet. Ce choix est global à PageQuay, indépendant des projets ; le port actif change uniquement après application dans la console.
+
+Prérequis : CLI Tailscale accessible au processus PageQuay, connexion au tailnet, Serve/HTTPS préalablement activé et hostname exact dans `PQ_ALLOWED_HOSTS`. Si Tailscale n’est pas disponible, les autres paramètres restent utilisables et un message explique le blocage. Le formulaire exige une session admin locale et CSRF ; il est inaccessible depuis le port API et les clés clientes.
+
+Après changement, mettre à jour l’URL des clients, par exemple `https://mac-mini.votre-tailnet.ts.net:8443`, et les ACL/grants du tailnet pour le port choisi. La console ne modifie pas les règles d’accès. Le port 443 n’apparaît pas dans l’URL. Le backend API reste sur son port loopback actuel et l’administration reste locale.
+
+Un port utilisé par un autre service, une route partagée avec d’autres chemins, Serve en mode temporaire ou Funnel sur le port concerné sont refusés avant modification. La commande ne réinitialise jamais toute la configuration Serve. En cas d’échec, elle tente de restaurer l’ancienne route et de retirer la nouvelle ; si cette récupération échoue, elle signale un changement incomplet et demande de vérifier `tailscale serve status`. Le réglage repose sur les commandes officielles [Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli/serve).
+
 ## Sauvegarde / restauration
 
 1. Drainer ou annuler les jobs. Arrêter PQ (Ctrl-C ou bootout) ; vérifier que ses fenêtres Chromium sont fermées.

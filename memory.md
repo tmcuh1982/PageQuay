@@ -155,3 +155,9 @@ Déployé aprèszérojobactif, backup privé sources+SQLite sous tmp (pq-search-
 ### Publication du lot 0.2
 
 Demande explicite de commit GitHub sur le dépôt public existant `tmcuh1982/PageQuay`, branche `main`. Le lot inclut sources, tests, contrats et exemples ; secrets, bases, profils, captures, diagnostics privés et checkpoints sont exclus. Les noms Tailscale réels et le compte du réseau ont été remplacés par des indications portables dans cette mémoire et le rapport public.
+
+### Port HTTPS externe global — 10 octobre 2026
+
+Demande utilisateur : configurer le port externe depuis la console, indépendamment des projets, via une redirection Tailscale. Paramètres → Accès externe affiche la route privée réellement active et accepte un port HTTPS de 1 à 65535. Application immédiate par CLI Serve --bg vers le seul listener API ; vérification de la nouvelle route, retrait de l’ancienne, contrôle final et récupération sur erreur. Refus des ports occupés/partagés, Funnel, Serve temporaire et formulaire périmé. CSRF/session locale ; route admin inaccessible sur le listener API. Aucun choix de nouveau port imposé à l’utilisateur.
+
+Validation : suite générale 126 passed/14 skipped ; 20 tests dédiés ; formulaire Chromium réel desktop/mobile réussi avec CLI Tailscale simulée. Ruff et diff --check conformes. Les essais avec sockets nécessitent une exécution hors sandbox. Lecture seule réelle confirme Serve privé HTTPS443. Déploiement des cinq fichiers runtime dans la copie installée après zéro job actif ; redémarrage LaunchAgent et health200. Sauvegarde des sources privée sous /private/tmp/pq-external-port-backup-4md2ra4o. Aucun changement réel de port Tailscale exécuté pour la recette ; cette application sera déclenchée par le bouton admin. Sources non publiées dans cette demande.

@@ -14,6 +14,7 @@ from pydantic import ValidationError
 
 from .auth import SCOPES, digest
 from .errors import PQError
+from .external_access import ExternalPort
 from .models import KeyCreate, KeyUpdate, Navigate, ProjectCreate, Search
 from .settings import Policy
 
@@ -229,6 +230,8 @@ async def page(request: Request, view: str = "", key_id: str | None = None):
         "active_jobs": len(rt.jobs.active),
         "data_dir": str(rt.db.root),
         "title": dict(NAVIGATION)[view],
+        "external_access": await rt.external_access.status() if view == "settings" else None,
+        "api_port": rt.settings.api_port,
     }
     return templates.TemplateResponse(request=request, name="admin.html", context=context)
 
@@ -373,6 +376,15 @@ async def reset(slug: str, request: Request):
         raise PQError("FORBIDDEN", "Confirmation missing, expired or already used", 403)
     await rt.browser.reset(project)
     return {"status": "profile_reset"}
+
+
+@router.post("/admin/settings/external-access")
+async def external_access(request: Request):
+    rt, _ = await mutation(request)
+    body = validate(ExternalPort, await json_body(request))
+    result = await rt.external_access.apply(body)
+    rt.db.audit("external_access.updated")
+    return result
 
 
 @router.post("/admin/settings")

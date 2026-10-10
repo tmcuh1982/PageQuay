@@ -18,6 +18,7 @@ from .auth import Auth
 from .browser import BrowserManager
 from .errors import PQError, error_body
 from .events import Events
+from .external_access import ExternalAccess
 from .jobs import Jobs
 from .network import NetworkPolicy
 from .profiles import ProfileLock
@@ -38,6 +39,7 @@ class Runtime:
     jobs: Jobs
     search: SearchService
     retention: Retention
+    external_access: ExternalAccess
 
 
 class SafetyMiddleware:
@@ -142,7 +144,16 @@ def create_app(settings=None, *, network_factory=NetworkPolicy):
         search = SearchService(browser, auth, db)
         retention = Retention(db, browser, jobs, artifacts)
         app.state.rt = Runtime(
-            settings, db, auth, events, artifacts, browser, jobs, search, retention
+            settings,
+            db,
+            auth,
+            events,
+            artifacts,
+            browser,
+            jobs,
+            search,
+            retention,
+            ExternalAccess(settings),
         )
         task = asyncio.create_task(retention.run())
         try:

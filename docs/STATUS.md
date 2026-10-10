@@ -5,6 +5,7 @@ Version **0.2.0**, MVP développé et vérifié localement sur macOS Apple Silic
 ## Fonctionnalités livrées
 
 - Administration française, projets et profils Chromium persistants isolés, sessions admin et clés API par projet.
+- Port HTTPS Tailscale configurable dans Paramètres → Accès externe, adresse active affichée, application immédiate et persistante ; le port API loopback et la console restent séparés.
 - Modification des clés existantes depuis la console locale : autorisations, quota, expiration et nom, secret conservé.
 - Informations de la clé appelante via REST : scopes, expiration, quotas configurés/effectifs et solde de la fenêtre courante.
 - REST et WebSocket, jobs asynchrones, navigation/actions, captures et artefacts temporaires protégés.

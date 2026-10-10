@@ -129,7 +129,7 @@ document.querySelectorAll("form[data-api],form[data-api-project]").forEach(form 
     let project = fields.get("project"); let url = form.dataset.api;
     if (form.dataset.apiProject) { url = `/admin/projects/${project}/${form.dataset.apiProject}`; delete body.project; }
     if (!form.hasAttribute("data-json")) {
-      form.querySelectorAll("[data-number]").forEach(el => body[el.name] = Number(el.value));
+      form.querySelectorAll("[data-number]").forEach(el => body[el.name] = el.hasAttribute("data-nullable") && el.value === "" ? null : Number(el.value));
       form.querySelectorAll("[data-boolean]").forEach(el => body[el.name] = el.checked);
       form.querySelectorAll("[data-timestamp]").forEach(el => {
         body[el.name] = null;
