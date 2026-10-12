@@ -1,6 +1,24 @@
 # Mémoire de travail — PageQuay (PQ)
 
-Dernière mise à jour : 2026-10-10, préparation du commit de release demandé vers GitHub.
+### Graphiques par API / type et espace disque des profils — 11 octobre 2026
+
+Clarification utilisateur : « par projet / clé API, puis par opération ». Vue Projet par défaut, Clé API en deuxième choix, Endpoint HTTP disponible ensuite ; filtre technique renommé Endpoint HTTP pour éviter de confondre clé et endpoint. Le filtre Type d’appel et la ventilation des opérations restent disponibles pour chaque graphique.
+
+Vue d’ensemble : histogramme global et petits graphiques séparés, regroupement endpoint/projet/clé API, filtre endpoint et type d’opération (recherche, navigation, extraction, capture, suivi/contrôle des jobs, téléchargement…). Échelle verticale commune entre petits graphiques, totaux et ventilation par opération ; heures locales, toujours 24 tranches horaires maximum. Identification interne de la clé authentifiée ajoutée à api.request, y compris erreurs de quota/droits ; aucun jeton stocké. Historique sans clé rattaché à « Clé non renseignée », pas de reconstruction depuis les jobs.
+
+Espace disque des profils visible dans Vue d’ensemble et Projets / Profils : estimation des blocs alloués aux fichiers et taille logique, catégories cookies (DB+journaux), cache Web/CacheStorage, stockage sites, cache graphique/code, fichiers image identifiables et autres. Les images du cache Web restent dans la catégorie mixte cache, aucune précision inventée par MIME. Hors artefacts PQ et métadonnées du système de fichiers. Lecture des seuls stat, hors event loop, sans suivi des symlinks ; hardlinks dédupliqués et fichiers creux mesurés par blocs ; fichiers indisponibles/plafond100000 signalés comme mesure partielle.
+
+Validation : suite 155 passed/15 skipped, plus 1 UI Chromium passed ; graphiques séparés, filtres, appels d’une clé de test, fuseau, tailles/catégories, hardlinks/sparse/symlinks et erreurs testés. Captures desktop/mobile et graphique par clé inspectés ; Ruff/format/Node/diff-check conformes. Huit fichiers runtime déployés après zéro job actif, sauvegarde /private/tmp/pq-api-profile-backup-8kn4cg4q ; hashes identiques, ready/login200, admin API404 et key-info anonyme401. Aucun changement de projet/clé/réseau, aucun push.
+
+### Graphique appels API — 11 octobre 2026
+
+Vue d’ensemble : petit histogramme SVG des appels REST par heure, 24 tranches horaires maximum (heure actuelle partielle), total et filtre par endpoint HTTP normalisé. Heures locales du navigateur ; rendu adapté mobile/desktop, détails des barres au survol et libellés accessibles. Nouveau usage.py : middleware compte une fois les réponses des routes /v1 connues (erreurs HTTP incluses), sans stocker de jeton, corps, query ou identifiant dynamique ; audit api.request conservé selon la rétention existante. Health/admin/WS/routes inconnues exclus. Historique démarrant à cette mise à jour, aucun faux historique reconstruit depuis les jobs.
+
+Validation : 152 tests réussis / 15 ignorés, plus 1 test UI Chromium réussi ; agrégation, bornes, heures vides, erreurs 401/403/404/422/429/500, filtre et fuseau Europe/Warsaw vérifiés. Captures desktop/mobile inspectées ; Ruff, Node et diff-check conformes. Les essais nécessitant sockets ont été relancés hors sandbox après refus de bind local.
+
+Six fichiers runtime déployés après zéro job actif et sauvegardes /private/tmp/pq-api-usage-backup-r5oj4355 et /private/tmp/pq-api-usage-backup-n3cdf8d4 ; LaunchAgent relancé, hashes identiques, ready/login 200, admin API 404 et key-info sans clé 401. Comptage installé vérifié. Aucun changement de projet, clé ou réseau, aucun push.
+
+Dernière mise à jour : 2026-10-11, graphique des appels API sur la vue d’ensemble.
 
 ## 10 octobre — commit de release demandé
 
@@ -173,3 +191,71 @@ Demande explicite de commit GitHub sur le dépôt public existant `tmcuh1982/Pag
 Demande utilisateur : configurer le port externe depuis la console, indépendamment des projets, via une redirection Tailscale. Paramètres → Accès externe affiche la route privée réellement active et accepte un port HTTPS de 1 à 65535. Application immédiate par CLI Serve --bg vers le seul listener API ; vérification de la nouvelle route, retrait de l’ancienne, contrôle final et récupération sur erreur. Refus des ports occupés/partagés, Funnel, Serve temporaire et formulaire périmé. CSRF/session locale ; route admin inaccessible sur le listener API. Aucun choix de nouveau port imposé à l’utilisateur.
 
 Validation : suite générale 126 passed/14 skipped ; 20 tests dédiés ; formulaire Chromium réel desktop/mobile réussi avec CLI Tailscale simulée. Ruff et diff --check conformes. Les essais avec sockets nécessitent une exécution hors sandbox. Lecture seule réelle confirme Serve privé HTTPS443. Déploiement des cinq fichiers runtime dans la copie installée après zéro job actif ; redémarrage LaunchAgent et health200. Sauvegarde des sources privée sous /private/tmp/pq-external-port-backup-4md2ra4o. Aucun changement réel de port Tailscale exécuté pour la recette ; cette application sera déclenchée par le bouton admin. Sources non publiées dans cette demande.
+
+### Correctif du bouton Appliquer grisé — 10 octobre 2026
+
+Cause reproduite : le PATH LaunchAgent /usr/bin:/bin:/usr/sbin:/sbin omet le lanceur CLI /usr/local/bin/tailscale. Le fallback direct vers le binaire Tailscale.app renvoie CLIError3 en texte avec code0 ; JSON illisible et available=false. Le lanceur shell répond correctement au status/serve status dans le même environnement. Recherche supplémentaire /usr/local/bin:/opt/homebrew/bin avant fallback app ; priorité du PATH explicite conservée. Deux tests de régression ajoutés, 41 tests ciblés réussis, Ruff conforme. Correctif du seul module external_access déployé après zéro job actif et sauvegarde ; health200. Safari réel rechargé : adresse privée active et bouton Appliquer actif ; saisie utilisateur8443 rétablie sans soumettre ni modifier le port réellement actif443.
+
+### Audit URL / Ko / fonctions / destinations — 10 octobre 2026
+
+Demande utilisateur : voir URL visitées, taille téléchargée en Ko, fonctions appelées et destination obtenue (« next page »). Ajout audit.py/TabAudit, migration005 detailsJSON+indexjob ; écoute request/response/requestfinished/requestfailed/framenavigated, tailles Playwright responseBodySize encodées hors en-têtes. Chaque ressource distincte, codesHTTP/redirections relatifs résolus, taille inconnue=null. Traçage fonctions navigate/actions et chaque action/extract/screenshot/submit_search_form, source et URL obtenue, label pagination canonique next page ; job lifecycle lié ID. Métadonnées d’acteur/job capturées à l’émission de requête, onglet verrouillé pendant opérations, navigation manuelle acteurbrowser ; tâches tailles drainées à l’arrêt. Tous paramètresquery/userinfo/fragments supprimés avant stockage ; chemins visibles ; aucun formulaire/POST/cookie/selector/messagebrut.
+
+UI Audit : colonnes et filtres type/job, filtres conservés, lien parjob, Ko=1024, mesures inconnues visibles, pas de rétroactivité.159passed/4skipped suitecomplèteChromium, Ruff et diff-check conformes ; captures desktop/mobile inspectées ; tests gzip exact,302/303,Next+aria,POSTnative,image,404,blocageprivé,acteurmanuel,upgradeancien,erreurs/annulation,escaping/filtres.
+
+Huit fichiers déployés dans runtime installé ; zéro job actif, backup sources+SQLite /private/tmp/pq-audit-backup-2av65ix9, LaunchAgent rechargé et migration005 vérifiée. Sources runtime identiques parhash ; ready/login200, auditlocalanonyme303, audit8766=404, key-info8766anonyme401. Aucun projet/clé/réglage réseau changé, aucunpush.
+
+### Audit plus compact — 10 octobre 2026
+
+Demande utilisateur : réduire l’espacement entre les lignes de la grille Audit. CSS limité à audit-table : padding cellules vertical16→6px/horizontal10→8px, line-height1.3 ; en-têtes8px et badge pagination plus compact (marge3px, padding2px8px, police10px). CSS seul déployé avec sauvegarde privée sous tmp, sans redémarrage. Vérification du CSS servi et aperçu Chromium jetable : lignes représentatives91.5→65.69px et61→42.89px (environ28–30% moins hautes), capture /private/tmp/pq-audit-compact.png inspectée. Aucun changement de données ou de traitement.
+
+### URL en clair dans l’audit admin — préférence utilisateur, 10 octobre 2026
+
+L’utilisateur refuse les protections de type `q=[masque]&kl=[masque]` côté audit admin. Préférence explicite : conserver/afficher les paramètres d’URL en clair, dont q et kl. audit_url conserve désormais parts.query et parts.fragment sans parse/réencodage ; userinfo toujours retiré. Documentation et aide UI alignées ; cette décision remplace le masquage antérieur pour les nouvelles entrées. L’historique déjà masqué est irréversible. Échappement HTML et accès admin local conservés.
+
+6testsréussis (audit+UIChromium), URLDDG/paramsrépétés/vides/encodages/fragments/redirections testés, corpsPOST/saisies/messagesbruts toujours exclus. Ruff/diff-check conformes. audit.py et template déployés après zéro job actif ; sauvegarde /private/tmp/pq-audit-clear-urls-d132upsq, LaunchAgent rechargé,ready/login200,auditlocalanonyme303,auditAPI404. Aucun changement de clés/projets/réseau ni push.
+
+### Dernière colonne Audit accessible — 10 octobre 2026
+
+Utilisateur : scrollbar absente/dernière colonne invisible. Ajout d’une barre « Colonnes » toujours visible au-dessus du tableau (curseur range et flèches gauche/droite), synchronisée avec scrollLeft, molette/touch et redimensionnement via ResizeObserver. Tableau région focusable, barre native WebKit stylée ; contrôles désactivés aux limites/sans débordement. Grille compacte et URL en clair conservées.
+
+Test UI Chromium existant étendu : flèche droite, curseur End/Home et visibilité géométrique de la dernière colonne sur desktop/mobile, aucun débordement du document ni erreurJS ;1testUIréussi, Ruff/diffcheck conformes, captures inspectées. JS/CSS/template déployés à chaud sans redémarrage, sauvegarde /private/tmp/pq-audit-scroll-jxb7__ui et hashes runtime identiques. Aucun changement aux données/jobs/réseau.
+
+### Job combobox et date-time Audit — 10 octobre 2026
+
+Demande utilisateur : Job en combobox, mêmes hauteurs pour tous filtres, dates+heures et raccourcis last10min/lasthour/Today. Implémenté select natif avec200jobs récents de l’audit (ID/projet/kind/date), sélection horsliste conservée. Grilles CSS responsive/champs+boutons42px. datetime-local step1 initialisés depuis dates UTC validées ; locale/navigateur indiquée, conversion ISO UTC à la soumission ; backend datetime aware respecte offset, naïf=UTC historique, bornes inclusives et intervalle inversé refusé. Raccourcis appliqués immédiatement, filtrescourants préservés, Today=minuitlocal→maintenant. Form.action évité à cause du champ name=action qui masque cette propriété DOM ; getAttribute utilisé.
+
+26tests ciblés validés (audit/security+UIChromium), select/hauteurs/durées600/3600/TodayWarsaw/saisie locale et restitution testés ; desktop/mobile/scrollhorizontal inspectés. Ruff/diffcheck conformes. admin.py+JS+CSS+template déployés après zérojobactif ; sauvegarde /private/tmp/pq-audit-filters-p2ub4be7, LaunchAgent rechargé ;ready/login200,auditlocalanonyme303,auditAPI404. Aucunpush/changementréseau/projets/clés.
+
+### Last hour :20:46UTC/22:46local — 10 octobre 2026
+
+Utilisateur pense last hour décalé2h. Lecture réelle Safari confirme filtres22:05–23:05Europe/Warsaw (query20:05Z–21:05Z), event/grille/Job20:46UTC : filtrecorrect, fuseauxmélangés dansaffichage. Alignement UIAudit : headerDateLocale, cellules data-audit-epoch et optionsJobdate formatées parJS enlocale navigateur ; tooltipcellISOexact+zone. Données/UTC/querybounds inchangées.
+
+7tests audit/UIréussis, fixture2026-10-10T20:46Z affichée22:46dansgrilleetJobWarsaw, presets/localconversions toujoursvalides. JS+template déployésàchaud, backup /private/tmp/pq-audit-local-time-__dk7eaa. Safari réel rechargé et22:46observé dansgrilleetJob avecsélection/période conservées ; aucuneautreinteraction aprèsvalidation. Premier getAppSafari trèslent côtéoutil (840s), appelsensuite<1s. Aucun changementdonnées/jobs/réseau ni push.
+
+### Durées d’exécution dans Audit — 11 octobre 2026
+
+Ajout de la colonne Durée, affichée en ms sous une seconde et en secondes au-delà. Mesures monotones des fonctions, y compris opérations imbriquées, et de chaque requête réseau depuis request jusqu’à requestfinished/requestfailed ; la récupération asynchrone des tailles n’allonge pas la mesure réseau. Durées des jobs terminés/échoués/annulés depuis l’acquisition du créneau d’exécution : file d’attente exclue, attente humaine incluse. Jobs annulés avant exécution et anciens événements sans mesure affichent « — ». Stockage dans details.duration_ms, sans migration supplémentaire. Grille compacte et défilement horizontal conservés.
+
+Validation : 14 tests audit/jobs/UI réussis avec Chromium. Durées déterministes, imbrication, absence d’inflation réseau par collecte de taille, erreurs/annulations, queue exclue, annulation avant lancement et formats ms/s vérifiés ; dernière colonne accessible sur desktop/mobile, captures inspectées. Ruff check/format et diff-check conformes. Quatre fichiers runtime synchronisés après zéro job actif avec sauvegarde privée /private/tmp/pq-audit-duration-pfal2l3w et redémarrage du LaunchAgent ; ready/login 200, audit local anonyme 303 et audit API 404. Aucun changement de projets, clés ou réglages réseau ; aucun push.
+
+
+### Port API local configurable sans Tailscale — 12 octobre 2026
+
+Paramètres → Accès local : port API modifiable (1024–65535), indépendant du HTTPS Tailscale ; validation stricte, conflit avec la console/port occupé, session admin et CSRF, détection des éditions concurrentes. Surcharge atomique local-api.json (0600) dans PQ_DATA_DIR, prioritaire sur PQ_API_PORT au prochain lancement ; port actif et port enregistré distincts, redémarrage requis visible, annulation possible en enregistrant le port actif. CLI serve/doctor et create_app sans configuration explicite lisent la surcharge ; la CLI transmet ensuite la même configuration résolue aux sockets et au middleware. Aucune route Serve modifiée ; si utilisée, sa destination doit être adaptée séparément.
+
+Validation : suite 176 passed / 15 skipped ; 38 tests local/externe repassés après ajustement de la lecture au démarrage ; recette Chromium 1 passed, formulaire utilisable sans Tailscale, corps envoyé/persistance/avertissement et desktop/mobile inspectés. Bind CLI loopback, refus admin sur le nouveau port et API anonyme401 vérifiés. Ruff check/format et diff-check conformes. Cinq fichiers runtime déployés après zéro job actif, sauvegarde /private/tmp/pq-local-port-backup-gkdviy_l et redémarrage LaunchAgent ; hashes identiques, ready/login200, mutation locale anonyme401 et mutation/adminAPI404. Ports réels8765/8766 conservés, aucune surcharge réelle créée, aucun changement de clés/projets/routes réseau ni push.
+
+
+### Correctifs Codex Security — 12 octobre 2026
+
+Demande utilisateur : appliquer les propositions de sécurité du scan. Deux findings traités : audit/tâches/commits sans bornes et chaînes de pages transférées ou persistées avant validation. Admission centrale, files/quota/réserve admin, writer SQLite dédié, volume logique plafonné, compteurs API séparés et regroupement signalé. Lectures fixes dans un monde Chromium isolé, bornes avant retour, titres limités à 512 caractères avec indicateur, contenu excessif en 413, résultats/erreurs/partiels de jobs bornés. Migration 006 : compteurs disponibles des dernières 24 h repris une seule fois, statistiques de volume/purge ; anciennes valeurs de jobs excessives retirées explicitement. Aucune dépendance ajoutée.
+
+Revue indépendante : récupération FrameTree et comparaison d’URL avec fragment supprimées ; résolution par contextes/chemin borné, iframe avec #section testée. Aucun flush synchrone sur la boucle asyncio ; rétention avec writer suspendu rend la main en moins de 0,2 s. Surcharge de 300 réponses 401 : total 300 et détail ≤30 ; réserves, plafonds en lignes/octets, alerte visible, panne/réessai, cardinalité élevée, pages hostiles/monkeypatches/surrogates et migration testés.
+
+Validation : suite normale 186 passed / 16 skipped ; Chromium structured/audit/budgets 24 passed ; budgets final 11 passed, puis complément octets 10 passed / 1 skipped ; jobs/local 22 passed. Ruff sur 53 fichiers, Node sur deux scripts et diff-check conformes. Suite intégrale headed : 194 passed / 5 failed / 3 skipped initialement ; quatre assertions d’audit immédiat adaptées et repassées. Seul le test de minimisation macOS échoue encore. Sur les sources d’avant correction, le même test reproduit le timeout natif Browser.getWindowBounds avant les lecteurs modifiés. Recette complète de minimisation non revendiquée ; 198 tests distincts passent. Aucun diagnostic moteur externe lancé.
+
+19 fichiers runtime synchronisés après constat de zéro job inachevé ; sauvegarde privée sources+SQLite sous /private/tmp/pq-security-fix-backup-_dxwo_07, LaunchAgent rechargé, migration 006 et hashes confirmés. Ready/login 200, admin sur API 404, key-info anonyme 401, OpenAPI 200 ; réserves audit dans les plafonds et compteur API persisté. Ports 8765/8766 conservés ; aucun changement de projet/clé/profil/routes Tailscale, aucun push.
+
+Rapport local : /Users/lolo/.codex/state/plugins/codex-security/scans/PageQuay/artifacts-1e5922c55da29fe25860ff1574887403ff9e016bb2ad918ac1d802423f6cfb12/artifacts/fix_report.md.
+
+Limites : audit partiel sous surcharge ; queues/compteurs en attente perdables sur crash ou panne prolongée, réserves également finies. Les plafonds logiques ne réduisent pas immédiatement le fichier SQLite et ne plafonnent pas Chromium/driver. La minimisation macOS reste un problème préexistant distinct.

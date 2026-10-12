@@ -74,7 +74,7 @@ def complex_site():
         servers.append(server)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         threads.append(thread)
-    frame_url = f"http://localhost:{servers[1].server_port}/child"
+    frame_url = f"http://localhost:{servers[1].server_port}/child#section"
     for thread in threads:
         thread.start()
     yield f"http://localhost:{servers[0].server_port}", {s.server_port for s in servers}

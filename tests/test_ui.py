@@ -1,8 +1,10 @@
 import asyncio
 import os
 import socket
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
+from zoneinfo import ZoneInfo
 
 import pytest
 import uvicorn
@@ -56,7 +58,9 @@ async def test_admin_browser_forms_and_responsive_layout(tmp_path):
     try:
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(headless=True, chromium_sandbox=True)
-            page = await browser.new_page(viewport={"width": 1440, "height": 1050})
+            page = await browser.new_page(
+                viewport={"width": 1440, "height": 1050}, timezone_id="Europe/Warsaw"
+            )
             page.on("pageerror", lambda error: errors.append(str(error)))
             await page.goto(base + "/admin")
             await page.get_by_label("Identifiant", exact=True).fill("admin")
@@ -76,6 +80,43 @@ async def test_admin_browser_forms_and_responsive_layout(tmp_path):
                 await login_response.text(),
             )
             await page.wait_for_url(base + "/admin")
+            await page.locator("[data-api-chart] rect").first.wait_for(state="attached")
+            assert await page.locator("[data-api-empty]").is_visible()
+            for endpoint in ["GET /v1/projects/{slug}/tabs"] * 3 + [
+                "POST /v1/projects/{slug}/search"
+            ]:
+                rt.db.audit("api.request", actor="api", details={"endpoint": endpoint})
+            await page.reload()
+            await page.locator("[data-api-total]").filter(has_text="4 appels").wait_for()
+            assert await page.locator("[data-api-chart] rect").count() == 24
+            assert await page.locator("[data-api-group]").input_value() == "project"
+            assert await page.locator("[data-api-mini-chart]").count() == 1
+            await page.locator("[data-api-group]").select_option("endpoint")
+            assert await page.locator("[data-api-mini-chart]").count() == 2
+            await page.locator("[data-api-type]").select_option("Recherche")
+            assert await page.locator("[data-api-total]").inner_text() == "1 appel"
+            assert await page.locator("[data-api-mini-chart]").count() == 1
+            await page.locator("[data-api-type]").select_option("")
+            await page.locator("[data-api-group]").select_option("key")
+            assert await page.locator("[data-api-mini-chart]").count() == 1
+            assert await page.locator("[data-api-key-note]").is_visible()
+            assert "Clé non renseignée" in await page.locator(".api-mini h3").inner_text()
+            await page.locator("[data-api-group]").select_option("endpoint")
+            assert "Europe/Warsaw" in await page.locator("[data-api-timezone]").inner_text()
+            current_hour = datetime.now(ZoneInfo("Europe/Warsaw")).strftime("%H:00")
+            assert current_hour in await page.locator("[data-api-chart] rect").last.get_attribute(
+                "aria-label"
+            )
+            await page.locator("[data-api-endpoint]").select_option(
+                "POST /v1/projects/{slug}/search"
+            )
+            assert await page.locator("[data-api-total]").inner_text() == "1 appel"
+            assert not await page.locator("[data-api-empty]").is_visible()
+            await page.screenshot(path=str(OUTPUT / "api-usage-desktop.png"), full_page=True)
+            await page.set_viewport_size({"width": 390, "height": 844})
+            assert await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+            await page.screenshot(path=str(OUTPUT / "api-usage-mobile.png"), full_page=True)
+            await page.set_viewport_size({"width": 1440, "height": 1050})
             await page.goto(base + "/admin/projects")
             for name, slug in [("UniversRobot", "universrobot"), ("Projet B", "projet-b")]:
                 await page.locator('form[data-api="/admin/projects"] input[name="name"]').fill(name)
@@ -83,6 +124,28 @@ async def test_admin_browser_forms_and_responsive_layout(tmp_path):
                 await page.get_by_role("button", name="Créer le projet", exact=True).click()
                 await page.wait_for_load_state("load")
                 await page.locator(".section-heading h2").filter(has_text=name).wait_for()
+            project = rt.db.project("universrobot")
+            profile = rt.db.root / "profiles" / project["id"]
+            for filename in ["Preview/Network/Cookies", "Preview/Cache/Cache_Data/image"]:
+                fixture = profile / filename
+                fixture.parent.mkdir(parents=True, exist_ok=True)
+                fixture.write_bytes(b"profile disk fixture" * 800)
+            await page.goto(base + "/admin")
+            assert await page.locator("[data-profile-disk]").count() == 2
+            disk = page.locator(f'[data-profile-disk="{project["id"]}"]')
+            assert (
+                "0 o"
+                != await disk.locator(".profile-disk-heading div:last-child strong").inner_text()
+            )
+            await page.screenshot(
+                path=str(OUTPUT / "api-profile-overview-desktop.png"), full_page=True
+            )
+            await page.set_viewport_size({"width": 390, "height": 844})
+            assert await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+            await page.screenshot(
+                path=str(OUTPUT / "api-profile-overview-mobile.png"), full_page=True
+            )
+            await page.set_viewport_size({"width": 1440, "height": 1050})
             await page.goto(base + "/admin/keys")
             expiration_toggle = page.get_by_label("Définir une date d’expiration", exact=True)
             expiration_date = page.get_by_label("Date et heure d’expiration", exact=True)
@@ -166,6 +229,25 @@ async def test_admin_browser_forms_and_responsive_layout(tmp_path):
             await page.get_by_role("link", name="Annuler", exact=True).click()
             await page.wait_for_url(base + "/admin/keys")
             assert rt.auth.key(secret)["rate_limit"] == 17
+            key_project = rt.db.one(
+                "SELECT slug,name FROM projects WHERE id=?", (rt.auth.key(secret)["project_id"],)
+            )
+            api_response = await page.request.get(
+                base + f"/v1/projects/{key_project['slug']}/key-info",
+                headers={"Authorization": "Bearer " + secret},
+            )
+            assert api_response.status == 200
+            await page.goto(base + "/admin")
+            await page.locator("[data-api-group]").select_option("project")
+            assert key_project["name"] in await page.locator("[data-api-graphs]").inner_text()
+            await page.locator("[data-api-type]").select_option("Informations de clé")
+            assert await page.locator("[data-api-total]").inner_text() == "1 appel"
+            assert await page.locator("[data-api-mini-chart]").count() == 1
+            await page.locator("[data-api-group]").select_option("key")
+            assert "Client test UI" in await page.locator(".api-mini h3").inner_text()
+            assert secret not in await page.content()
+            await page.locator(".api-usage").screenshot(path=str(OUTPUT / "api-key-chart.png"))
+            await page.goto(base + "/admin/keys")
             await page.screenshot(path=str(OUTPUT / "keys-desktop.png"), full_page=True)
             await rt.browser.start(rt.db.project("universrobot"))
             await rt.browser.start(rt.db.project("projet-b"))
@@ -174,10 +256,124 @@ async def test_admin_browser_forms_and_responsive_layout(tmp_path):
             output = OUTPUT
             output.mkdir(exist_ok=True)
             await page.screenshot(path=str(output / "admin-desktop.png"), full_page=True)
+            rt.db.audit(
+                "function.submit_search_form",
+                rt.db.project("universrobot")["id"],
+                details={
+                    "function": "submit_search_form",
+                    "label": "next page",
+                    "url": "https://example.org/page1",
+                    "result_url": "https://example.org/page2",
+                    "job_id": "audit-ui",
+                    "duration_ms": 2345,
+                },
+            )
+            rt.db.audit(
+                "network.response",
+                rt.db.project("universrobot")["id"],
+                details={
+                    "url": "https://example.org/page2",
+                    "downloaded_bytes": 3072,
+                    "duration_ms": 125,
+                    "http_status": 200,
+                    "job_id": "audit-ui",
+                    "resource_type": "document",
+                },
+            )
+            rt.db.audit(
+                "job.timezone_fixture",
+                rt.db.project("universrobot")["id"],
+                details={"job_id": "timezone-ui"},
+            )
+            await rt.db.telemetry.flush_async()
+            rt.db.execute(
+                "UPDATE audit SET at=? WHERE action='job.timezone_fixture'",
+                (datetime(2026, 10, 10, 20, 46, tzinfo=UTC).timestamp(),),
+            )
             for view in ("projects", "keys", "sessions", "search", "settings", "audit"):
                 response = await page.goto(base + "/admin/" + view)
                 assert response.status == 200
                 assert await page.locator("h1").count() == 1
+                if view == "audit":
+                    assert await page.locator(".audit-table .pill").inner_text() == "next page"
+                    assert "3.00" in await page.locator(".audit-table").inner_text()
+                    assert await page.get_by_role("columnheader", name="Durée").count() == 1
+                    durations = await page.locator(".audit-duration").all_text_contents()
+                    assert "125 ms" in durations and "2.35 s" in durations and "—" in durations
+                    assert await page.get_by_role("columnheader", name="Date locale").count() == 1
+                    assert (
+                        "2026-10-10 22:46" in await page.locator(".audit-date").all_text_contents()
+                    )
+                    job_option = page.locator('select[name="job"] option[value="timezone-ui"]')
+                    assert (await job_option.inner_text()).endswith("2026-10-10 22:46")
+                    assert "UTC" not in await job_option.inner_text()
+                    await page.get_by_role("combobox", name="Job", exact=True).select_option(
+                        "audit-ui"
+                    )
+                    await page.get_by_label("Type", exact=True).select_option("functions")
+                    async with page.expect_navigation():
+                        await page.get_by_role("button", name="Filtrer", exact=True).click()
+                    assert await page.locator(".audit-table tbody tr").count() == 1
+                    assert await page.get_by_label("Type", exact=True).input_value() == "functions"
+                    heights = await page.locator(
+                        ".audit-filters input, .audit-filters select, .audit-filters button"
+                    ).evaluate_all("els => els.map(el => el.getBoundingClientRect().height)")
+                    assert max(heights) - min(heights) <= 1
+                    assert (
+                        await page.get_by_label("Depuis", exact=True).get_attribute("type")
+                        == "datetime-local"
+                    )
+                    for name, seconds in (
+                        ("last 10 min", 600),
+                        ("last hour", 3600),
+                        ("Today", None),
+                    ):
+                        async with page.expect_navigation():
+                            await page.get_by_role("button", name=name, exact=True).click()
+                        params = parse_qs(urlsplit(page.url).query)
+                        assert params["job"] == ["audit-ui"]
+                        assert params["category"] == ["functions"]
+                        since = datetime.fromisoformat(params["since"][0])
+                        until = datetime.fromisoformat(params["until"][0])
+                        if seconds is not None:
+                            assert (until - since).total_seconds() == seconds
+                        else:
+                            midnight = since.astimezone(ZoneInfo("Europe/Warsaw"))
+                            assert (midnight.hour, midnight.minute, midnight.second) == (0, 0, 0)
+                            assert (
+                                midnight.date()
+                                == until.astimezone(ZoneInfo("Europe/Warsaw")).date()
+                            )
+                        assert await page.get_by_label("Depuis", exact=True).input_value()
+                    await page.get_by_label("Depuis", exact=True).fill("2026-10-10T15:20:30")
+                    await page.get_by_label("Jusqu’au", exact=True).fill("2026-10-10T16:25:45")
+                    async with page.expect_navigation():
+                        await page.get_by_role("button", name="Filtrer", exact=True).click()
+                    params = parse_qs(urlsplit(page.url).query)
+                    assert params["since"] == ["2026-10-10T13:20:30.000Z"]
+                    assert params["until"] == ["2026-10-10T14:25:45.000Z"]
+                    assert (
+                        await page.get_by_label("Depuis", exact=True).input_value()
+                        == "2026-10-10T15:20:30"
+                    )
+                    async with page.expect_navigation():
+                        await page.get_by_role("button", name="last 10 min", exact=True).click()
+                    scroll = page.locator("[data-audit-scroll]")
+                    slider = page.get_by_role("slider", name="Défilement horizontal des colonnes")
+                    assert await slider.is_enabled()
+                    await page.get_by_role("button", name="Défiler vers la droite").click()
+                    assert await scroll.evaluate("el => el.scrollLeft > 0")
+                    await slider.focus()
+                    await slider.press("End")
+                    last = await page.locator(".audit-table th:last-child").bounding_box()
+                    bounds = await scroll.bounding_box()
+                    assert last["x"] + last["width"] <= bounds["x"] + bounds["width"] + 1
+                    assert await page.get_by_role(
+                        "button", name="Défiler vers la droite"
+                    ).is_disabled()
+                    await page.screenshot(path=str(output / "audit-desktop.png"), full_page=True)
+                    await slider.press("Home")
+                    assert await scroll.evaluate("el => el.scrollLeft == 0")
                 if view == "search":
                     await page.locator(
                         'form[data-api-project="search"] [name="project"]'
@@ -255,6 +451,15 @@ async def test_admin_browser_forms_and_responsive_layout(tmp_path):
                 path=str(output / "sessions-minimize-desktop.png"), full_page=True
             )
             await page.set_viewport_size({"width": 390, "height": 844})
+            await page.goto(base + "/admin/audit?job=audit-ui")
+            assert await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+            slider = page.get_by_role("slider", name="Défilement horizontal des colonnes")
+            await slider.focus()
+            await slider.press("End")
+            last = await page.locator(".audit-table th:last-child").bounding_box()
+            bounds = await page.locator("[data-audit-scroll]").bounding_box()
+            assert last["x"] + last["width"] <= bounds["x"] + bounds["width"] + 1
+            await page.screenshot(path=str(output / "audit-mobile.png"), full_page=True)
             await page.goto(base + "/admin/keys")
             assert await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
             await page.screenshot(path=str(output / "keys-mobile.png"), full_page=True)

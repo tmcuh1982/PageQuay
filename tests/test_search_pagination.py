@@ -80,7 +80,14 @@ class FakeBrowser:
 
 
 @pytest.fixture
-async def search_client(app):
+async def search_client(app, monkeypatch):
+    async def bounded_read(page, kind, max_bytes):
+        assert kind == "html"
+        if len(page.html.encode()) > max_bytes:
+            raise PQError("INVALID_INPUT", "Search response too large", 413)
+        return page.html
+
+    monkeypatch.setattr("pagequay.search.read_page", bounded_read)
     async with app.router.lifespan_context(app):
         rt = app.state.rt
         project = rt.db.create_project("universrobot", "UniversRobot")

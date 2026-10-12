@@ -8,6 +8,7 @@ from fastapi import APIRouter, Header, Request, Response, WebSocket, WebSocketDi
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 
+from .bounds import short_url
 from .errors import PQError, error_body
 from .models import (
     Actions,
@@ -19,6 +20,7 @@ from .models import (
     Search,
     SearchAccepted,
 )
+from .page_reader import read_title
 
 router = APIRouter(prefix="/v1")
 
@@ -29,6 +31,7 @@ def access(request, slug, scope=None):
     if not header.startswith("Bearer ") or len(header) > 256:
         raise PQError("UNAUTHORIZED", "Bearer authentication required", 401)
     key = rt.auth.key(header[7:])
+    request.state.usage_key_id = key["id"]
     project = rt.db.project(slug)
     key = rt.auth.authorize(key, project, scope, rate=True)
     return rt, project, key
@@ -138,7 +141,7 @@ async def tabs(slug: str, request: Request):
 async def tab(slug: str, tab_id: str, request: Request):
     rt, project, _ = access(request, slug, "browser:read")
     value = rt.browser.tab(project, tab_id)
-    return {"tab_id": tab_id, "url": value.page.url, "title": await value.page.title()}
+    return {"tab_id": tab_id, "url": short_url(value.page.url), **await read_title(value.page)}
 
 
 @router.delete("/projects/{slug}/tabs/{tab_id}")

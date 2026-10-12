@@ -11,8 +11,11 @@ from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeout
 from playwright.async_api import async_playwright
 
+from .audit import TabAudit
+from .bounds import short_url
 from .errors import PQError
 from .network import EgressProxy, NetworkPolicy
+from .page_reader import click_classification, read_page, read_title
 from .profiles import ProfileLock, reset_directory
 from .storage import uid
 from .structured import extract_structured
@@ -23,6 +26,7 @@ class Tab:
     id: str
     page: object
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    audit: object = None
 
 
 @dataclass
@@ -46,8 +50,9 @@ async def challenge_detected(page):
     url = urlsplit(page.url)
     if url.hostname in {"google.com", "www.google.com"} and url.path.startswith("/sorry/"):
         return True
-    title = (await page.title()).lower()
-    text = (await page.locator("body").inner_text(timeout=3000)).lower()[:20000]
+    sample = await read_page(page, "challenge", max_bytes=200000)
+    title = sample["title"].lower()
+    text = sample["text"].lower()
     markers = (
         "verify you are human",
         "confirm you are human",
@@ -59,14 +64,7 @@ async def challenge_detected(page):
         "please complete the following challenge",
         "select all squares containing a duck",
     )
-    return (
-        "just a moment" in title
-        or any(marker in text for marker in markers)
-        or await page.locator(
-            'iframe[src*="recaptcha"],iframe[src*="hcaptcha"],[data-pq-challenge="true"]'
-        ).count()
-        > 0
-    )
+    return "just a moment" in title or any(marker in text for marker in markers) or sample["frame"]
 
 
 class BrowserManager:
@@ -77,6 +75,7 @@ class BrowserManager:
         self.lifecycle = asyncio.Lock()
         self.playwright = None
         self.busy = lambda project_id: False
+        self.audit_tasks = set()
 
     async def start(self, project):
         async with self.lifecycle:
@@ -182,6 +181,7 @@ class BrowserManager:
             asyncio.create_task(page.close())
             return
         tab = Tab(uid(), page)
+        tab.audit = TabAudit(self.db, state.project, tab, self.audit_tasks)
         state.tabs[tab.id] = tab
         page.on("dialog", lambda dialog: asyncio.create_task(dialog.dismiss()))
         page.on("download", lambda download: asyncio.create_task(download.cancel()))
@@ -261,7 +261,7 @@ class BrowserManager:
     def list_tabs(self, project):
         state = self.states.get(project["id"])
         return (
-            [{"tab_id": tab.id, "url": tab.page.url} for tab in state.tabs.values()]
+            [{"tab_id": tab.id, "url": short_url(tab.page.url)} for tab in state.tabs.values()]
             if state
             else []
         )
@@ -387,7 +387,7 @@ class BrowserManager:
         await self.network_factory(self.db.policy(project)).resolve(request.url)
         tab = self.tab(project, tab_id) if tab_id else await self.new_tab(project)
         job.set_tab(tab.id)
-        async with tab.lock:
+        async with tab.lock, tab.audit.operation("navigate", job, url=request.url):
             try:
                 state = self.states[project["id"]]
                 state.blocked_navigations.discard(tab.page)
@@ -400,7 +400,11 @@ class BrowserManager:
                 await self.human_guard(project, tab, job)
                 self._upstream_limit(response)
                 self.events.emit(project, "tab.navigated", tab_id=tab.id)
-                return {"tab_id": tab.id, "url": tab.page.url, "title": await tab.page.title()}
+                return {
+                    "tab_id": tab.id,
+                    "url": short_url(tab.page.url),
+                    **await read_title(tab.page),
+                }
             except PlaywrightTimeout as exc:
                 raise PQError("TIMEOUT", "Navigation timed out", 504) from exc
             except PlaywrightError as exc:
@@ -456,7 +460,10 @@ class BrowserManager:
             f'<form id="pq-search-next" action="{escape(form["url"], quote=True)}" '
             f'method="{form["method"]}">{fields}<button type="submit">Next</button></form>'
         )
-        async with tab.lock:
+        async with (
+            tab.lock,
+            tab.audit.operation("submit_search_form", job, label="next page", url=form["url"]),
+        ):
             await tab.page.set_content(html, wait_until="domcontentloaded", timeout=timeout)
             async with tab.page.expect_navigation(
                 wait_until="domcontentloaded", timeout=timeout
@@ -469,7 +476,7 @@ class BrowserManager:
     async def actions(self, project, tab_id, request, job):
         tab = self.tab(project, tab_id)
         job.set_tab(tab_id)
-        async with tab.lock:
+        async with tab.lock, tab.audit.operation("actions", job):
             await self.human_guard(project, tab, job)
             for action in request.actions:
                 job.check_authorization()
@@ -481,48 +488,38 @@ class BrowserManager:
                 locator = tab.page.locator(action.selector) if action.selector else None
                 if action.type not in {"scroll", "wait_for_navigation"} and locator is None:
                     raise PQError("INVALID_INPUT", "Selector required")
-                if action.type == "click":
-                    text = await locator.evaluate(
-                        "el => [el.innerText, el.getAttribute('aria-label'),"
-                        "el.closest('[data-sitekey],[class*=captcha]')?.innerText]"
-                        ".filter(Boolean).join(' ').toLowerCase()"
-                    )
-                    if any(
-                        marker in text
-                        for marker in (
-                            "i am not a robot",
-                            "i'm not a robot",
-                            "i’m not a robot",
-                            "je ne suis pas un robot",
-                            "i am human",
-                            "i'm human",
-                            "captcha",
+                async with tab.audit.operation(action.type, job):
+                    if action.type == "click":
+                        classification = await click_classification(locator)
+                        if classification & 1:
+                            raise PQError(
+                                "FORBIDDEN", "Human verification cannot be automated", 403
+                            )
+                        if classification & 2:
+                            tab.audit.current["label"] = "next page"
+                        await locator.click(timeout=action.timeout_ms)
+                    elif action.type == "fill":
+                        if action.value is None:
+                            raise PQError("INVALID_INPUT", "Value required")
+                        await locator.fill(action.value, timeout=action.timeout_ms)
+                    elif action.type == "select":
+                        await locator.select_option(action.value or "", timeout=action.timeout_ms)
+                    elif action.type == "scroll":
+                        await tab.page.mouse.wheel(action.x, action.y)
+                    elif action.type == "wait_for_selector":
+                        await locator.wait_for(timeout=action.timeout_ms)
+                    else:
+                        # Wait for the current navigation's load event, bounded; no arbitrary code.
+                        await tab.page.wait_for_load_state(
+                            "domcontentloaded", timeout=action.timeout_ms
                         )
-                    ):
-                        raise PQError("FORBIDDEN", "Human verification cannot be automated", 403)
-                    await locator.click(timeout=action.timeout_ms)
-                elif action.type == "fill":
-                    if action.value is None:
-                        raise PQError("INVALID_INPUT", "Value required")
-                    await locator.fill(action.value, timeout=action.timeout_ms)
-                elif action.type == "select":
-                    await locator.select_option(action.value or "", timeout=action.timeout_ms)
-                elif action.type == "scroll":
-                    await tab.page.mouse.wheel(action.x, action.y)
-                elif action.type == "wait_for_selector":
-                    await locator.wait_for(timeout=action.timeout_ms)
-                else:
-                    # Wait for the current navigation's load event, bounded; no arbitrary code.
-                    await tab.page.wait_for_load_state(
-                        "domcontentloaded", timeout=action.timeout_ms
-                    )
             await self.human_guard(project, tab, job)
-            return {"tab_id": tab_id, "url": tab.page.url}
+            return {"tab_id": tab_id, "url": short_url(tab.page.url)}
 
     async def extract(self, project, tab_id, format, job, *, include_dom=False):
         tab = self.tab(project, tab_id)
         job.set_tab(tab_id)
-        async with tab.lock:
+        async with tab.lock, tab.audit.operation("extract", job, label=format):
             await self.human_guard(project, tab, job)
             if format == "structured":
                 snapshot = await extract_structured(
@@ -535,26 +532,12 @@ class BrowserManager:
                     json.dumps(snapshot, ensure_ascii=False, allow_nan=False),
                     "application/json",
                 )
-            elif format == "html":
-                data, media = await tab.page.content(), "text/html"
-            elif format == "text":
-                data, media = await tab.page.locator("body").inner_text(), "text/plain"
-            elif format == "links":
-                # Fixed server-owned extraction, never caller-supplied JavaScript.
-                data = await tab.page.locator("a[href]").evaluate_all(
-                    "els => els.slice(0,1000).map(e => "
-                    "({text:e.innerText.slice(0,500),url:e.href}))"
-                )
-                data, media = json.dumps(data), "application/json"
             else:
-                metas = await tab.page.locator("meta[name],meta[property]").evaluate_all(
-                    "els => els.slice(0,100).map(e => ({name:e.name||e.getAttribute('property'),"
-                    "content:e.content.slice(0,2000)}))"
-                )
-                data = json.dumps(
-                    {"title": await tab.page.title(), "url": tab.page.url, "meta": metas}
-                )
-                media = "application/json"
+                value = await read_page(tab.page, format, self.settings.max_content_bytes)
+                if format in {"html", "text"}:
+                    data, media = value, "text/html" if format == "html" else "text/plain"
+                else:
+                    data, media = json.dumps(value), "application/json"
             return self.artifacts.put(project, data.encode(), media)
 
     async def _screenshot(self, project, page):
@@ -578,7 +561,7 @@ class BrowserManager:
     async def screenshot(self, project, tab_id, job):
         tab = self.tab(project, tab_id)
         job.set_tab(tab_id)
-        async with tab.lock:
+        async with tab.lock, tab.audit.operation("screenshot", job):
             return self.artifacts.put(
                 project, await self._screenshot(project, tab.page), "image/png", "screenshot:read"
             )
@@ -588,3 +571,5 @@ class BrowserManager:
             await self.stop(state.project, force=True)
         if self.playwright:
             await self.playwright.stop()
+        if self.audit_tasks:
+            await asyncio.gather(*self.audit_tasks)

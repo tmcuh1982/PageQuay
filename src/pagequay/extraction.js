@@ -11,7 +11,7 @@
     const available = Math.max(0, text_budget - characters);
     const length = Math.min(max, available);
     if (raw.length > length) cut(available < max ? 'text_budget' : 'string_length');
-    const result = raw.slice(0, length);
+    const result = new TextDecoder().decode(new TextEncoder().encode(raw.slice(0, length)));
     characters += result.length;
     return result;
   };

@@ -150,7 +150,7 @@ Déploiement de api.py/models.py dans PageQuayService après absence de jobs act
 
 ## Diagnostic d’accès Tailscale — 10 octobre
 
-Sur le Mac mini : PageQuay écoute sur les deux sockets loopback, ready sur8766 renvoie200. Tailscale Running, aucune alerte et ShieldsUp=false ; aucune configuration Serve/Funnel. Le hostname Tailscale est déjà accepté : requêtes locales avec ce Host, ready200, key-info anonyme401, admin/login404 sur8766.
+Sur le Mac mini : PageQuay écoute sur les deux sockets loopback, ready sur8766 renvoie200. Tailscale Running, aucune alerte et ShieldsUp=false ; aucune configuration Serve/Funnel. Le hostname Tailscale est déjà accepté : requêtes locales avec ce Host, ready200, key-info anonyme 401, admin/login404 sur8766.
 
 Commande `tailscale serve --bg http://127.0.0.1:8766` lancée. Elle attend une activation : « Serve is not enabled on your tailnet ». Page officielle ouverte sur le Mac mini ; connexion utilisateur nécessaire. Après signalement d’une404, Safari montrait un compte Apple dans un réseau sans machines, distinct du réseau GitHub du réseau attendu du Mac mini. Reconnexion au compte GitHub du réseau attendu demandée à l’utilisateur. Aucun Serve/Funnel actif confirmé à ce stade, aucun paramètre de sécurité de la console modifié.
 
@@ -175,7 +175,7 @@ Adresse : https://VOTRE_MACHINE.VOTRE_TAILNET.ts.net. HTTP réel via cette adres
 - Ruff check et format conformes (42 fichiers Python) ; diff sans espaces invalides. Schéma versionné relu identique à l’export client 0.2.0, liens documentaires vérifiés.
 - Essais extérieurs : `pytest -q tests/test_live_search.py::test_live_duckduckgo_native_continuations --live -s` → diagnostic rapporté, **aucun résultat réel obtenu**. Trois queries/locales : robot agriculture/fr-FR, agricultural robotics manufacturers/en-US, robots agricoles France/fr-FR. Toutes ont rencontré le challenge natif DuckDuckGo ; événement `challenge.required`, délai humain de test 5 s, erreur TIMEOUT et fermeture des onglets. Les HTML et JSON bruts sont locaux et ignorés par Git. **Trois pages natives sur DuckDuckGo réel restent non validées** ; aucun solveur/repli non demandé.
 - Déploiement : sauvegarde privée des sources et de SQLite, vérification de zéro job actif, 16 fichiers synchronisés dans PageQuayService et LaunchAgent rechargé. Migration additive 003 appliquée, paramètres existants et clés/projets réels conservés. Le plafond du projet de référence reste 10, le quota moteur PageQuay reste 6/60 s ; aucune augmentation silencieuse.
-- Contrôles du service installé : local ready/login 200, OpenAPI sur8766 200/version0.2.0, admin/login404 sur8766. Sur HTTPS Tailscale avec certificat validé : ready200, OpenAPI200 avec cursor/idempotence et chemins uniquement client/health, admin/login404, POST search anonyme401. **Une recherche authentifiée depuis le client du projet de référence sur le service installé n’a pas été rejouée**, faute de clé cliente fournie ; les essais moteurs utilisent un runtime/projet temporaire, et les créations/reprises authentifiées sont testées sur fixtures.
+- Contrôles du service installé : local ready/login 200, OpenAPI sur8766 200/version0.2.0, admin/login404 sur8766. Sur HTTPS Tailscale avec certificat validé : ready200, OpenAPI 200 avec cursor/idempotence et chemins uniquement client/health, admin/login404, POST search anonyme 401. **Une recherche authentifiée depuis le client du projet de référence sur le service installé n’a pas été rejouée**, faute de clé cliente fournie ; les essais moteurs utilisent un runtime/projet temporaire, et les créations/reprises authentifiées sont testées sur fixtures.
 
 
 ## 10 octobre — nouvelle recette sur le Mac mini
@@ -205,3 +205,67 @@ Adresse : https://VOTRE_MACHINE.VOTRE_TAILNET.ts.net. HTTP réel via cette adres
 - Transport Chromium : **1 passed** dans le passage UI/transport initial. UI Chromium après correction des sélecteurs, du projet sélectionné et du callback d’interception du test : **1 passed**, 14,06 s. Contrôles pays/période, corps POST, autres moteurs sans filtre, région vide omise, mise en page desktop/mobile et absence de pageerror vérifiés. Captures locales `search-filters-desktop.png` et `search-filters-mobile.png` inspectées.
 - Ruff check/format, syntaxe Node et diff --check conformes. Documentation et OpenAPI exporté actualisés. Aucun succès de recherche filtrée sur DuckDuckGo réel revendiqué ; la collecte ne prouve pas la date de publication ni celle de l’événement.
 - Runtime permanent mis à jour après contrôle de zéro job actif, sauvegarde privée des sources et arrêt. Premier bootstrap en erreur 5, reprise réussie. Neuf fichiers installés relus identiques ; ready 200, migration 004 appliquée, contrat public avec filtres, login local 200 et console sur API 404 vérifiés. Configurations, profils et clés réels conservés. Aucun push GitHub pour cette tranche.
+
+## Bouton Appliquer grisé avec LaunchAgent — 10 octobre 2026
+
+- Reproduction avec PATH macOS minimal : le binaire de Tailscale.app renvoie un message CLIError3 non JSON avec exit0 ; le lanceur /usr/local/bin/tailscale répond correctement aux deux commandes de lecture.
+- Correctif : chercher les répertoires CLI macOS habituels avant le fallback vers le binaire app, conserver la priorité du PATH existant. Deux tests de régression ; `pytest -q tests/test_external_access.py tests/test_security.py` : **41 passed** ; Ruff conforme.
+- Déploiement : module seul, sauvegarde privée, aucun job actif, LaunchAgent redémarré, health200. Vérification dans Safari réel : adresse HTTPS privée détectée et bouton Appliquer actif. Saisie8443 préservée ; aucune redirection réseau modifiée par la recette.
+
+### Audit détaillé — 10 octobre 2026
+
+Migration005 conserve les anciens événements et ajoute des métadonnées JSON. Navigation réelle, ressources du navigateur et redirections HTTP enregistrées avec URL masquées, taille encodée du corps de réponse en octets, code HTTP et identifiants de job/onglet. Fonctions navigate/actions/click/fill/select/scroll/attentes/extract/screenshot et pagination native suivies avec URL obtenue ; libellé fixe « next page ». Acteur capturé au début de chaque requête, navigation manuelle attribuée au navigateur. Aucune valeur de formulaire, corps POST, cookie, sélecteur ou erreur brute persistée. Paramètres de toutes les URL, userinfo et fragments retirés ; chemins conservés. Mesures manquantes explicitement indisponibles.
+
+Console locale : colonnes URL/destination, Ko (1 024 octets), fonction, HTTP/résultat et job/onglet ; filtres type et job en plus des filtres existants, choix conservés, lien de regroupement par job. Les anciens événements ne gagnent pas de détails rétroactifs. Rétention habituelle, aucune route API d’audit ajoutée.
+
+Validation finale : **159 passed, 4 skipped**, suite complète avec Chromium ; Ruff check/format et diff --check conformes. Tests dédiés : upgrade d’une base ancienne, suppression de données sensibles dans les URL, accès admin/échappement/filtres/projet, erreur/annulation/mesure indisponible ; fixture Chromium avec réponse gzip (taille compressée vérifiée), ressource image,302/303, clic Next avec texte et aria-label, formulaire POST natif,404, requête privée bloquée et attribution d’une navigation manuelle. Interface Chromium desktop/mobile vérifiée, captures audit-desktop/audit-mobile inspectées.
+
+Déployé dans PageQuayService après zéro job actif, sauvegarde privée sources+SQLite, huit fichiers synchronisés et LaunchAgent redémarré. Migration005 appliquée ; ready/login locaux200, audit local anonyme303, audit sur port API 404 et key-info anonyme 401. Aucun projet, clé ou réglage réseau réel modifié. Sources non publiées dans cette demande.
+
+### Paramètres d’URL en clair dans l’audit admin — 10 octobre 2026
+
+À la demande explicite de l’utilisateur, suppression du remplacement des valeurs de paramètres par `[masque]`. Les paramètres et fragments sont désormais conservés avec leur encodage d’origine : q/kl DuckDuckGo, paramètres répétés/vides, redirections HTTP et URL obtenues restent lisibles. La partie userinfo reste exclue ; l’échappement HTML reste actif pour afficher ces URL comme texte. Les anciens paramètres déjà remplacés en base ne peuvent pas être reconstitués. Cette évolution remplace la politique de masquage décrite dans l’entrée précédente ; README, SECURITY et aide UI actualisés.
+
+Validation ciblée :6testsréussis (audit et interface Chromium desktop/mobile), Ruff et diff--check conformes. Tests mis à jour pour confirmer l’intégrité des paramètres/encodages/fragments, le rendu q/kl en clair et les destinations de redirection ; corps POST/saisies et messages bruts du navigateur toujours absents. Deux fichiers runtime synchronisés après zéro job actif, sauvegarde privée et redémarrage du LaunchAgent. Ready/login200 ; audit local anonyme303 et audit portAPI 404. Aucun réglage réseau, clé ou projet modifié.
+
+### Défilement horizontal visible de l’audit — 10 octobre 2026
+
+Une barre « Colonnes » permanente au-dessus du tableau permet de déplacer la grille même lorsque macOS masque la scrollbar native. Curseur et flèches synchronisés avec le défilement réel et les changements de largeur ; tableau accessible au clavier, contrôles désactivés aux limites. Styles/table compacte conservés.
+
+Test UI Chromium réussi : flèche droite, curseur End/Home, dernière colonne entièrement visible sur desktop et mobile, absence de débordement du document et d’erreurJS. Captures inspectées, Ruff et diffcheck conformes. Trois fichiers statiques/template déployés à chaud avec sauvegarde, sans redémarrage ni interruption des jobs.
+
+### Filtres Audit : Job et périodes — 10 octobre 2026
+
+Champ Job remplacé par un select natif (200 jobs récents observés dans l’audit, ID/projet/type/date ; sélection directe conservée au-delà de la liste). Les champs et boutons ont tous42px de hauteur dans une grille responsive. Depuis/Jusqu’au utilisent datetime-local avec secondes ; l’interface affiche le fuseau local du navigateur, convertit les saisies en ISO UTC et restitue les dates filtrées en heure locale. Le serveur respecte les offsets fournis, conserve la compatibilité des dates naïves UTC et refuse les intervalles inversés.
+
+Boutons last10min/lasthour/Today appliquent immédiatement la période en conservant les autres filtres ; Today commence à minuit local et finit à l’instant du clic. La barre horizontale et les lignes compactes restent opérationnelles.
+
+Validation :26tests ciblés réussis (audit, sécurité, interface Chromium). Bornes inclusives/offsets/intervalle inversé/choix Job testés côté serveur ; hauteur uniforme, select, durées600/3600s, Today Europe/Warsaw, conversion manuelle15:20:30 locale→13:20:30UTC, conservation des filtres et retour des dates contrôlés dans Chromium. Desktop/mobile, dernière colonne et absence d’erreursJS vérifiés ; captures inspectées, Ruff/diffcheck conformes. Quatre fichiers runtime déployés après zéro job actif avec sauvegarde privée et redémarrage ; ready/login 200, audit local anonyme303 et auditAPI 404. Aucun changement de données/projets/clés/réseau.
+
+### Fuseau horaire uniforme dans Audit — 10 octobre 2026
+
+Cause constatée dans Safari réel : filtres Depuis/Jusqu’au en Europe/Warsaw mais dates de grille et labels Job encore en UTC. L’événement20:46UTC correspond à22:46locale ; last hour bornait correctement une heure, le décalage était visuel. La grille porte désormais « Date locale » et affiche les timestamps dans le fuseau du navigateur, comme les dates du menu Job. Le titre de cellule conserve l’instant ISO UTC exact et le fuseau. Aucun timestamp, borne de filtre ni donnée historique modifié.
+
+7tests audit/UI réussis, dont fixture20:46UTC→22:46Europe/Warsaw dans la grille et Job, presets d’une heure/dix minutes/Today et conversions manuelles. JS/template déployés à chaud sans redémarrage après sauvegarde privée ; Safari rechargé sur le même filtre et la même sélection, grille et Job22:46visibles. Ruff/diffcheck conformes.
+
+### Durées d’exécution dans Audit — 11 octobre 2026
+
+Ajout de la colonne Durée, affichée en ms sous une seconde et en secondes au-delà. Mesures monotones des fonctions, y compris opérations imbriquées, et de chaque requête réseau depuis request jusqu’à requestfinished/requestfailed ; la récupération asynchrone des tailles n’allonge pas la mesure réseau. Durées des jobs terminés/échoués/annulés depuis l’acquisition du créneau d’exécution : file d’attente exclue, attente humaine incluse. Jobs annulés avant exécution et anciens événements sans mesure affichent « — ». Stockage dans details.duration_ms, sans migration supplémentaire. Grille compacte et défilement horizontal conservés.
+
+Validation : 14 tests audit/jobs/UI réussis avec Chromium. Durées déterministes, imbrication, absence d’inflation réseau par collecte de taille, erreurs/annulations, queue exclue, annulation avant lancement et formats ms/s vérifiés ; dernière colonne accessible sur desktop/mobile, captures inspectées. Ruff check/format et diff-check conformes. Quatre fichiers runtime synchronisés après zéro job actif avec sauvegarde privée /private/tmp/pq-audit-duration-pfal2l3w et redémarrage du LaunchAgent ; ready/login 200, audit local anonyme 303 et audit API 404. Aucun changement de projets, clés ou réglages réseau ; aucun push.
+
+
+### Port API local configurable sans Tailscale — 12 octobre 2026
+
+Paramètres → Accès local : port API modifiable (1024–65535), indépendant du HTTPS Tailscale ; validation stricte, conflit avec la console/port occupé, session admin et CSRF, détection des éditions concurrentes. Surcharge atomique local-api.json (0600) dans PQ_DATA_DIR, prioritaire sur PQ_API_PORT au prochain lancement ; port actif et port enregistré distincts, redémarrage requis visible, annulation possible en enregistrant le port actif. CLI serve/doctor et create_app sans configuration explicite lisent la surcharge ; la CLI transmet ensuite la même configuration résolue aux sockets et au middleware. Aucune route Serve modifiée ; si utilisée, sa destination doit être adaptée séparément.
+
+Validation : suite 176 passed / 15 skipped ; 38 tests local/externe repassés après ajustement de la lecture au démarrage ; recette Chromium 1 passed, formulaire utilisable sans Tailscale, corps envoyé/persistance/avertissement et desktop/mobile inspectés. Bind CLI loopback, refus admin sur le nouveau port et API anonyme 401 vérifiés. Ruff check/format et diff-check conformes. Cinq fichiers runtime déployés après zéro job actif, sauvegarde /private/tmp/pq-local-port-backup-gkdviy_l et redémarrage LaunchAgent ; hashes identiques, ready/login 200, mutation locale anonyme 401 et mutation/adminAPI 404. Ports réels8765/8766 conservés, aucune surcharge réelle créée, aucun changement de clés/projets/routes réseau ni push.
+
+
+## Correctifs de sécurité — 12 octobre 2026
+
+Suite normale finale : **186 passed, 16 skipped**, 9,57 s. Structured/audit/budgets avec Chromium : **24 passed** ; budgets final : **11 passed** ; complément plafond octets : **10 passed, 1 skipped** ; jobs/accès local : **22 passed**. Ruff check/format sur 53 fichiers, Node deux scripts et diff-check conformes. Déclencheurs : 300 requêtes 401, total 300, détail ≤30 et alerte UI, files/réserves/plafonds lignes et octets, requêtes/tâches suspendues, panne du writer/réessai, cardinalité, contenu hostile et modifications de prototypes, titre 512/troncation, HTML/texte 413, surrogate isolé, erreurs/résultats partiels, frames avec ancre et migration unique.
+
+Suite complète headed : **194 passed, 5 failed, 3 skipped** avant adaptation de quatre assertions d’audit au flush asynchrone. Ces quatre cas ont repassé ; le seul échec restant est le test natif macOS de minimisation/navigation. Une exécution identique sur les sources sauvegardées avant correction reproduit le timeout Browser.getWindowBounds, avant les nouveaux lecteurs. **198 tests distincts passent**, aucune suite complète verte ni recette de minimisation complète revendiquées. Les trois diagnostics tiers restent opt-in ; warning Starlette préexistant conservé.
+
+Service installé : zéro job inachevé, sauvegarde privée sources+SQLite, 19 fichiers synchronisés, hashes identiques, migration006, ready/login 200, admin API 404, key-info anonyme 401, OpenAPI 200, budgets respectés et compteur persisté. Ports conservés. Aucun profil/clé/projet ou route externe modifié. Le détail d’audit est partiel sous saturation ; plafonds logiques SQLite et copies applicatives bornées, mémoire native Chromium/driver et crash buffers hors garantie.

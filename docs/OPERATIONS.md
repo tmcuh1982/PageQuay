@@ -56,13 +56,25 @@ Contrôles à effectuer : état Serve indique HTTPS/tailnet-only ; Funnel n'a au
 
 Ouvrir la console **sur le Mac** à `http://127.0.0.1:8765/admin`. Les cookies HTTP locaux utilisent `PQ_SECURE_COOKIES=false` ; l’authentification API distante reste par Bearer sur HTTPS et n’utilise pas ces cookies. Ne jamais configurer Serve, Funnel ou un autre proxy vers le port admin 8765. Aucun en-tête `X-Forwarded-For`/`Proto` d'un client n'accorde un accès privilégié. La procédure et les ACL restent **non validées en réseau réel** tant que la recette de la machine cible n'a pas été exécutée.
 
-### Port HTTPS externe depuis la console
+### Port API local depuis la console
+
+Dans **Paramètres → Accès local**, choisir le **Port API local** entre 1024 et 65535, puis **Enregistrer le port local**. Tailscale n’est pas requis. Le port doit être différent de `PQ_PORT` et disponible sur `127.0.0.1` ; la console refuse un conflit avec un autre service. La disponibilité est vérifiée à l’enregistrement, sans réserver le port : si un autre processus le prend ensuite, le démarrage échoue.
+
+Le port actif reste inchangé jusqu’au redémarrage du service PageQuay ; la page affiche le port enregistré et un message de redémarrage requis. En lancement manuel, arrêter avec Ctrl-C puis relancer `./scripts/start.sh`. Avec le LaunchAgent, utiliser la procédure d’arrêt/redémarrage décrite plus haut. Les clients locaux doivent ensuite utiliser `http://127.0.0.1:PORT`. L’API reste liée uniquement au loopback et l’administration reste refusée sur ce port. Enregistrer à nouveau le port actif annule un changement en attente.
+
+Le réglage est conservé dans `local-api.json` (0600), dans `PQ_DATA_DIR`, et prend priorité sur `PQ_API_PORT` au démarrage, y compris pour `pq doctor`. Pour revenir à la configuration `.env`, arrêter le service, retirer ce fichier du dossier de données puis redémarrer. Avant le premier lancement, ou si le port API actuel empêche le démarrage, définir `PQ_API_PORT` dans `.env` (et retirer une éventuelle surcharge `local-api.json`). Le port de la console reste configurable via `PQ_PORT` et ses origines autorisées via `PQ_ALLOWED_ORIGINS`.
+
+Si Tailscale Serve est déjà utilisé, adapter aussi sa destination loopback au nouveau port ; le réglage local ne modifie aucune route Serve. Les ports locaux et HTTPS externes ont des fonctions distinctes.
+
+## Port HTTPS externe depuis la console
 
 Dans **Paramètres → Accès externe**, le champ **Port HTTPS externe** configure le port HTTPS vu par les clients, de 1 à 65535 (443 par défaut). La console lit le port et l’adresse actifs dans Tailscale, sans confondre ce port avec la destination loopback `PQ_API_PORT`. **Appliquer le port HTTPS** crée la nouvelle route privée vers le port API, vérifie sa configuration, retire l’ancienne route PageQuay, puis confirme l’état final. Aucun redémarrage de PageQuay ni des navigateurs n’est nécessaire. `--bg` conserve la configuration Serve après redémarrage de Tailscale.
 
 **Choix recommandé pour un port alternatif : 8443**, facile à retenir pour HTTPS. L’adresse cliente devient alors `https://mac-mini.votre-tailnet.ts.net:8443`. **8080 reste possible en HTTPS**, par exemple `https://mac-mini.votre-tailnet.ts.net:8080`, même s’il évoque généralement HTTP par convention : le protocole est déterminé par la [configuration HTTPS de Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli/serve), pas par le numéro du port. Choisir un port disponible et autorisé par les règles d’accès du tailnet. Ce choix est global à PageQuay, indépendant des projets ; le port actif change uniquement après application dans la console.
 
 Prérequis : CLI Tailscale accessible au processus PageQuay, connexion au tailnet, Serve/HTTPS préalablement activé et hostname exact dans `PQ_ALLOWED_HOSTS`. Si Tailscale n’est pas disponible, les autres paramètres restent utilisables et un message explique le blocage. Le formulaire exige une session admin locale et CSRF ; il est inaccessible depuis le port API et les clés clientes.
+
+Le LaunchAgent macOS utilise un `PATH` minimal. PageQuay cherche aussi le lanceur `tailscale` dans `/usr/local/bin` et `/opt/homebrew/bin` avant le binaire de l’application. Sur la machine vérifiée, ce lanceur est nécessaire : le binaire appelé directement depuis cet environnement renvoie une erreur de démarrage au lieu du JSON attendu, ce qui désactive le bouton avec « État Tailscale illisible ».
 
 Après changement, mettre à jour l’URL des clients, par exemple `https://mac-mini.votre-tailnet.ts.net:8443`, et les ACL/grants du tailnet pour le port choisi. La console ne modifie pas les règles d’accès. Le port 443 n’apparaît pas dans l’URL. Le backend API reste sur son port loopback actuel et l’administration reste locale.
 
@@ -88,3 +100,26 @@ Les verrous flock peuvent rester sous forme de fichiers après copie : ils n'ont
 - `waiting_for_human` : intervenir sur le Mac puis reprendre ou annuler. Le budget humain est limité ; la détection est imparfaite.
 - `RATE_LIMITED` : lire `error.details.scope/cause`, attendre `Retry-After` ou `retry_at` s’ils sont connus ; une capacité pleine n’a pas de délai prévisible. Le quota moteur de 6 tentatives/60 s est partagé par projet et moteur. Pour reprendre une continuation échouée, utiliser un nouveau `Idempotency-Key` si `can_resume_continuation=true`. Espacer les appels et le polling ; utiliser les événements WS pour réduire la fréquence. Par défaut, 60 requêtes par clé/minute, polling compris.
 - État de listener : `lsof -nP -iTCP:8765 -sTCP:LISTEN` doit indiquer loopback uniquement. Aucun port CDP n'est configuré ; Playwright utilise son transport interne.
+
+
+## Budgets de ressources
+
+Les réglages suivants se définissent dans `.env` et prennent effet au redémarrage :
+
+| Réglage | Défaut | Plage |
+| --- | ---: | ---: |
+| `PQ_AUDIT_QUEUE_SIZE` | 512 événements | 16–4096 |
+| `PQ_AUDIT_EVENTS_PER_MINUTE` | 2400 | 60–10000 |
+| `PQ_AUDIT_EVENTS_PER_PROJECT_MINUTE` | 600 | 30–5000 |
+| `PQ_AUDIT_MAX_ROWS` | 20000 | 100–100000 |
+| `PQ_AUDIT_MAX_BYTES` | 64000000 octets | 1000000–256000000 |
+
+Le détail est admis selon ces budgets ; les événements les plus anciens sont purgés lorsqu’un plafond est dépassé, même avant la rétention en jours. Les opérations admin, clés, projets, profils et réglages disposent d’une réserve distincte : 64 événements en file, 5000 lignes et 16000000 octets. Chaque détail JSON est limité à 65536 octets. La collecte réseau retient au plus 128 requêtes par onglet et lance au plus 32 tâches de mesure simultanées dans le service.
+
+Les écritures sont regroupées environ toutes les 250 ms. La console attend leur visibilité hors de la boucle serveur, avec un délai maximal de 5 s ; en cas de panne du writer, elle peut montrer un état antérieur. L’alerte Audit indique les omissions et erreurs depuis le dernier démarrage ainsi que le nombre persistant de lignes purgées pour capacité. Une file pleine peut également omettre un événement administratif ; la réserve n’est pas une garantie de journal exhaustif.
+
+Les histogrammes conservent séparément les totaux des réponses API connues, y compris 401 et 429, dans 24 tranches UTC. Les erreurs d’écriture sont réessayées dans des buckets bornés. Au-delà des capacités (512 dimensions en attente, 8192 persistées), les dimensions projet/clé sont regroupées sans réduire le total par endpoint ; ce regroupement est signalé. Les routes normalisées sont également bornées. Les compteurs en attente peuvent être perdus lors d’un arrêt brutal ou d’une panne persistante au shutdown. Au premier démarrage de la migration 006, les événements API disponibles des dernières 24 heures sont repris une seule fois avant la purge ; aucun détail déjà supprimé n’est reconstruit.
+
+Les limites d’octets mesurent le contenu logique retenu, pas le fichier SQLite, ses index ou le WAL. Les pages libérées sont réutilisées ; le fichier peut rester à sa taille maximale historique. Une réduction physique exige une maintenance SQLite à l’arrêt après sauvegarde, distincte de cette purge.
+
+Les titres de page sont limités à 512 caractères (`title_truncated`), le challenge à un échantillon de 20000 caractères, liens/métadonnées à des collections et chaînes plafonnées. `PQ_MAX_CONTENT_BYTES` (2000000 par défaut) limite HTML/texte transférés, enveloppes structurées et résultats/erreurs de jobs. Une lecture trop volumineuse échoue en 413 ; les frames devenues indisponibles sont signalées dans le résultat structuré. Les résultats historiques trop volumineux sont retirés à l’ouverture avec statut d’échec explicite. La mémoire du renderer et du driver n’est pas une ressource plafonnée par ces réglages.

@@ -8,6 +8,7 @@ from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeout
 
 from .auth import digest
+from .bounds import bounded_json
 from .errors import PQError
 from .storage import uid
 
@@ -23,6 +24,15 @@ class Job:
         self.task = None
         self.tab_id = None
         self.partial_result = None
+        self.duration_ms = None
+
+    def audit_details(self):
+        return {
+            "job_id": self.id,
+            "tab_id": self.tab_id,
+            "function": self.kind,
+            "duration_ms": self.duration_ms,
+        }
 
     def check_authorization(self):
         project = self.manager.db.project(self.project["slug"])
@@ -36,21 +46,43 @@ class Job:
         self.manager.db.execute("UPDATE jobs SET tab_id=? WHERE id=?", (tab_id, self.id))
 
     def update(self, status, result=None, error=None):
+        try:
+            result_json = (
+                bounded_json(result, self.manager.settings.max_content_bytes)
+                if result is not None
+                else None
+            )
+        except (PQError, ValueError, TypeError):
+            if status not in {"failed", "cancelled"}:
+                raise
+            result_json = None
+        try:
+            error_json = (
+                bounded_json(error, self.manager.settings.max_content_bytes) if error else None
+            )
+        except (PQError, ValueError, TypeError):
+            error_json = json.dumps(
+                {
+                    "code": str(error.get("code", "INTERNAL_ERROR"))[:64],
+                    "message": "Error details exceed configured size limit",
+                    "details": {"truncated": True},
+                }
+            )
         self.status = status
         self.manager.db.execute(
             "UPDATE jobs SET status=?,updated_at=?,result=?,error=? WHERE id=?",
             (
                 status,
                 time.time(),
-                json.dumps(result) if result is not None else None,
-                json.dumps(error) if error else None,
+                result_json,
+                error_json,
                 self.id,
             ),
         )
 
     def progress(self, result):
-        self.partial_result = result
         self.update(self.status, result)
+        self.partial_result = result
 
     async def wait_for_human(self, tab_id, capture):
         self.check_authorization()
@@ -183,7 +215,7 @@ class Jobs:
         self.active[job.id] = job
         job.task = asyncio.create_task(self.run(job, operation))
         job.task.add_done_callback(lambda task: self._cancelled_before_start(job, task))
-        self.db.audit("job." + kind, project["id"], key_id or "admin")
+        self.db.audit("job." + kind, project["id"], key_id or "admin", details=job.audit_details())
         return {
             "job_id": job.id,
             "status": "queued",
@@ -198,7 +230,12 @@ class Jobs:
                 "UPDATE search_cursors SET claimed_job_id=NULL WHERE claimed_job_id=?", (job.id,)
             )
             self.events.emit(job.project, "job.failed", job_id=job.id, scope=job.scope)
-            self.db.audit("job.cancelled", job.project["id"], job.key_id or "admin")
+            self.db.audit(
+                "job.cancelled",
+                job.project["id"],
+                job.key_id or "admin",
+                details=job.audit_details(),
+            )
             self.active.pop(job.id, None)
 
     async def monitor(self, job):
@@ -211,9 +248,11 @@ class Jobs:
                 return
 
     async def run(self, job, operation):
+        started = None
         monitor = asyncio.create_task(self.monitor(job))
         try:
             async with self.semaphore:
+                started = time.perf_counter()
                 job.check_authorization()
                 job.update("running")
                 self.events.emit(job.project, "job.started", job_id=job.id, scope=job.scope)
@@ -250,6 +289,8 @@ class Jobs:
             )
             self.events.emit(job.project, "job.failed", job_id=job.id, scope=job.scope)
         finally:
+            if started is not None:
+                job.duration_ms = round((time.perf_counter() - started) * 1000, 3)
             if job.status == "completed":
                 self.db.execute(
                     "UPDATE search_cursors SET state='{}' WHERE claimed_job_id=?", (job.id,)
@@ -264,6 +305,7 @@ class Jobs:
                 job.project["id"],
                 job.key_id or "admin",
                 "error" if job.status == "failed" else "ok",
+                details=job.audit_details(),
             )
             monitor.cancel()
             with suppress(asyncio.CancelledError):

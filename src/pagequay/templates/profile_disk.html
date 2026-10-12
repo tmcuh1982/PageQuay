@@ -1,0 +1,5 @@
+<div class="profile-disk" data-profile-disk="{{ p.id }}">
+<div class="profile-disk-heading"><div><strong>{{ p.name }}</strong><small>{{ p.slug }}</small></div><div><strong>{{ p.disk_usage.total|bytes }}</strong><small>{{ p.disk_usage.logical|bytes }} de données</small></div></div>
+{% if p.disk_usage.partial %}<p class="footnote">Mesure partielle : certains fichiers sont indisponibles.</p>{% elif not p.disk_usage.exists %}<p class="footnote">Profil pas encore créé sur disque.</p>{% endif %}
+<dl class="profile-disk-breakdown">{% for key, label in disk_categories.items() %}<div><dt>{{ label }}</dt><dd>{{ p.disk_usage.categories[key]|bytes }}</dd></div>{% endfor %}</dl>
+</div>

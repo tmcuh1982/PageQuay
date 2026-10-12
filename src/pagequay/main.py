@@ -20,12 +20,14 @@ from .errors import PQError, error_body
 from .events import Events
 from .external_access import ExternalAccess
 from .jobs import Jobs
+from .local_access import LocalAccess, load_local_port
 from .network import NetworkPolicy
 from .profiles import ProfileLock
 from .retention import Retention
 from .search import SearchService
 from .settings import Settings
 from .storage import Storage
+from .usage import ApiUsageMiddleware
 
 
 @dataclass
@@ -40,6 +42,7 @@ class Runtime:
     search: SearchService
     retention: Retention
     external_access: ExternalAccess
+    local_access: LocalAccess
 
 
 class SafetyMiddleware:
@@ -121,11 +124,11 @@ class SafetyMiddleware:
 
 
 def create_app(settings=None, *, network_factory=NetworkPolicy):
-    settings = settings or Settings()
+    settings = settings if settings is not None else load_local_port(Settings())
 
     @asynccontextmanager
     async def lifespan(app):
-        db = Storage(settings.data_dir)
+        db = Storage(settings.data_dir, settings)
         service_lock = ProfileLock(db.root, "service")
         try:
             service_lock.acquire()
@@ -154,6 +157,7 @@ def create_app(settings=None, *, network_factory=NetworkPolicy):
             search,
             retention,
             ExternalAccess(settings),
+            LocalAccess(settings),
         )
         task = asyncio.create_task(retention.run())
         try:
@@ -166,7 +170,7 @@ def create_app(settings=None, *, network_factory=NetworkPolicy):
                 await jobs.shutdown()
                 await browser.shutdown()
             finally:
-                db.close()
+                await asyncio.to_thread(db.close)
                 service_lock.release()
 
     app = FastAPI(
@@ -177,6 +181,7 @@ def create_app(settings=None, *, network_factory=NetworkPolicy):
         redoc_url=None,
         openapi_url=None,
     )
+    app.add_middleware(ApiUsageMiddleware)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)
     app.add_middleware(SafetyMiddleware, settings=settings)
 

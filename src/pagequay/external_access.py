@@ -29,6 +29,9 @@ class ExternalAccess:
     @staticmethod
     def _executable():
         executable = shutil.which("tailscale")
+        if not executable:
+            # launchd's default PATH omits both common macOS CLI install directories.
+            executable = shutil.which("tailscale", path="/usr/local/bin:/opt/homebrew/bin")
         bundled = Path("/Applications/Tailscale.app/Contents/MacOS/Tailscale")
         if not executable and bundled.is_file():
             executable = str(bundled)

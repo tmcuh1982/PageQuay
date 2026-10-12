@@ -8,10 +8,40 @@ from conftest import login
 from fastapi.testclient import TestClient
 
 from pagequay.errors import PQError
-from pagequay.external_access import ExternalPort
+from pagequay.external_access import ExternalAccess, ExternalPort
 
 HOST = "gateway.example.ts.net"
 URL = "/admin/settings/external-access"
+
+
+def test_launchd_path_finds_installed_cli_before_app_binary(monkeypatch, tmp_path):
+    minimal_path = tmp_path / "system-bin"
+    cli_directory = tmp_path / "local-bin"
+    minimal_path.mkdir()
+    cli_directory.mkdir()
+    wrapper = cli_directory / "tailscale"
+    wrapper.write_text("#!/bin/sh\nexit 0\n")
+    wrapper.chmod(0o700)
+    monkeypatch.setenv("PATH", str(minimal_path))
+    from pagequay import external_access
+
+    original = external_access.shutil.which
+
+    def which(command, *, path=None):
+        if path == "/usr/local/bin:/opt/homebrew/bin":
+            path = str(cli_directory)
+        return original(command, path=path)
+
+    monkeypatch.setattr(external_access.shutil, "which", which)
+    assert ExternalAccess._executable() == str(wrapper)
+
+
+def test_configured_path_keeps_priority(monkeypatch, tmp_path):
+    wrapper = tmp_path / "tailscale"
+    wrapper.write_text("#!/bin/sh\nexit 0\n")
+    wrapper.chmod(0o700)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    assert ExternalAccess._executable() == str(wrapper)
 
 
 class ServeCLI:

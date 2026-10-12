@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from playwright.async_api import Error as PlaywrightError
 
 from .errors import PQError
+from .page_reader import isolated_read
 
 SCRIPT = Path(__file__).with_name("extraction.js").read_text()
 MAX_FRAMES = 4  # Includes the main document.
@@ -42,15 +43,26 @@ async def extract_structured(page, *, include_dom=False, max_bytes=2_000_000, ch
                 finally:
                     await handle.dispose()
             document = await asyncio.wait_for(
-                frame.evaluate(
-                    SCRIPT,
-                    {"include_dom": include_dom, "text_budget": min(40000, max_bytes // 32)},
+                isolated_read(
+                    page,
+                    "function(options) { const value = (" + SCRIPT + ")(options); "
+                    "const output = JSON.stringify({value}); "
+                    "if (output.length > options.max_bytes || "
+                    "new TextEncoder().encode(output).length > options.max_bytes) "
+                    "return JSON.stringify({too_large: true}); return output; }",
+                    {
+                        "include_dom": include_dom,
+                        "text_budget": min(40000, max_bytes // 32),
+                        "max_bytes": max_bytes,
+                    },
+                    frame=frame,
+                    max_bytes=max_bytes,
                 ),
                 10,
             )
             entry.update(status="extracted", document=document)
             truncated |= document["truncated"]
-        except (PlaywrightError, TimeoutError):
+        except (PlaywrightError, TimeoutError, PQError):
             if frame == page.main_frame:
                 raise
             entry.update(status="unavailable", reason="frame_detached_or_unresponsive")

@@ -120,3 +120,17 @@ Le port externe désigne le port HTTPS utilisé par les clients, indépendant de
 ## Filtres d’actualité DuckDuckGo
 
 Exposer `region` comme code officiel pays/région-langue avec priorité sur la locale, et `time_range` comme choix lisible (`any/day/week/month/year`). Réappliquer uniquement `kl/df` aux continuations émises par le moteur ; conserver les tokens/offsets natifs. Lier ces filtres aux curseurs et checkpoints et préserver les hashes des requêtes historiques sans filtre. Refuser les filtres explicites pour auto/Brave/Google afin qu’un repli ne change pas leur sens. La date de collecte reste distincte de la publication et de l’événement ; aucune date n’est déduite de la seule présence dans des résultats récents.
+
+
+## Port API local indépendant de Tailscale
+
+Proposer un réglage local global dans la console, utilisable sans accès externe. Enregistrer une surcharge privée atomique dans PQ_DATA_DIR plutôt que modifier le .env d’installation ; priorité explicite sur PQ_API_PORT et retour au .env par retrait de la surcharge après arrêt. Appliquer au prochain lancement, sans mutation à chaud des sockets ni du contrôle d’administration ; afficher séparément le port actif et le port enregistré. Vérifier le bind loopback à l’enregistrement sans réserver le port, et laisser le démarrage refuser un conflit apparu entre-temps. Résoudre une seule fois la configuration utilisée par les deux sockets et leur middleware. Le réglage local ne change aucune route Tailscale Serve.
+
+
+## 12 octobre 2026 — Budgets détenus aux frontières de ressources
+
+À la demande d’appliquer les propositions Codex Security, l’audit devient explicitement partiel sous surcharge : quotas, queues et volume bornés, réserve administrative séparée et signalisation des omissions/purges/erreurs. Les totaux API sont persistés indépendamment du détail ; les dimensions sont regroupées à capacité. Un worker possède la connexion d’écriture, les lecteurs asyncio attendent explicitement hors boucle lorsque nécessaire.
+
+Les lectures de contenu externe passent par des fonctions fixes en monde Chromium isolé, avec limites avant retour ; aucune récupération préalable de l’arbre complet ou des titres de targets. Les résultats de jobs sont bornés au point de persistance commun. Les valeurs excessives échouent explicitement, sans tronquer silencieusement un résultat complet. Les titres restent un résumé borné avec indicateur.
+
+Ces budgets concernent la rétention et les lectures détenues par PageQuay. La mémoire native Chromium/driver, la perte de buffers sur crash et la réduction physique SQLite restent des contraintes d’exploitation distinctes, documentées. Les paramètres et fragments d’URL restent visibles dans l’audit selon la préférence utilisateur existante, dans le budget de taille.

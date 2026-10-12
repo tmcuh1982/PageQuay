@@ -9,6 +9,7 @@ from playwright.async_api import async_playwright
 from test_external_access import HOST, ServeCLI
 
 from pagequay.auth import PASSWORDS
+from pagequay.errors import PQError
 from pagequay.external_access import ExternalAccess
 from pagequay.main import create_app
 from pagequay.settings import Settings
@@ -19,8 +20,11 @@ from pagequay.storage import uid
 @pytest.mark.skipif(os.environ.get("PQ_BROWSER_TESTS") != "1", reason="Use --browser")
 async def test_external_access_form_in_browser(tmp_path, monkeypatch):
     cli = ServeCLI()
+    unavailable = False
 
     async def run(self, *args):
+        if unavailable:
+            raise PQError("UNAVAILABLE", "Tailscale indisponible.", 503)
         return await cli.run(*args)
 
     monkeypatch.setattr(ExternalAccess, "_run", run)
@@ -53,7 +57,25 @@ async def test_external_access_form_in_browser(tmp_path, monkeypatch):
             await page.get_by_label("Mot de passe", exact=True).fill("TestPassword-42-Only!")
             await page.get_by_role("button", name="Se connecter").click()
             await page.wait_for_url(base + "/admin")
+            unavailable = True
             await page.goto(base + "/admin/settings")
+            assert await page.get_by_role("button", name="Appliquer le port HTTPS").is_disabled()
+            assert await page.get_by_role("button", name="Enregistrer le port local").is_enabled()
+            with socket.socket() as probe:
+                probe.bind(("127.0.0.1", 0))
+                local_port = probe.getsockname()[1]
+            await page.get_by_label("Port API local").fill(str(local_port))
+            async with page.expect_response(base + "/admin/settings/local-access") as local:
+                await page.get_by_role("button", name="Enregistrer le port local").click()
+            assert (await local.value).status == 200
+            assert (await local.value).request.post_data_json == {
+                "api_port": local_port,
+                "configured_port": 8766,
+            }
+            await page.get_by_text(f"Port {local_port} enregistré.", exact=False).wait_for()
+            assert app.state.rt.settings.api_port == 8766
+            unavailable = False
+            await page.reload()
             assert await page.get_by_label("Port HTTPS externe").input_value() == "443"
             await page.get_by_label("Port HTTPS externe").fill("8443")
             async with page.expect_response(base + "/admin/settings/external-access") as saved:

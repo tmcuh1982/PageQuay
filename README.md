@@ -37,7 +37,7 @@ Le programme demande un identifiant et un mot de passe d'au moins 14 caractères
 
 Avec une copie déjà présente, commencer dans sa racine sans relancer `git clone`.
 
-Le script installe les dépendances et Chromium ; `uv.lock` conserve les versions exactes des dépendances Python. Dans l'environnement de développement, cette installation a déjà été vérifiée. L'initialisation de l'administrateur reste à effectuer par chaque opérateur. La commande `pq serve` applique les migrations SQL au démarrage, lie **uniquement `127.0.0.1`** sur deux ports (8765 pour la console locale, 8766 pour l’API seule destinée à Tailscale), utilise un seul processus et désactive les access logs. Ctrl-C arrête proprement le service et conserve les profils.
+Le script installe les dépendances et Chromium ; `uv.lock` conserve les versions exactes des dépendances Python. Dans l'environnement de développement, cette installation a déjà été vérifiée. L'initialisation de l'administrateur reste à effectuer par chaque opérateur. La commande `pq serve` applique les migrations SQL au démarrage, lie **uniquement `127.0.0.1`** sur deux ports (8765 pour la console locale, 8766 pour l’API locale et un éventuel accès Tailscale), utilise un seul processus et désactive les access logs. Ctrl-C arrête proprement le service et conserve les profils.
 
 Sans uv, le script utilise un venv et `pip install -e '.[dev]'` ; cette voie respecte les bornes du pyproject, mais pas les versions exactes du lockfile.
 
@@ -58,6 +58,8 @@ Ne changez pas de dossier de données entre l'initialisation et le démarrage. `
 3. Créer une clé dans **Clés API**, choisir projet, droits et expiration. Copier le secret affiché une seule fois. Les droits initiaux sont `search:read` et `content:read` ; la navigation et les actions nécessitent `browser:interact`, les listes `browser:read`, les captures `screenshot:read`.
 4. Utiliser **Recherche** ou **Sessions / Onglets** pour tester manuellement. Les opérations longues créent un job ; son état et son résultat apparaissent dans la console.
 5. En cas de challenge, intervenir dans la fenêtre Chromium sur le Mac puis confirmer **Reprendre**. L'onglet reste ouvert ; aucune résolution automatique.
+
+Dans **Paramètres → Accès local**, définir le **Port API local** puis cliquer **Enregistrer le port local**. Ce réglage fonctionne sans Tailscale et permet de choisir un port libre quand un autre service tourne sur le même Mac. Les ports occupés et le port de la console sont refusés. Redémarrer le service pour activer le nouveau port, puis adapter les clients locaux ; le port actif et le changement en attente sont affichés séparément. Pour configurer le port avant le premier démarrage, utiliser `PQ_API_PORT` dans `.env`. Voir [le port API local](docs/OPERATIONS.md#port-api-local-depuis-la-console).
 
 Dans **Paramètres → Accès externe**, définir le **Port HTTPS externe** puis cliquer **Appliquer le port HTTPS** pour changer le port utilisé par les clients Tailscale (443 par défaut). L’adresse active est affichée ; par exemple, le port 8443 donne `https://mac-mini.votre-tailnet.ts.net:8443`. Le changement est immédiat et persistant dans Serve. Mettre à jour les clients et les règles d’accès du tailnet. La destination API locale (`PQ_API_PORT`, 8766 par défaut) et le port de la console restent distincts. Tailscale connecté, Serve/HTTPS activé et hostname dans `PQ_ALLOWED_HOSTS` sont requis ; un port occupé, partagé ou publié via Funnel est refusé. Voir [l’exploitation réseau](docs/OPERATIONS.md#port-https-externe-depuis-la-console).
 
@@ -92,7 +94,7 @@ Toutes les routes de cette table utilisent `Authorization: Bearer <clé>` et con
 | POST `/ws-ticket` | Clé du projet | Ticket à usage unique, 30 s |
 | WS `/events` | Ticket dans le **premier message** | Événements filtrés et commandes bornées |
 
-`GET /health/live` et `/health/ready` ne renvoient que l'état minimal. `/docs` et `/openapi.json` sont désactivés par défaut ; `PQ_DEVELOPMENT=true` les active sur le transport local. Un schéma exporté est disponible dans `docs/openapi.json`.
+`GET /health/live` et `/health/ready` ne renvoient que l'état minimal. Le contrat client `/openapi.json` est disponible sur le port API, y compris via HTTPS privé ; les routes admin en sont exclues. `/docs` reste réservé au transport admin en mode `PQ_DEVELOPMENT=true`. Le même contrat est exporté dans `docs/openapi.json`.
 
 ### Informations de la clé appelante
 
@@ -167,6 +169,10 @@ Contrat et exemples : [SEARCH_API](docs/SEARCH_API.md), [OpenAPI](docs/openapi.j
 | Audit (30 jours) | Purge le journal et l'historique ancien des jobs |
 
 La maintenance passe toutes les 30 secondes. La consultation d'un artefact vérifie son expiration immédiatement. **Purger contenus** efface tous les contenus temporaires du projet, sans fermer le navigateur. Aucun reset destructeur automatique ni snapshot de session dans ce MVP. La durée de validité des cookies distants reste décidée par les sites.
+
+La console **Audit** affiche les URL visitées, les ressources reçues avec leur taille en Ko, les fonctions appelées, les codes HTTP, les destinations de redirection et le temps d’exécution des fonctions, jobs et requêtes réseau en ms ou s. Les durées des jobs excluent la file d’attente et incluent l’attente humaine ; les lignes historiques sans mesure affichent « — ». Les clics de pagination reconnus et les formulaires natifs DuckDuckGo portent le libellé **next page** avec l’URL obtenue. Filtrer par projet, type, action, statut, dates avec heures ou job ; le menu Job propose les 200 opérations récentes et cliquer sur un job rassemble ses événements. La grille, le menu Job et les filtres affichent les dates dans le même fuseau local du navigateur ; le stockage et les paramètres de requête restent en UTC. Les boutons **last 10 min**, **last hour** et **Today** appliquent immédiatement une période, en conservant les autres filtres ; Today commence à minuit local. Les tailles correspondent au corps de réponse encodé mesuré par Playwright (1 Ko = 1 024 octets), hors en-têtes ; les mesures indisponibles sont signalées. Les paramètres d’URL et fragments sont conservés et affichés en clair, avec leur encodage d’origine ; les identifiants de connexion intégrés à l’URL sont retirés. Cet audit reste réservé à l’admin locale. Les anciennes valeurs enregistrées comme `[masque]` ne peuvent pas être reconstituées. Les anciens événements encore dans les limites de rétention restent disponibles sans détails rétroactifs.
+
+L’audit est écrit par un worker dédié avec files, quotas et volume bornés. Une alerte indique les événements omis ou purgés et les erreurs d’écriture. Les histogrammes utilisent des compteurs séparés pour conserver les totaux API lorsque le détail est omis ; les dimensions projet/clé peuvent être regroupées si leur capacité est atteinte. Voir [les budgets de ressources](docs/OPERATIONS.md#budgets-de-ressources).
 
 ## Tests et développement
 

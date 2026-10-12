@@ -12,6 +12,7 @@ from playwright.async_api import Error as PlaywrightError
 from .auth import digest
 from .errors import PQError
 from .models import Navigate
+from .page_reader import read_page
 from .search_options import TIME_FILTERS, ddg_region
 
 TRACKING = {"gclid", "fbclid", "msclkid"}
@@ -395,9 +396,7 @@ class SearchService:
                 tab.id,
             )
         async with tab.lock:
-            html = await tab.page.content()
-        if len(html.encode()) > self.browser.settings.max_content_bytes:
-            raise PQError("INVALID_INPUT", "Search response too large", 413)
+            html = await read_page(tab.page, "html", self.browser.settings.max_content_bytes)
         return html
 
     async def duckduckgo(self, project, request, job, state, tab):

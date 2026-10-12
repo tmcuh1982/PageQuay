@@ -17,6 +17,91 @@ function node(tag, text, className) {
   const value = document.createElement(tag); if (text !== undefined) value.textContent = text;
   if (className) value.className = className; return value;
 }
+document.querySelectorAll("[data-api-usage]").forEach(card => {
+  const data = JSON.parse(card.dataset.apiUsage);
+  const select = card.querySelector("[data-api-endpoint]");
+  const type = card.querySelector("[data-api-type]");
+  const group = card.querySelector("[data-api-group]");
+  const svg = card.querySelector("[data-api-chart]");
+  const graphs = card.querySelector("[data-api-graphs]");
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  card.querySelector("[data-api-timezone]").textContent = `Heures locales · ${zone}`;
+  function shape(tag, attributes, text) {
+    const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attributes).forEach(([name, value]) => element.setAttribute(name, value));
+    if (text !== undefined) element.textContent = text;
+    return element;
+  }
+  function labelTotal(total) {
+    return `${total.toLocaleString("fr-FR")} appel${total > 1 ? "s" : ""}`;
+  }
+  function chart(target, counts, title, compact, max) {
+    const width = compact ? 360 : 720;
+    const gap = (width - 40) / 24;
+    target.setAttribute("viewBox", `0 0 ${width} 160`);
+    target.replaceChildren();
+    target.setAttribute("aria-label", `${title} : ${labelTotal(counts.reduce((a, b) => a + b, 0))}, par heure. ${zone}.`);
+    [0, max].forEach(value => {
+      const y = 130 - value / max * 110;
+      target.append(shape("line", {x1: 38, x2: width - 2, y1: y, y2: y, class: "api-chart-grid"}));
+      target.append(shape("text", {x: 30, y: y + 4, "text-anchor": "end", class: "api-chart-label"}, value.toLocaleString("fr-FR")));
+    });
+    counts.forEach((value, index) => {
+      const date = new Date(data.hours[index] * 1000);
+      const hour = date.toLocaleTimeString("fr-FR", {hour: "2-digit", minute: "2-digit"});
+      const x = 40 + index * gap;
+      const height = value / max * 110;
+      const rect = shape("rect", {x, y: 130 - height, width: gap * 0.72, height, rx: 3, class: "api-chart-bar", tabindex: 0});
+      const detail = `${date.toLocaleDateString("fr-FR")} ${hour} · ${labelTotal(value)}${index === 23 ? " · heure en cours" : ""}`;
+      rect.setAttribute("aria-label", detail);
+      rect.append(shape("title", {}, detail));
+      target.append(rect);
+      if (index % (compact ? 6 : 4) === 0 || index === 23) target.append(shape("text", {x: index === 23 ? width - 2 : x + gap * 0.36, y: 151, "text-anchor": index === 23 ? "end" : "middle", class: "api-chart-label"}, hour));
+    });
+  }
+  function draw() {
+    const rows = data.rows.filter(row => (!select.value || row.endpoint === select.value) && (!type.value || row.type === type.value));
+    const counts = data.hours.map(() => 0);
+    const grouped = new Map();
+    rows.forEach(row => {
+      counts[row.hour] += row.calls;
+      const id = group.value === "project" ? row.project_id : group.value === "key" ? row.key_id : row.endpoint;
+      if (!grouped.has(id)) grouped.set(id, {counts: data.hours.map(() => 0), types: new Map()});
+      const item = grouped.get(id);
+      item.counts[row.hour] += row.calls;
+      item.types.set(row.type, (item.types.get(row.type) || 0) + row.calls);
+    });
+    const total = counts.reduce((sum, value) => sum + value, 0);
+    card.querySelector("[data-api-total]").textContent = labelTotal(total);
+    card.querySelector("[data-api-empty]").hidden = total !== 0;
+    card.querySelector("[data-api-key-note]").hidden = group.value !== "key";
+    chart(svg, counts, select.selectedOptions[0].textContent, card.clientWidth < 500, Math.max(1, ...counts));
+    graphs.replaceChildren();
+    // A shared vertical scale makes the separate API charts comparable.
+    const max = Math.max(1, ...Array.from(grouped.values()).flatMap(item => item.counts));
+    const items = Array.from(grouped.entries()).sort((a, b) => b[1].counts.reduce((x, y) => x + y, 0) - a[1].counts.reduce((x, y) => x + y, 0));
+    items.forEach(([id, item]) => {
+      const title = group.value === "project" ? data.projects[id] || "Projet non renseigné" : group.value === "key" ? data.keys[id] || "Clé non renseignée" : id;
+      const panel = node("article", undefined, "api-mini");
+      const heading = node("div", undefined, "api-mini-heading");
+      heading.append(node("h3", title), node("strong", labelTotal(item.counts.reduce((sum, value) => sum + value, 0))));
+      panel.append(heading);
+      const mini = shape("svg", {"data-api-mini-chart": "", role: "img"});
+      chart(mini, item.counts, title, true, max);
+      panel.append(mini);
+      const breakdown = node("div", undefined, "api-type-breakdown");
+      Array.from(item.types.entries()).sort((a, b) => b[1] - a[1]).forEach(([name, amount]) => breakdown.append(node("span", `${name} · ${amount.toLocaleString("fr-FR")}`)));
+      panel.append(breakdown);
+      graphs.append(panel);
+    });
+  }
+  [select, type, group].forEach(control => control.addEventListener("change", draw));
+  let lastWidth = card.clientWidth;
+  new ResizeObserver(() => {
+    if (lastWidth !== card.clientWidth) { lastWidth = card.clientWidth; draw(); }
+  }).observe(card);
+  draw();
+});
 function showSecret(secret) {
   document.querySelector("#secret-value").textContent = secret;
   document.querySelector("#secret-panel").classList.remove("hidden");
@@ -180,3 +265,87 @@ document.querySelectorAll("[data-reset]").forEach(button => button.addEventListe
   } catch (e) { note(e.message, true); }
 }));
 document.querySelectorAll("[data-job]").forEach(button => button.addEventListener("click", () => watchJob(button.dataset.project, button.dataset.job)));
+
+document.querySelectorAll("[data-audit-scroll]").forEach(scroller => {
+  const controls = scroller.previousElementSibling;
+  const range = controls.querySelector("[data-audit-scroll-range]");
+  const left = controls.querySelector("[data-audit-scroll-left]");
+  const right = controls.querySelector("[data-audit-scroll-right]");
+  function syncScroll() {
+    const maximum = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+    range.max = String(maximum);
+    range.value = String(scroller.scrollLeft);
+    range.disabled = maximum <= 1;
+    left.disabled = scroller.scrollLeft <= 1;
+    right.disabled = scroller.scrollLeft >= maximum - 1;
+  }
+  range.addEventListener("input", () => {
+    scroller.scrollLeft = Number(range.value);
+    syncScroll();
+  });
+  left.addEventListener("click", () => {
+    scroller.scrollLeft -= scroller.clientWidth * 0.75;
+    syncScroll();
+  });
+  right.addEventListener("click", () => {
+    scroller.scrollLeft += scroller.clientWidth * 0.75;
+    syncScroll();
+  });
+  scroller.addEventListener("scroll", syncScroll, {passive: true});
+  const observer = new ResizeObserver(syncScroll);
+  observer.observe(scroller);
+  observer.observe(scroller.querySelector("table"));
+  syncScroll();
+});
+
+document.querySelectorAll("[data-audit-filters]").forEach(form => {
+  const dates = [...form.querySelectorAll("[data-audit-date]")];
+  function localDateValue(date) {
+    const pad = value => String(value).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  }
+  dates.forEach(input => {
+    if (input.dataset.initialDate) input.value = localDateValue(new Date(input.dataset.initialDate));
+  });
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  form.querySelector("[data-audit-timezone]").textContent = `Dates et heures locales · ${zone}`;
+  document.querySelectorAll("[data-audit-epoch]").forEach(cell => {
+    const date = new Date(Number(cell.dataset.auditEpoch) * 1000);
+    cell.textContent = localDateValue(date).slice(0, 16).replace("T", " ");
+    cell.title = `${date.toISOString()} · ${zone}`;
+  });
+  form.querySelectorAll("[data-audit-job-at]").forEach(option => {
+    if (!option.dataset.auditJobAt) return;
+    const date = new Date(Number(option.dataset.auditJobAt) * 1000);
+    const localTime = localDateValue(date).slice(0, 16).replace("T", " ");
+    option.textContent = `${option.dataset.auditJobLabel} · ${localTime}`;
+  });
+  function applyFilters(periodDates) {
+    const params = new URLSearchParams(new FormData(form));
+    dates.forEach(input => {
+      const date = periodDates?.[input.name] || (input.value ? new Date(input.value) : null);
+      if (date) params.set(input.name, date.toISOString());
+      else params.delete(input.name);
+    });
+    for (const [name, value] of [...params]) if (value === "") params.delete(name);
+    const target = new URL(form.getAttribute("action") || location.href, location.href);
+    target.search = params.toString();
+    location.assign(target.href);
+  }
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    applyFilters();
+  });
+  form.querySelectorAll("[data-audit-period]").forEach(button => button.addEventListener("click", () => {
+    const until = new Date();
+    let since;
+    if (button.dataset.auditPeriod === "today") {
+      since = new Date(until);
+      since.setHours(0, 0, 0, 0);
+    } else {
+      const minutes = button.dataset.auditPeriod === "10m" ? 10 : 60;
+      since = new Date(until.getTime() - minutes * 60 * 1000);
+    }
+    applyFilters({since, until});
+  }));
+});

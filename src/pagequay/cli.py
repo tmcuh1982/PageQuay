@@ -7,6 +7,7 @@ import sys
 import uvicorn
 
 from .auth import PASSWORDS, strong_password
+from .local_access import load_local_port
 from .settings import Settings
 from .storage import Storage, uid
 
@@ -16,7 +17,7 @@ def main():
     parser = argparse.ArgumentParser(prog="pq", description="PageQuay local browser gateway")
     parser.add_argument("command", choices=["init-admin", "migrate", "serve", "doctor"])
     args = parser.parse_args()
-    settings = Settings()
+    settings = load_local_port(Settings())
     if args.command == "serve":
         from .main import create_app
 
@@ -43,7 +44,7 @@ def main():
             for listener in sockets:
                 listener.close()
         return
-    db = Storage(settings.data_dir)
+    db = Storage(settings.data_dir, settings)
     try:
         if args.command == "init-admin":
             if db.one("SELECT id FROM admins LIMIT 1"):
@@ -87,7 +88,8 @@ def main():
                 if db.one("SELECT id FROM admins LIMIT 1")
                 else "MISSING: pq init-admin",
             )
-            print("Listener:", f"127.0.0.1:{settings.port}")
+            print("Admin listener:", f"127.0.0.1:{settings.port}")
+            print("API listener:", f"127.0.0.1:{settings.api_port}")
             print("Headed browser requires an open macOS graphical user session.")
     finally:
         db.close()

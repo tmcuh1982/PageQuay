@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     job_timeout_seconds: int = 180
     human_timeout_seconds: int = 600
     websocket_lifetime_seconds: int = 600
+    audit_queue_size: int = Field(512, ge=16, le=4096)
+    audit_events_per_minute: int = Field(2400, ge=60, le=10000)
+    audit_events_per_project_minute: int = Field(600, ge=30, le=5000)
+    audit_max_rows: int = Field(20000, ge=100, le=100000)
+    audit_max_bytes: int = Field(64_000_000, ge=1_000_000, le=256_000_000)
     policy: Policy = Field(default_factory=Policy)
 
     @model_validator(mode="after")

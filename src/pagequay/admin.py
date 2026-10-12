@@ -4,7 +4,7 @@ import json
 import re
 import secrets
 import time
-from datetime import UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Request
@@ -15,13 +15,17 @@ from pydantic import ValidationError
 from .auth import SCOPES, digest
 from .errors import PQError
 from .external_access import ExternalPort
+from .local_access import LocalPortUpdate
 from .models import KeyCreate, KeyUpdate, Navigate, ProjectCreate, Search
+from .profile_usage import CATEGORIES, format_bytes, profile_disk_usage
 from .search_options import DDG_REGIONS, TIME_LABELS
 from .settings import Policy
+from .usage import hourly_usage
 
 router = APIRouter()
 LOGIN_CSRF_COOKIE = "pq_login_nonce"
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+templates.env.filters["bytes"] = format_bytes
 templates.env.filters["datetime"] = lambda value: (
     time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(value)) if value else "—"
 )
@@ -161,6 +165,13 @@ async def page(request: Request, view: str = "", key_id: str | None = None):
     except PQError:
         return RedirectResponse("/admin/login", status_code=303)
     projects = rt.db.all("SELECT * FROM projects ORDER BY name")
+    await rt.db.telemetry.flush_async()
+    if view in {"", "projects"}:
+        sizes = await asyncio.to_thread(
+            lambda: [profile_disk_usage(rt.db.root, project["id"]) for project in projects]
+        )
+        for project, size in zip(projects, sizes, strict=True):
+            project["disk_usage"] = size
     for project in projects:
         state = rt.browser.states.get(project["id"])
         project["browser_active"] = bool(state)
@@ -182,20 +193,37 @@ async def page(request: Request, view: str = "", key_id: str | None = None):
     if request.query_params.get("status"):
         conditions.append("a.status=?")
         args.append(request.query_params["status"])
+    if request.query_params.get("job"):
+        conditions.append("json_extract(a.details, '$.job_id')=?")
+        args.append(request.query_params["job"])
+    category = request.query_params.get("category", "")
+    if category == "functions":
+        conditions.append("(a.action LIKE 'function.%' OR a.action LIKE 'job.%')")
+    elif category == "navigation":
+        conditions.append(
+            "(a.action='tab.visited' OR json_extract(a.details, '$.resource_type')='document')"
+        )
+    elif category == "network":
+        conditions.append("a.action LIKE 'network.%'")
+    audit_dates = {}
     for field, operator in (("since", ">="), ("until", "<=")):
         if request.query_params.get(field):
-            from datetime import datetime
-
             try:
-                stamp = (
-                    datetime.fromisoformat(request.query_params[field])
-                    .replace(tzinfo=UTC)
-                    .timestamp()
-                )
-            except ValueError as exc:
+                date = datetime.fromisoformat(request.query_params[field])
+                if date.tzinfo is None:
+                    date = date.replace(tzinfo=UTC)
+                date = date.astimezone(UTC)
+                stamp = date.timestamp()
+            except (ValueError, OverflowError) as exc:
                 raise PQError("INVALID_INPUT", "Invalid date filter") from exc
+            audit_dates[field] = date.isoformat()
             conditions.append("a.at" + operator + "?")
             args.append(stamp)
+    if audit_dates.get("since") and audit_dates.get("until"):
+        if datetime.fromisoformat(audit_dates["since"]) > datetime.fromisoformat(
+            audit_dates["until"]
+        ):
+            raise PQError("INVALID_INPUT", "La date de début doit précéder la date de fin.")
     where = " WHERE " + " AND ".join(conditions) if conditions else ""
     audit = rt.db.all(
         "SELECT a.*,p.slug FROM audit a LEFT JOIN projects p ON p.id=a.project_id"
@@ -203,6 +231,22 @@ async def page(request: Request, view: str = "", key_id: str | None = None):
         + " ORDER BY at DESC LIMIT 100",
         args,
     )
+    for event in audit:
+        event["details"] = json.loads(event["details"])
+    audit_jobs = []
+    if view == "audit":
+        audit_jobs = rt.db.all(
+            "SELECT json_extract(a.details, '$.job_id') AS id, p.slug, j.kind, "
+            "max(a.at) AS last_at FROM audit a "
+            "LEFT JOIN projects p ON p.id=a.project_id "
+            "LEFT JOIN jobs j ON j.id=json_extract(a.details, '$.job_id') "
+            "WHERE json_extract(a.details, '$.job_id') IS NOT NULL "
+            "AND json_extract(a.details, '$.job_id') != '' "
+            "GROUP BY json_extract(a.details, '$.job_id') ORDER BY last_at DESC LIMIT 200"
+        )
+        selected_job = request.query_params.get("job")
+        if selected_job and not any(job["id"] == selected_job for job in audit_jobs):
+            audit_jobs.insert(0, {"id": selected_job, "slug": None, "kind": None, "last_at": None})
     keys = rt.db.all(
         "SELECT k.id,k.project_id,k.name,k.prefix,k.scopes,k.created_at,k.last_used,"
         "k.expires_at,k.revoked_at,k.rate_limit,p.slug FROM api_keys k "
@@ -227,6 +271,8 @@ async def page(request: Request, view: str = "", key_id: str | None = None):
         "search_regions": DDG_REGIONS,
         "search_periods": TIME_LABELS,
         "audit": audit,
+        "audit_jobs": audit_jobs,
+        "audit_dates": audit_dates,
         "policy": rt.db.policy().model_dump(),
         "global_json": rt.db.policy().model_dump_json(indent=2),
         "active_browsers": len(rt.browser.states),
@@ -235,6 +281,10 @@ async def page(request: Request, view: str = "", key_id: str | None = None):
         "title": dict(NAVIGATION)[view],
         "external_access": await rt.external_access.status() if view == "settings" else None,
         "api_port": rt.settings.api_port,
+        "local_access": rt.local_access.status() if view == "settings" else None,
+        "api_usage": hourly_usage(rt.db) if view == "" else None,
+        "disk_categories": CATEGORIES,
+        "telemetry": rt.db.telemetry.snapshot(),
     }
     return templates.TemplateResponse(request=request, name="admin.html", context=context)
 
@@ -379,6 +429,15 @@ async def reset(slug: str, request: Request):
         raise PQError("FORBIDDEN", "Confirmation missing, expired or already used", 403)
     await rt.browser.reset(project)
     return {"status": "profile_reset"}
+
+
+@router.post("/admin/settings/local-access")
+async def local_access(request: Request):
+    rt, _ = await mutation(request)
+    body = validate(LocalPortUpdate, await json_body(request))
+    result = await rt.local_access.apply(body)
+    rt.db.audit("local_access.updated")
+    return result
 
 
 @router.post("/admin/settings/external-access")
