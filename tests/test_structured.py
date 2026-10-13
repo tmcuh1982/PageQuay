@@ -50,7 +50,7 @@ def complex_site():
             elif self.path == "/hidden-flood":
                 content = (
                     "<html><body><main>"
-                    + '<p style="display:none">Caché</p>' * 5000
+                    + '<p style="display:none">Caché</p>' * 10000
                     + "<p>Après la limite</p></main></body></html>"
                 )
             elif self.path == "/frames":
@@ -227,7 +227,7 @@ async def test_snapshot_size_and_depth_are_bounded(structured_client, path, reas
     )
     data = (await client.get(value["url"])).json()
     assert data["truncated"] and reason in data["truncation_reasons"]
-    assert data["stats"]["nodes_visited"] <= 2000
+    assert data["stats"]["nodes_visited"] <= 8000
 
 
 async def test_frame_count_is_bounded(structured_client):

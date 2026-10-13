@@ -1,6 +1,7 @@
 """Bounded extraction of the live DOM, including open shadows and child frames."""
 
 import asyncio
+import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -11,7 +12,8 @@ from .errors import PQError
 from .page_reader import isolated_read
 
 SCRIPT = Path(__file__).with_name("extraction.js").read_text()
-MAX_FRAMES = 4  # Includes the main document.
+MAX_FRAMES = 4  # Visible reads, including the main document.
+MAX_FRAME_INVENTORY = 32  # Hidden frames are reported without consuming a read slot.
 
 
 async def extract_structured(
@@ -20,8 +22,13 @@ async def extract_structured(
     frames = [page.main_frame, *(frame for frame in page.frames if frame != page.main_frame)]
     frame_ids = {frame: f"f{index}" for index, frame in enumerate(frames)}
     documents = []
-    truncated = len(frames) > MAX_FRAMES
-    for frame in frames[:MAX_FRAMES]:
+    frame_limit_reached = len(frames) > MAX_FRAME_INVENTORY
+    truncated = frame_limit_reached
+    read_frames = 0
+    deadline = time.monotonic() + 40
+    for frame in frames[:MAX_FRAME_INVENTORY]:
+        if time.monotonic() >= deadline:
+            raise PQError("TIMEOUT", "Structured extraction budget exhausted", 504)
         check()
         entry = {
             "frame_id": frame_ids[frame],
@@ -37,7 +44,7 @@ async def extract_structured(
             continue
         trace = ReadTrace(frame, {**(correlation or {}), "frame_id": entry["frame_id"]})
         try:
-            async with asyncio.timeout(10):
+            async with asyncio.timeout(min(10, max(0, deadline - time.monotonic()))):
                 if frame != page.main_frame:
                     handle = await frame.frame_element()
                     try:
@@ -47,6 +54,10 @@ async def extract_structured(
                             continue
                     finally:
                         await handle.dispose()
+                if read_frames >= MAX_FRAMES:
+                    frame_limit_reached = truncated = True
+                    break
+                read_frames += 1
                 document = await asyncio.wait_for(
                     isolated_read(
                         page,
@@ -57,7 +68,7 @@ async def extract_structured(
                         "return JSON.stringify({too_large: true}); return output; }",
                         {
                             "include_dom": include_dom,
-                            "text_budget": min(40000, max_bytes // 32),
+                            "text_budget": min(160000, max_bytes // 8),
                             "max_bytes": max_bytes,
                         },
                         frame=frame,
@@ -108,7 +119,7 @@ async def extract_structured(
         "frames": documents[1:],
         "truncated": truncated,
         "partial": truncated or any(entry["status"] == "unavailable" for entry in documents),
-        "frame_limit_reached": len(frames) > MAX_FRAMES,
+        "frame_limit_reached": frame_limit_reached,
         "limitations": [
             "Only mounted DOM content is captured; no automatic scrolling or clicks.",
             "Closed shadow roots are inaccessible.",

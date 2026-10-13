@@ -29,3 +29,8 @@ L'extraction structurée utilise `structured.py` et un script fixe `extraction.j
 
 
 La recherche DuckDuckGo 0.2 stocke les reliquats/formulaires Next dans `search_cursors`. Le token du client est aléatoire et son hash indexe la table ; il n’encode ni clé API ni paramètres du moteur. Réservation de curseur, ligne de job et association `search_idempotency` sont écrites dans une transaction SQLite sans await. Le processus unique partage les quotas et l’idempotence entre tous ses appels ; le verrou de service interdit les workers concurrents utilisant ces profils. Chaque job possède son onglet interne et le ferme en finally ; les continuations ne retiennent pas d’onglet. Les états consommés/expirés sont effacés et les associations d’idempotence expirent après 24 h. Contrat complet : [SEARCH_API](SEARCH_API.md).
+
+
+## Export AgXeed — CHG-20261013-026
+
+L’identité URL/titre est réservée avant métadonnées et DOM. Plafonds par document :8 000nœuds, min(160 000,max_content_bytes/8) caractères. Inventaire32frames, quatre lectures visibles, durée globale40s et dix secondes/frame ; frames cachées signalées sans consommer de lecture. Limites atteintes toujours signalées, captures incohérentes refusées. Aucun accès/profil/clé modifié ; lecture isolée et garde de portée inchangées. Voir EXTRACTION.md et AGXEED_EXPORT_FIX.md.

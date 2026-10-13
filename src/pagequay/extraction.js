@@ -1,7 +1,7 @@
 /* Fixed, read-only snapshot. No caller-supplied code, clicks, scrolling or network calls. */
 ({ include_dom, text_budget }) => {
   const reasons = new Set();
-  const limits = { nodes: 2000, depth: 32, blocks: 400, links: 300, images: 100,
+  const limits = { nodes: 8000, depth: 32, blocks: 400, links: 300, images: 100,
     tables: 20, rows: 50, cells: 30, controls: 100, forms: 30, json_ld: 10 };
   let characters = 0, nodes = 0, visited = 0, shadowRoots = 0;
   const seen = new WeakSet();
@@ -15,6 +15,8 @@
     characters += result.length;
     return result;
   };
+  // Reserve identity before metadata and DOM consume the shared budget.
+  const identity = { url: clip(location.href, 2048), title: clip(document.title, 500) };
   const safeUrl = (value, image = false) => {
     if (!value) return null;
     try {
@@ -286,7 +288,7 @@
   };
   render(main); flush();
   const result = {
-    title: clip(document.title, 500), url: clip(location.href, 2048), metadata,
+    title: identity.title, url: identity.url, metadata,
     content_root: main?.node_id || null, blocks, links, images, tables, controls, forms, visuals, landmarks,
     stats: { nodes_visited: visited, nodes_included: nodes, open_shadow_roots: shadowRoots, characters },
     truncated: reasons.size > 0, truncation_reasons: [...reasons]
