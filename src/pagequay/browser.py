@@ -569,6 +569,30 @@ class BrowserManager:
         if expected_url is not None and tab.page.url != expected_url:
             raise scope_error(tab.page.url, navigation=tab.evidence.snapshot())
 
+    async def navigation_title(self, project, tab, job, *, expected_url, deadline):
+        # Discard unstable title reads within the ORIGINAL navigation budget.
+        while True:
+            if time.monotonic() >= deadline:
+                raise PQError("TIMEOUT", "Document did not stabilize during navigation", 504)
+            try:
+                async with asyncio.timeout(max(0, deadline - time.monotonic())):
+                    await self.human_guard(project, tab, job, deadline=deadline)
+                    self.check_scope(tab, expected_url)
+                    if tab.guard_errors:
+                        raise tab.guard_errors[0]
+                    checkpoint = tab.evidence.checkpoint(expected_url)
+                    title = await read_title(tab.page)
+            except TimeoutError as exc:
+                raise PQError("TIMEOUT", "Navigation title budget exhausted", 504) from exc
+            try:
+                tab.evidence.verify(checkpoint, expected_url)
+            except PQError as exc:
+                if exc.code != "NAVIGATION_CHANGED":
+                    raise
+                await asyncio.sleep(min(0.25, max(0, deadline - time.monotonic())))
+                continue
+            return title
+
     async def navigate(self, project, request, job, tab_id=None):
         network = self.network_factory(self.db.policy(project))
         if (
@@ -624,9 +648,9 @@ class BrowserManager:
                     if request.respect_robots and tab.page.url != tab.robots_url:
                         tab.robots = await self.check_robots(project, tab.page.url, job)
                         tab.robots_url = tab.page.url
-                    checkpoint = tab.evidence.checkpoint(request.expected_url)
-                    title = await read_title(tab.page)
-                    tab.evidence.verify(checkpoint, request.expected_url)
+                    title = await self.navigation_title(
+                        project, tab, job, expected_url=request.expected_url, deadline=deadline
+                    )
                     self.events.emit(project, "tab.navigated", tab_id=tab.id)
                     return {
                         "tab_id": tab.id,

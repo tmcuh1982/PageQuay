@@ -7,7 +7,7 @@ from pathlib import Path
 
 from playwright.async_api import Error as PlaywrightError
 
-from .diagnostics import ReadTrace
+from .diagnostics import ReadTrace, cause_code
 from .errors import PQError
 from .frame_context import bounded_path, frame_path
 
@@ -82,19 +82,29 @@ async def isolated_read(page, function, arguments, *, max_bytes, frame=None, tra
             # URLs and every frame name before any document budget could be enforced.
             for frame_id in frame_ids:
                 trace.stage = "isolated_world"
-                candidate = await session.send(
-                    "Page.createIsolatedWorld",
-                    {"frameId": frame_id, "worldName": "pagequay-read"},
-                )
-                trace.stage = "context_selection"
-                probe = await session.send(
-                    "Runtime.callFunctionOn",
-                    {
-                        "functionDeclaration": FRAME_PATH,
-                        "executionContextId": candidate["executionContextId"],
-                        "returnByValue": True,
-                    },
-                )
+                try:
+                    candidate = await session.send(
+                        "Page.createIsolatedWorld",
+                        {"frameId": frame_id, "worldName": "pagequay-read"},
+                    )
+                    trace.stage = "context_selection"
+                    probe = await session.send(
+                        "Runtime.callFunctionOn",
+                        {
+                            "functionDeclaration": FRAME_PATH,
+                            "executionContextId": candidate["executionContextId"],
+                            "returnByValue": True,
+                        },
+                    )
+                except PlaywrightError as exc:
+                    # A discarded candidate must not hide a still-mounted target.
+                    # Only selection is retried; capture/verification never is.
+                    if cause_code(exc) != "WORLD_NOT_FOUND":
+                        raise
+                    trace.selection["stale_candidate_count"] = (
+                        trace.selection.get("stale_candidate_count", 0) + 1
+                    )
+                    continue
                 if "exceptionDetails" in probe:
                     raise PQError(
                         "UNAVAILABLE",
