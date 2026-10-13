@@ -1,6 +1,6 @@
-# État de PageQuay — 10 octobre 2026
+# État de PageQuay — 12 octobre 2026
 
-Version **0.2.0**, MVP développé et vérifié localement sur macOS Apple Silicon. La recette de déploiement et le parcours Google depuis le MacBook Air restent partiels. Ce document décrit l'état observé, sans considérer une confirmation SSH comme un test API réussi.
+Version **0.2.2**, MVP développé et vérifié localement sur macOS Apple Silicon. La recette de déploiement et le parcours Google depuis le MacBook Air restent partiels. Ce document décrit l'état observé, sans considérer une confirmation SSH comme un test API réussi.
 
 ## Fonctionnalités livrées
 
@@ -55,3 +55,15 @@ Le lot de publication 0.2 comprend les fenêtres minimisables, la séparation co
 Cette mise à jour ajoute les filtres pays / période DuckDuckGo et généralise les noms dans la documentation et les exemples à **ProjectX** (`projectx`). Le contrat reste en version 0.2.0, avec paramètres optionnels et migration additive 004. Les filtres sont déployés dans le service local ; aucun succès de recherche filtrée sur le moteur réel n’est revendiqué.
 
 Pour reprendre : [procédure de publication](PUBLISHING.md), [mémoire de travail](../memory.md) et [décisions](../decisions.md). La visibilité publique et la connexion directe sont déjà confirmées. Pour chaque modification future, publier puis vérifier le commit et le contenu distants avant d'annoncer la synchronisation.
+
+
+## Correctif iframe KUKA — 0.2.1
+
+WORLD_NOT_FOUND reproduit sur le site réel puis corrigé dans un runtime jetable : identité des slots natifs de frames dans un monde utility isolé, sélection du target CDP ancêtre pour les descendants OOPIF et diagnostics bornés. Version0.2.1 déployée dans le service installé, sans changement de clés/projets/réseau. Le test authentifié de ce service est confié à UniversRobot avec sa clé existante ; les preuves et limites sont dans [KUKA_FRAME_FIX](KUKA_FRAME_FIX.md).
+
+
+## Navigation et portée — 0.2.2
+
+Version 0.2.2 déployée : redirections autorisées par défaut sans false implicite dû à robots, attente passive bornée des vérifications automatiques, reprise du même job après intervention humaine, URL finale contrôlée avant extraction et refus scope_changed sans adoption implicite. Les gardes réseau, mondes isolés et budgets existants sont conservés. Suite générale265passed/4skipped, compléments finaux48passed et5passed (ensembles recouvrants), contrat OpenAPI livré identique au listener public et sources/package/module vérifiés. Sauvegarde /private/tmp/pq-navigation-022-backup-_vjth5ei ; clés/projets/réglages inchangés.
+
+KUKA réel revalidé séparément en service jetable : URL finale identique, 69blocs, f1extracted, partialfalse/truncatedfalse. Aucun lien causal entre redirections/Cloudflare et WORLD_NOT_FOUND n’est démontré. Le test authentifié installé reste à effectuer par UniversRobot. Voir [contrat et preuves](NAVIGATION_SCOPE.md) et [traces KUKA](KUKA_FRAME_FIX.md).

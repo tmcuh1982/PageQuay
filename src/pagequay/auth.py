@@ -52,6 +52,9 @@ class Auth:
                     "window_seconds": seconds,
                     "retry_after_seconds": max(1, math.ceil(retry_at - now)),
                     "retry_at": retry_at,
+                    "partial_results": [],
+                    "can_resume_continuation": False,
+                    "resume_cursor": None,
                 },
             )
         else:

@@ -1,3 +1,4 @@
+import math
 import time
 
 from .errors import PQError
@@ -8,7 +9,7 @@ class Artifacts:
     def __init__(self, db, settings):
         self.db, self.settings = db, settings
 
-    def put(self, project, data, media_type, scope="content:read"):
+    def put(self, project, data, media_type, scope="content:read", *, artifact_id=None):
         if len(data) > self.settings.max_content_bytes:
             raise PQError("INVALID_INPUT", "Content exceeds configured size limit", 413)
         self.purge(project)
@@ -17,8 +18,25 @@ class Artifacts:
             (project["id"],),
         )["size"]
         if used + len(data) > self.db.policy(project).max_artifact_bytes_per_project:
-            raise PQError("RATE_LIMITED", "Project artifact storage quota reached", 429)
-        artifact_id = uid()
+            deadline = self.db.one(
+                "SELECT min(expires_at) AS at FROM artifacts WHERE project_id=?", (project["id"],)
+            )["at"]
+            raise PQError(
+                "RATE_LIMITED",
+                "Project artifact storage quota reached",
+                429,
+                details={
+                    "scope": "artifact_storage",
+                    "cause": "pagequay_capacity",
+                    "retry_at": deadline,
+                    "retry_after_seconds": max(1, math.ceil(deadline - time.time()))
+                    if deadline
+                    else None,
+                    "partial": False,
+                    "continuation_available": False,
+                },
+            )
+        artifact_id = artifact_id or uid()
         path = self.db.root / "artifacts" / artifact_id
         path.write_bytes(data)
         path.chmod(0o600)

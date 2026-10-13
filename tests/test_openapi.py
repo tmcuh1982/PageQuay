@@ -25,7 +25,7 @@ def test_versioned_public_client_contract_on_api_listener(client):
     response = client.get("http://127.0.0.1:8766/openapi.json")
     assert response.status_code == 200
     schema = response.json()
-    assert schema["info"]["version"] == "0.2.0"
+    assert schema["info"]["version"] == "0.2.2"
     assert all(path.startswith(("/v1/", "/health/")) for path in schema["paths"])
     search = schema["paths"]["/v1/projects/{slug}/search"]["post"]
     assert any(p["name"] == "idempotency-key" and p["in"] == "header" for p in search["parameters"])
@@ -44,3 +44,32 @@ def test_versioned_public_client_contract_on_api_listener(client):
         "engine",
     ):
         assert name in result
+
+
+def test_acquisition_and_typed_frame_diagnostics_contract():
+    schema = create_app(Settings()).openapi()
+    fields = schema["components"]["schemas"]["Navigate"]["properties"]
+    assert fields["allow_redirects"]["default"] is True
+    assert fields["respect_robots"]["default"] is False
+    assert "expected_url" in fields
+    for path in ("/v1/projects/{slug}/tabs", "/v1/projects/{slug}/tabs/{tab_id}/navigate"):
+        params = schema["paths"][path]["post"]["parameters"]
+        assert any(p["name"] == "idempotency-key" for p in params)
+    params = schema["paths"]["/v1/projects/{slug}/tabs/{tab_id}/content"]["get"]["parameters"]
+    assert any(p["name"] == "expected_url" for p in params)
+    assert (
+        "WORLD_NOT_FOUND"
+        in schema["components"]["schemas"]["FrameDiagnostic"]["properties"]["cause"]["enum"]
+    )
+    assert "navigation_id" in schema["components"]["schemas"]["NavigationMetadata"]["properties"]
+    assert "StructuredSnapshot" in schema["components"]["schemas"]
+
+
+def test_checked_in_contract_matches_public_listener(client):
+    import json
+    from pathlib import Path
+
+    documented = json.loads((Path(__file__).parents[1] / "docs/openapi.json").read_text())
+    public = client.get("http://127.0.0.1:8766/openapi.json")
+    assert public.status_code == 200
+    assert documented == public.json()

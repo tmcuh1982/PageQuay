@@ -17,7 +17,10 @@ Passerelle Web privée et auto-hébergée : un projet possède son propre profil
 | [Rapport de tests](docs/testing/REPORT.md) | Résultats observés et recettes non exécutées |
 | [Mémoire](memory.md) / [Décisions](decisions.md) | Suivi du développement et choix techniques |
 | [Recherche paginée](docs/SEARCH_API.md) | Continuations DuckDuckGo, quotas, idempotence et exemple ProjectX |
-| [OpenAPI](docs/openapi.json) | Contrat API client 0.2.0, également disponible via `/openapi.json` |
+| [Navigation et portée](docs/NAVIGATION_SCOPE.md) | Redirections, attente Cloudflare, reprise humaine et refus scope_changed (0.2.2) |
+| [Correctif iframe KUKA](docs/KUKA_FRAME_FIX.md) | Preuves réelles, régressions et version corrective 0.2.1 |
+| [Acquisition exacte](docs/ACQUISITION.md) | Navigation attestée, URL stricte, robots, diagnostics iframe et client serveur |
+| [OpenAPI](docs/openapi.json) | Contrat API client 0.2.2, également disponible via `/openapi.json` |
 
 Au 10 octobre 2026, le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
 

@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.staticfiles import StaticFiles
 
-from . import api
+from . import __version__, api
 from .artifacts import Artifacts
 from .auth import Auth
 from .browser import BrowserManager
@@ -81,6 +81,7 @@ class SafetyMiddleware:
         if scope["type"] == "websocket":
             return await self.app(scope, receive, send)
         request_id = secrets.token_hex(12)
+        scope.setdefault("state", {})["request_id"] = request_id
         consumed = 0
 
         async def limited_receive():
@@ -175,7 +176,7 @@ def create_app(settings=None, *, network_factory=NetworkPolicy):
 
     app = FastAPI(
         title="PageQuay",
-        version="0.2.0",
+        version=__version__,
         lifespan=lifespan,
         docs_url="/docs" if settings.development else None,
         redoc_url=None,
@@ -191,7 +192,12 @@ def create_app(settings=None, *, network_factory=NetworkPolicy):
         if exc.status == 429 and exc.details and exc.details.get("retry_after_seconds") is not None:
             headers["Retry-After"] = str(exc.details["retry_after_seconds"])
         return JSONResponse(
-            error_body(exc.code, exc.message, details=exc.details),
+            error_body(
+                exc.code,
+                exc.message,
+                getattr(request.state, "request_id", None),
+                details=exc.details,
+            ),
             status_code=exc.status,
             headers=headers,
         )

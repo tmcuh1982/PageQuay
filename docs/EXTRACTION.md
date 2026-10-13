@@ -11,6 +11,8 @@ La réponse 202 contient l'ID et l'URL du job. Lire le job jusqu'à `completed`,
 
 Ajouter `&include_dom=true` pour joindre l'arbre DOM filtré. L'option vaut false par défaut ; true avec un autre format donne INVALID_INPUT (400). Un format inconnu donne 422. Les formats text/html/links/metadata conservent leur contrat.
 
+Les métadonnées attestées, `expected_url`, la provenance XPath et les causes typées de frames sont décrits dans [ACQUISITION](ACQUISITION.md).
+
 ## Contrat version 1.0
 
 | Champ | Contenu |

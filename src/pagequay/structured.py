@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 
 from playwright.async_api import Error as PlaywrightError
 
+from .diagnostics import ReadTrace
 from .errors import PQError
 from .page_reader import isolated_read
 
@@ -13,7 +14,9 @@ SCRIPT = Path(__file__).with_name("extraction.js").read_text()
 MAX_FRAMES = 4  # Includes the main document.
 
 
-async def extract_structured(page, *, include_dom=False, max_bytes=2_000_000, check=lambda: None):
+async def extract_structured(
+    page, *, include_dom=False, max_bytes=2_000_000, check=lambda: None, correlation=None
+):
     frames = [page.main_frame, *(frame for frame in page.frames if frame != page.main_frame)]
     frame_ids = {frame: f"f{index}" for index, frame in enumerate(frames)}
     documents = []
@@ -32,40 +35,69 @@ async def extract_structured(page, *, include_dom=False, max_bytes=2_000_000, ch
             entry.update(status="unavailable", reason="unsupported_frame_scheme")
             documents.append(entry)
             continue
+        trace = ReadTrace(frame, {**(correlation or {}), "frame_id": entry["frame_id"]})
         try:
-            if frame != page.main_frame:
-                handle = await frame.frame_element()
-                try:
-                    if not await handle.is_visible():
-                        entry.update(status="omitted", reason="hidden_frame")
-                        documents.append(entry)
-                        continue
-                finally:
-                    await handle.dispose()
-            document = await asyncio.wait_for(
-                isolated_read(
-                    page,
-                    "function(options) { const value = (" + SCRIPT + ")(options); "
-                    "const output = JSON.stringify({value}); "
-                    "if (output.length > options.max_bytes || "
-                    "new TextEncoder().encode(output).length > options.max_bytes) "
-                    "return JSON.stringify({too_large: true}); return output; }",
-                    {
-                        "include_dom": include_dom,
-                        "text_budget": min(40000, max_bytes // 32),
-                        "max_bytes": max_bytes,
-                    },
-                    frame=frame,
-                    max_bytes=max_bytes,
-                ),
-                10,
-            )
-            entry.update(status="extracted", document=document)
-            truncated |= document["truncated"]
-        except (PlaywrightError, TimeoutError, PQError):
+            async with asyncio.timeout(10):
+                if frame != page.main_frame:
+                    handle = await frame.frame_element()
+                    try:
+                        if not await handle.is_visible():
+                            entry.update(status="omitted", reason="hidden_frame")
+                            documents.append(entry)
+                            continue
+                    finally:
+                        await handle.dispose()
+                document = await asyncio.wait_for(
+                    isolated_read(
+                        page,
+                        "function(options) { const value = (" + SCRIPT + ")(options); "
+                        "const output = JSON.stringify({value}); "
+                        "if (output.length > options.max_bytes || "
+                        "new TextEncoder().encode(output).length > options.max_bytes) "
+                        "return JSON.stringify({too_large: true}); return output; }",
+                        {
+                            "include_dom": include_dom,
+                            "text_budget": min(40000, max_bytes // 32),
+                            "max_bytes": max_bytes,
+                        },
+                        frame=frame,
+                        max_bytes=max_bytes,
+                        trace=trace,
+                    ),
+                    10,
+                )
+                if (
+                    not isinstance(document, dict)
+                    or not isinstance(document.get("truncated"), bool)
+                    or not isinstance(document.get("blocks"), list)
+                ):
+                    trace.stage = "serialization"
+                    raise PQError(
+                        "UNAVAILABLE",
+                        "Structured schema rejected",
+                        503,
+                        details={"cause": "SCHEMA_REJECTED"},
+                    )
+                entry.update(
+                    status="extracted", document=document, context_selection=trace.selection
+                )
+                truncated |= document["truncated"]
+                if frame != page.main_frame:
+                    trace.success()
+        except (PlaywrightError, TimeoutError, PQError) as exc:
             if frame == page.main_frame:
                 raise
-            entry.update(status="unavailable", reason="frame_detached_or_unresponsive")
+            details = (
+                exc.details
+                if isinstance(exc, PQError) and (exc.details or {}).get("stage")
+                else None
+            ) or trace.failure(exc)
+            entry.update(
+                status="unavailable",
+                reason="frame_detached_or_unresponsive",
+                cause_code=details["cause"],
+                diagnostic=details,
+            )
         documents.append(entry)
     primary = documents[0]["document"]
     return {

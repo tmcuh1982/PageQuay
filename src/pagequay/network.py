@@ -30,8 +30,8 @@ class NetworkPolicy:
             if (
                 parsed.scheme not in {"http", "https"}
                 or not host
-                or parsed.username
-                or parsed.password
+                or parsed.username is not None
+                or parsed.password is not None
                 or "%" in host
             ):
                 raise ValueError("Unsupported URL")
@@ -44,7 +44,12 @@ class NetworkPolicy:
                 raise ValueError("Domain not allowed")
             return parsed, host, port
         except (ValueError, UnicodeError) as exc:
-            raise PQError("NAVIGATION_BLOCKED", "URL rejected by network policy", 403) from exc
+            raise PQError(
+                "NAVIGATION_BLOCKED",
+                "URL rejected by network policy",
+                403,
+                details={"cause": "url_policy"},
+            ) from exc
 
     async def resolve(self, url):
         parsed, host, port = self.parse(url)
@@ -53,7 +58,9 @@ class NetworkPolicy:
                 asyncio.get_running_loop().getaddrinfo(host, port, type=socket.SOCK_STREAM), 5
             )
         except (OSError, TimeoutError) as exc:
-            raise PQError("NAVIGATION_BLOCKED", "DNS resolution failed", 403) from exc
+            raise PQError(
+                "NAVIGATION_BLOCKED", "DNS resolution failed", 403, details={"cause": "dns_failed"}
+            ) from exc
         addresses = list(dict.fromkeys(info[4][0] for info in infos))
         if not addresses:
             raise PQError("NAVIGATION_BLOCKED", "No DNS address", 403)
@@ -66,7 +73,12 @@ class NetworkPolicy:
                 or (ip.version == 6 and ip in ipaddress.ip_network("64:ff9b::/96"))
                 or (ip.version == 6 and (ip.ipv4_mapped or ip.sixtofour or ip.teredo))
             ):
-                raise PQError("NAVIGATION_BLOCKED", "Non-public address rejected", 403)
+                raise PQError(
+                    "NAVIGATION_BLOCKED",
+                    "Non-public address rejected",
+                    403,
+                    details={"cause": "non_public_address"},
+                )
         return parsed, host, port, addresses
 
 

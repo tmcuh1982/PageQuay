@@ -134,3 +134,28 @@ Proposer un réglage local global dans la console, utilisable sans accès extern
 Les lectures de contenu externe passent par des fonctions fixes en monde Chromium isolé, avec limites avant retour ; aucune récupération préalable de l’arbre complet ou des titres de targets. Les résultats de jobs sont bornés au point de persistance commun. Les valeurs excessives échouent explicitement, sans tronquer silencieusement un résultat complet. Les titres restent un résumé borné avec indicateur.
 
 Ces budgets concernent la rétention et les lectures détenues par PageQuay. La mémoire native Chromium/driver, la perte de buffers sur crash et la réduction physique SQLite restent des contraintes d’exploitation distinctes, documentées. Les paramètres et fragments d’URL restent visibles dans l’audit selon la préférence utilisateur existante, dans le budget de taille.
+
+
+## 12 octobre 2026 — Contrat exact et attestation limitée
+
+L’acquisition exacte est opt-in (`expected_url`, `allow_redirects=false`) et exige HTTPS443 ; les payloads historiques et l’idempotence search0.2.0 restent valides. L’attestation HTTP provient uniquement du document principal observé, jamais de son DOM ; statut inconnu = null+motif. La cohérence de navigation/frame n’est pas une atomicité multi-DOM.
+
+Faute de couverture CDP démontrée de tous les redirects OOPIF, le mode strict refuse le trafic de frames enfants avec cause explicite ; il n’élargit pas son attestation aux garanties du proxy historique. Les lecteurs cross-origin/OOPIF restent isolés sans fallback page-owned. XPath de ShadowDOM inaccessible = null+motif, et robots non vérifié ne devient pas une preuve.
+
+Les logs d’extraction gardent les classes/codes/chaînes d’exceptions et étapes corrélées ; texte arbitraire d’exception intégralement expurgé pour exclure secrets et corps de page. Le reason agrégé des anciennes frames reste compatible mais ne prouve pas détachement. Aucun diagnostic rétroactif KUKA revendiqué ; reproduction exige le Bearer existant, sans créer/remplacer de clé.
+
+
+## 12 octobre 2026 — Identité de frame et correctif KUKA 0.2.1
+
+Les indices de Playwright.child_frames et l’ordre des éléments DOM ne constituent pas l’identité native d’un contexte. Relier les slots Window.frames aux propriétaires iframe/frame et comparer content_frame, dans le monde utility isolé avec un moteur fixe utilisé seul ; sélectionner ensuite un monde CDP isolé dont le chemin correspond. Chercher le target ancêtre OOPIF pour les descendants en processus interne. Aucun fingerprintURL/titre, DOMwrite ou evaluate dans le monde page.
+
+Utiliser le runtimejetable sans BearerUniversRobot pour reproductionréelle autorisée ; après déploiement0.2.1, leur client privé effectuera le test du serviceinstallé. Les artefacts jetables ne sont pas des jobs de ce service. Export complet=DOM monté dans les bornes, pas données visuelles du player. Redirections autorisables explicitement par allow_redirectsTrue, sans supprimer expected_url ni gardesréseau/robots.
+
+
+## 2026-10-12 — Navigation, challenge et portée d’extraction (0.2.2)
+
+À la demande utilisateur, le suivi des redirections est indépendant du contrôle de portée final : allow_redirects true par défaut, refus avant suivi seulement avec false explicite. Robots ne force pas false sur le document ; son helper conserve un refus explicite séparé. Vérifications automatiques attendues passivement dans le budget existant ; intervention humaine et délai épuisé donnent waiting_for_human, reprise du même job après contrôle du challenge et de l’URL. Une destination différente donne scope_changed sans extraction métier ni adoption automatique. L’extraction conserve l’attente définie à la navigation quand son appel omet expected_url. Une approbation d’autre cible nécessite un nouvel appel explicite.
+
+Conserver HTTPS/ports, proxy public/IP/DNS, refus strict des frames non attestées, mondes isolés et budgets. Détection Cloudflare via réponse principale cf-mitigated et marqueurs conservateurs ; le signal reste valable pendant les requêtes en cours et les changements de hash. Capture jetée si challenge intervient, sans retry global ni masquage des erreurs du lecteur. Client serveur expose --no-allow-redirects et --resume ; ne pas suivre les redirections HTTP du transport API avec Bearer.
+
+WORLD_NOT_FOUND KUKA reste un défaut de correspondance d’identité de frames/target CDP vérifié séparément. Recette réelle0.2.2 confirme f1extracted/partialfalse, sans établir de causalité avec Cloudflare/redirections. Version0.2.2 déployée, étatauthprojetsréglages vérifié inchangé ; UniversRobot exécute la recette installée avec sa clé existante.

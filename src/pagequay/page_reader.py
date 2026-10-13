@@ -7,7 +7,9 @@ from pathlib import Path
 
 from playwright.async_api import Error as PlaywrightError
 
+from .diagnostics import ReadTrace
 from .errors import PQError
+from .frame_context import bounded_path, frame_path
 
 SCRIPT = Path(__file__).with_name("page_reader.js").read_text()
 FRAME_PATH = """function() {
@@ -26,25 +28,39 @@ FRAME_PATH = """function() {
 }"""
 
 
-async def isolated_read(page, function, arguments, *, max_bytes, frame=None):
+async def isolated_read(page, function, arguments, *, max_bytes, frame=None, trace=None):
     session = None
+    trace = trace or ReadTrace(frame or page.main_frame)
     try:
         async with asyncio.timeout(10):
-            expected = []
-            current = frame or page.main_frame
-            while current.parent_frame is not None:
-                parent = current.parent_frame
-                expected.append(parent.child_frames.index(current))
-                current = parent
-                if len(expected) > 32:
-                    raise PQError("UNAVAILABLE", "Frame nesting exceeds read limit", 503)
-            expected.reverse()
-            # An OOPIF owns a target; in-process frames use the page target instead.
-            if frame is not None and frame != page.main_frame:
+            trace.stage = "context_selection"
+            trace.selection = {
+                "session_type": "unattached",
+                "candidate_count": 0,
+                "expected_path": None,
+                "observed_paths": [],
+                "paths_truncated": False,
+                "failure": None,
+                "path_source": "isolated_frame_owners",
+            }
+            expected = await frame_path(frame or page.main_frame)
+            trace.selection["expected_path"] = expected
+            trace.selection["session_type"] = "page"
+            # Find the target that owns this frame. An in-process descendant of an
+            # OOPIF belongs to that ancestor target, not to the top page target.
+            trace.stage = "cdp_session"
+            owner = frame or page.main_frame
+            while owner != page.main_frame:
                 try:
-                    session = await page.context.new_cdp_session(frame)
-                except PlaywrightError:
-                    pass
+                    session = await page.context.new_cdp_session(owner)
+                    trace.selection["session_type"] = (
+                        "frame_target" if owner == frame else "ancestor_frame_target"
+                    )
+                    break
+                except PlaywrightError as exc:
+                    if "does not have a separate CDP session" not in str(exc):
+                        raise
+                    owner = owner.parent_frame
             if session is None:
                 session = await page.context.new_cdp_session(page)
             frame_ids = []
@@ -58,15 +74,19 @@ async def isolated_read(page, function, arguments, *, max_bytes, frame=None):
                         frame_ids.append(frame_id)
 
             session.on("Runtime.executionContextCreated", context_created)
+            trace.stage = "context_selection"
             await session.send("Runtime.enable")
+            trace.selection["candidate_count"] = len(frame_ids)
             world = None
             # Never fetch TargetInfo or FrameTree: these copy page-controlled titles,
             # URLs and every frame name before any document budget could be enforced.
             for frame_id in frame_ids:
+                trace.stage = "isolated_world"
                 candidate = await session.send(
                     "Page.createIsolatedWorld",
                     {"frameId": frame_id, "worldName": "pagequay-read"},
                 )
+                trace.stage = "context_selection"
                 probe = await session.send(
                     "Runtime.callFunctionOn",
                     {
@@ -75,11 +95,39 @@ async def isolated_read(page, function, arguments, *, max_bytes, frame=None):
                         "returnByValue": True,
                     },
                 )
-                if probe.get("result", {}).get("value") == expected:
+                if "exceptionDetails" in probe:
+                    raise PQError(
+                        "UNAVAILABLE",
+                        "Frame context probe failed",
+                        503,
+                        details={"cause": "JAVASCRIPT_EXCEPTION"},
+                    )
+                observed = bounded_path(probe.get("result", {}).get("value"))
+                if len(trace.selection["observed_paths"]) < 8:
+                    trace.selection["observed_paths"].append(observed)
+                else:
+                    trace.selection["paths_truncated"] = True
+                if observed == expected:
                     world = candidate
                     break
             if world is None:
-                raise PQError("UNAVAILABLE", "Frame unavailable during extraction", 503)
+                trace.selection["failure"] = "no_candidates" if not frame_ids else "path_mismatch"
+                raise PQError(
+                    "UNAVAILABLE",
+                    "Frame unavailable during extraction",
+                    503,
+                    details={"cause": "WORLD_NOT_FOUND"},
+                )
+            trace.selection["selected_path"] = expected
+            # Inventory and context must still identify the same mounted frame.
+            if await frame_path(frame or page.main_frame) != expected:
+                raise PQError(
+                    "NAVIGATION_CHANGED",
+                    "Frame position changed during selection",
+                    409,
+                    details={"cause": "WORLD_NOT_FOUND"},
+                )
+            trace.stage = "extraction"
             result = await session.send(
                 "Runtime.callFunctionOn",
                 {
@@ -91,18 +139,63 @@ async def isolated_read(page, function, arguments, *, max_bytes, frame=None):
                 },
             )
             if "exceptionDetails" in result:
-                raise PQError("UNAVAILABLE", "Document extraction failed", 503)
+                raise PQError(
+                    "UNAVAILABLE",
+                    "Document extraction failed",
+                    503,
+                    details={"cause": "JAVASCRIPT_EXCEPTION"},
+                )
+            trace.stage = "serialization"
             value = result["result"].get("value")
             if not isinstance(value, str) or len(value) > max_bytes:
                 raise PQError("INVALID_INPUT", "Content exceeds configured size limit", 413)
             if len(value.encode("utf-8")) > max_bytes:
                 raise PQError("INVALID_INPUT", "Content exceeds configured size limit", 413)
             payload = json.loads(value)
+            if not isinstance(payload, dict) or (
+                "value" not in payload and not payload.get("too_large")
+            ):
+                raise PQError(
+                    "UNAVAILABLE", "Read schema rejected", 503, details={"cause": "SCHEMA_REJECTED"}
+                )
             if payload.get("too_large"):
                 raise PQError("INVALID_INPUT", "Content exceeds configured size limit", 413)
+            # Verify the SAME isolated execution context still exists after capture.
+            trace.stage = "context_verification"
+            verified = await session.send(
+                "Runtime.callFunctionOn",
+                {
+                    "functionDeclaration": "function() { return true; }",
+                    "executionContextId": world["executionContextId"],
+                    "returnByValue": True,
+                },
+            )
+            if verified.get("result", {}).get("value") is not True:
+                raise PQError(
+                    "NAVIGATION_CHANGED",
+                    "Read context changed during capture",
+                    409,
+                    details={"cause": "WORLD_NOT_FOUND"},
+                )
+            if await frame_path(frame or page.main_frame) != expected:
+                raise PQError(
+                    "NAVIGATION_CHANGED",
+                    "Frame position changed during capture",
+                    409,
+                    details={"cause": "WORLD_NOT_FOUND"},
+                )
             return payload["value"]
+    except PQError as exc:
+        if not (exc.details or {}).get("stage"):
+            exc.details = trace.failure(exc)
+        raise
     except (PlaywrightError, TimeoutError, KeyError, IndexError, ValueError) as exc:
-        raise PQError("UNAVAILABLE", "Document unavailable during extraction", 503) from exc
+        details = trace.failure(exc)
+        if isinstance(exc, (KeyError, ValueError, IndexError)):
+            details["cause"] = "SCHEMA_REJECTED"
+        raise PQError(
+            "UNAVAILABLE", "Document unavailable during extraction", 503, details=details
+        ) from exc
     finally:
         if session is not None:
             with suppress(PlaywrightError, TimeoutError):

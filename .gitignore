@@ -19,6 +19,7 @@ dist/
 # Local diagnostics may contain machine names, IP addresses and captured pages.
 docs/testing/*
 !docs/testing/REPORT.md
+!docs/testing/ACQUISITION_REPORT.md
 !docs/testing/structured-complex.json
 !docs/testing/structured-complex-compact.json
 pagequay-*-probe*
@@ -26,3 +27,7 @@ pagequay-*-probe*
 # Private client checkpoint: queries/cursors/results (no API key).
 pagequay-ddg-checkpoint.json
 pagequay-ddg-checkpoint.json.tmp
+
+# Private acquisition checkpoints and downloaded live content.
+.pq-acquisition*.json
+acquisition.json

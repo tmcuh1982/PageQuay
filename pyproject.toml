@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pagequay"
-version = "0.2.0"
+version = "0.2.2"
 description = "Private persistent browser gateway for macOS"
 requires-python = ">=3.12,<3.15"
 dependencies = [

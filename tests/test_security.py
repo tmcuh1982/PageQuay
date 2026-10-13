@@ -363,6 +363,7 @@ def test_profile_flock_and_migrations(tmp_path):
         "004_search_filters.sql",
         "005_audit_details.sql",
         "006_resource_budgets.sql",
+        "007_job_correlation.sql",
     }
     assert (tmp_path / "pagequay.sqlite3").stat().st_mode & 0o777 == 0o600
     db.close()

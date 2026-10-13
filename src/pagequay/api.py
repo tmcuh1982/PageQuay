@@ -4,7 +4,7 @@ import time
 from contextlib import suppress
 from typing import Annotated
 
-from fastapi import APIRouter, Header, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Header, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 
@@ -19,10 +19,28 @@ from .models import (
     Navigate,
     Search,
     SearchAccepted,
+    StructuredSnapshot,
 )
+from .navigation import exact_error, require_https
 from .page_reader import read_title
+from .storage import uid
 
 router = APIRouter(prefix="/v1")
+
+ACQUISITION_ERRORS = {
+    403: {"model": ErrorResponse, "description": "Project/scope or URL/network policy refusal"},
+    409: {"model": ErrorResponse, "description": "Exact URL or idempotency conflict"},
+    429: {
+        "model": ErrorResponse,
+        "description": "Shared REST quota or job capacity",
+        "headers": {
+            "Retry-After": {
+                "schema": {"type": "integer"},
+                "description": "Seconds until known retry deadline",
+            }
+        },
+    },
+}
 
 
 def access(request, slug, scope=None):
@@ -37,8 +55,23 @@ def access(request, slug, scope=None):
     return rt, project, key
 
 
-def submit(rt, project, key, kind, scope, operation):
-    return rt.jobs.submit(project, key["id"], kind, scope, operation)
+def validate_navigation(body):
+    if not body.allow_redirects and body.expected_url is not None and body.url != body.expected_url:
+        raise exact_error(body.url)
+    if body.expected_url is not None or not body.allow_redirects:
+        require_https(body.url)
+
+
+def submit(rt, project, key, kind, scope, operation, *, request=None, tab_id=None):
+    return rt.jobs.submit(
+        project,
+        key["id"],
+        kind,
+        scope,
+        operation,
+        tab_id=tab_id,
+        request_id=getattr(request.state, "request_id", None) if request else None,
+    )
 
 
 @router.get("/projects/{slug}/key-info", response_model=KeyInfo)
@@ -117,17 +150,33 @@ async def search(
     )
 
 
-@router.post("/projects/{slug}/tabs", status_code=202)
-async def new_tab(slug: str, body: Navigate, request: Request):
+@router.post(
+    "/projects/{slug}/tabs",
+    status_code=202,
+    response_model=SearchAccepted,
+    responses=ACQUISITION_ERRORS,
+)
+async def new_tab(
+    slug: str,
+    body: Navigate,
+    request: Request,
+    idempotency_key: Annotated[
+        str | None, Header(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$")
+    ] = None,
+):
     rt, project, key = access(request, slug, "browser:interact")
+    validate_navigation(body)
     await rt.browser.network_factory(rt.db.policy(project)).resolve(body.url)
-    return submit(
-        rt,
+    return rt.jobs.submit(
         project,
-        key,
+        key["id"],
         "navigate",
         "browser:interact",
         lambda job: rt.browser.navigate(project, body, job),
+        idempotency_key=idempotency_key,
+        payload={"operation": "new_tab", **body.model_dump()},
+        tab_id=uid(),
+        request_id=getattr(request.state, "request_id", None),
     )
 
 
@@ -146,23 +195,40 @@ async def tab(slug: str, tab_id: str, request: Request):
 
 @router.delete("/projects/{slug}/tabs/{tab_id}")
 async def close_tab(slug: str, tab_id: str, request: Request):
-    rt, project, _ = access(request, slug, "browser:interact")
-    await rt.browser.close_tab(project, tab_id)
+    rt, project, key = access(request, slug, "browser:interact")
+    await rt.browser.close_tab(project, tab_id, key_id=key["id"])
     return {"status": "closed"}
 
 
-@router.post("/projects/{slug}/tabs/{tab_id}/navigate", status_code=202)
-async def navigate(slug: str, tab_id: str, body: Navigate, request: Request):
+@router.post(
+    "/projects/{slug}/tabs/{tab_id}/navigate",
+    status_code=202,
+    response_model=SearchAccepted,
+    responses=ACQUISITION_ERRORS,
+)
+async def navigate(
+    slug: str,
+    tab_id: str,
+    body: Navigate,
+    request: Request,
+    idempotency_key: Annotated[
+        str | None, Header(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$")
+    ] = None,
+):
     rt, project, key = access(request, slug, "browser:interact")
     rt.browser.tab(project, tab_id)
+    validate_navigation(body)
     await rt.browser.network_factory(rt.db.policy(project)).resolve(body.url)
-    return submit(
-        rt,
+    return rt.jobs.submit(
         project,
-        key,
+        key["id"],
         "navigate",
         "browser:interact",
         lambda job: rt.browser.navigate(project, body, job, tab_id),
+        idempotency_key=idempotency_key,
+        payload={"operation": "navigate", "tab_id": tab_id, **body.model_dump()},
+        tab_id=tab_id,
+        request_id=getattr(request.state, "request_id", None),
     )
 
 
@@ -177,16 +243,21 @@ async def actions(slug: str, tab_id: str, body: Actions, request: Request):
         "actions",
         "browser:interact",
         lambda job: rt.browser.actions(project, tab_id, body, job),
+        request=request,
+        tab_id=tab_id,
     )
 
 
-@router.get("/projects/{slug}/tabs/{tab_id}/content", status_code=202)
+@router.get(
+    "/projects/{slug}/tabs/{tab_id}/content", status_code=202, response_model=SearchAccepted
+)
 async def content(
     slug: str,
     tab_id: str,
     request: Request,
     format: ContentFormat = "text",
     include_dom: bool = False,
+    expected_url: Annotated[str | None, Query(min_length=1, max_length=4096)] = None,
 ):
     rt, project, key = access(request, slug, "content:read")
     if include_dom and format != "structured":
@@ -198,7 +269,11 @@ async def content(
         key,
         "extract",
         "content:read",
-        lambda job: rt.browser.extract(project, tab_id, format, job, include_dom=include_dom),
+        lambda job: rt.browser.extract(
+            project, tab_id, format, job, include_dom=include_dom, expected_url=expected_url
+        ),
+        request=request,
+        tab_id=tab_id,
     )
 
 
@@ -214,10 +289,22 @@ async def screenshot(slug: str, tab_id: str, request: Request):
         "screenshot",
         "screenshot:read",
         lambda job: rt.browser.screenshot(project, tab_id, job),
+        request=request,
+        tab_id=tab_id,
     )
 
 
-@router.get("/projects/{slug}/artifacts/{artifact_id}")
+@router.get(
+    "/projects/{slug}/artifacts/{artifact_id}",
+    responses={
+        200: {
+            "description": "Bounded artifact. Structured JSON follows StructuredSnapshot; "
+            "legacy JSON, text, HTML and PNG retain their formats.",
+            "model": StructuredSnapshot | dict | list,
+            "content": {"text/plain": {}, "text/html": {}, "image/png": {}},
+        },
+    },
+)
 async def artifact(slug: str, artifact_id: str, request: Request):
     rt, project, key = access(request, slug)
     row, path = rt.artifacts.get(project, artifact_id)
@@ -247,6 +334,9 @@ async def job(slug: str, job_id: str, request: Request):
             "result",
             "error",
             "tab_id",
+            "project",
+            "client_id",
+            "request_id",
         )
     }
 
@@ -359,7 +449,15 @@ async def ws_command(rt, project, key, body):
     allowed = {
         "ping": {"type"},
         "actions": {"type", "tab_id", "actions"},
-        "navigate": {"type", "tab_id", "url", "wait_until"},
+        "navigate": {
+            "type",
+            "tab_id",
+            "url",
+            "wait_until",
+            "expected_url",
+            "allow_redirects",
+            "respect_robots",
+        },
         "resume": {"type", "job_id"},
         "cancel": {"type", "job_id"},
     }
@@ -389,7 +487,14 @@ async def ws_command(rt, project, key, body):
             "browser:interact",
             lambda job: rt.browser.actions(project, tab_id, model, job),
         )
-    model = Navigate.model_validate({k: v for k, v in body.items() if k in {"url", "wait_until"}})
+    model = Navigate.model_validate(
+        {
+            k: v
+            for k, v in body.items()
+            if k in {"url", "wait_until", "expected_url", "allow_redirects", "respect_robots"}
+        }
+    )
+    validate_navigation(model)
     await rt.browser.network_factory(rt.db.policy(project)).resolve(model.url)
     return submit(
         rt,

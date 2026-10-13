@@ -49,6 +49,25 @@
     if (el.matches(':disabled')) result.disabled = true;
     return result;
   };
+  const provenanceOf = (node) => {
+    const parts = [];
+    let current = node, scanned = 0;
+    while (current && current.nodeType !== Node.DOCUMENT_NODE) {
+      if (parts.length >= 32) return { xpath: null, xpath_reason: 'depth_limit' };
+      if (current.nodeType === Node.DOCUMENT_FRAGMENT_NODE)
+        return { xpath: null, xpath_reason: 'shadow_root' };
+      const text = current.nodeType === Node.TEXT_NODE;
+      let position = 1;
+      for (let sibling = current.previousSibling; sibling; sibling = sibling.previousSibling) {
+        if (++scanned > 2000) return { xpath: null, xpath_reason: 'sibling_limit' };
+        if (sibling.nodeType === (text ? Node.TEXT_NODE : Node.ELEMENT_NODE)) position++;
+      }
+      parts.push(text ? `text()[${position}]` : `*[${position}]`);
+      current = current.parentNode;
+    }
+    return current ? { xpath: '/' + parts.reverse().join('/'), xpath_reason: null } :
+      { xpath: null, xpath_reason: 'not_in_document' };
+  };
   const build = (node, depth = 0) => {
     if (visited >= limits.nodes) { cut('nodes'); return null; }
     visited++;
@@ -61,7 +80,7 @@
         return null;
       }
       nodes++;
-      return { node_id: `n${nodes}`, tag: '#text', text: clip(node.nodeValue, 4096) };
+      return { node_id: `n${nodes}`, provenance: provenanceOf(node), tag: '#text', text: clip(node.nodeValue, 4096) };
     }
     if (![Node.ELEMENT_NODE, Node.DOCUMENT_FRAGMENT_NODE].includes(node.nodeType)) return null;
     const tag = node.nodeType === Node.DOCUMENT_FRAGMENT_NODE ? '#shadow-root' : node.localName;
@@ -73,7 +92,7 @@
         (tag === 'input' && node.type === 'hidden')) return null;
     }
     nodes++;
-    const result = { node_id: `n${nodes}`, tag, attributes: tag === '#shadow-root' ? {} : attributes(node), children: [] };
+    const result = { node_id: `n${nodes}`, provenance: provenanceOf(node), tag, attributes: tag === '#shadow-root' ? {} : attributes(node), children: [] };
     // Never serialize input/textarea values, including initial textarea text nodes.
     if (tag === 'input' || tag === 'textarea') return result;
     let children = node.childNodes;
@@ -235,7 +254,7 @@
   const main = [...index.values()].find((node) => node.tag === 'main' || role(node) === 'main') || tree;
   const blocks = [];
   let pending = '', pendingId = null;
-  const emit = (block) => append(blocks, block, 'blocks', limits.blocks);
+  const emit = (block) => append(blocks, { ...block, provenance: index.get(block.node_id)?.provenance || { xpath: null, xpath_reason: 'node_unavailable' } }, 'blocks', limits.blocks);
   const flush = () => {
     const text = pending.replace(/\s+/g, ' ').trim();
     if (text) emit({ type: 'paragraph', node_id: pendingId, text: text.slice(0, 4096) });

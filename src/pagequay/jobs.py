@@ -25,6 +25,7 @@ class Job:
         self.tab_id = None
         self.partial_result = None
         self.duration_ms = None
+        self.request_id = None
 
     def audit_details(self):
         return {
@@ -84,10 +85,16 @@ class Job:
         self.update(self.status, result)
         self.partial_result = result
 
-    async def wait_for_human(self, tab_id, capture):
+    async def wait_for_human(self, tab_id, capture, *, navigation=None):
         self.check_authorization()
         self.resume.clear()
-        self.update("waiting_for_human", {"tab_id": tab_id, "capture": capture})
+        previous_partial = self.partial_result
+        waiting = {"tab_id": tab_id, "capture": capture}
+        if navigation is not None:
+            waiting["navigation"] = navigation
+        if self.kind != "search":
+            self.partial_result = waiting
+        self.update("waiting_for_human", waiting)
         self.manager.events.emit(
             self.project, "challenge.required", job_id=self.id, tab_id=tab_id, scope=self.scope
         )
@@ -96,6 +103,7 @@ class Job:
         except TimeoutError as exc:
             raise PQError("TIMEOUT", "Human intervention timed out", 408) from exc
         self.check_authorization()
+        self.partial_result = previous_partial
         self.update("running")
 
 
@@ -132,6 +140,8 @@ class Jobs:
         idempotency_key=None,
         payload=None,
         reserve=None,
+        tab_id=None,
+        request_id=None,
     ):
         now = time.time()
         if kind == "search" and isinstance(payload, dict):
@@ -161,6 +171,9 @@ class Jobs:
                     "status": row["status"],
                     "url": f"/v1/projects/{project['slug']}/jobs/{row['id']}",
                     "idempotency_replayed": True,
+                    "tab_id": row["tab_id"],
+                    "project": project["slug"],
+                    "client_id": key_id,
                 }
         policy = self.db.policy()
         per_project = sum(job.project["id"] == project["id"] for job in self.active.values())
@@ -180,6 +193,8 @@ class Jobs:
                 },
             )
         job = Job(self, project, key_id, kind, scope)
+        job.tab_id = tab_id
+        job.request_id = request_id
         job.check_authorization()
         with self.db.conn:
             self.db.conn.execute(
@@ -195,9 +210,10 @@ class Jobs:
                     now,
                     None,
                     None,
-                    None,
+                    tab_id,
                 ),
             )
+            self.db.conn.execute("INSERT INTO job_correlation VALUES (?,?)", (job.id, request_id))
             if reserve is not None:
                 reserve(job)
             if idempotency_key is not None:
@@ -219,6 +235,9 @@ class Jobs:
         return {
             "job_id": job.id,
             "status": "queued",
+            "tab_id": job.tab_id,
+            "project": project["slug"],
+            "client_id": key_id,
             "url": f"/v1/projects/{project['slug']}/jobs/{job.id}",
         }
 
@@ -318,6 +337,14 @@ class Jobs:
             raise PQError("NOT_FOUND", "Job not found in this project", 404)
         for field in ("result", "error"):
             row[field] = json.loads(row[field]) if row[field] else None
+        correlation = self.db.one(
+            "SELECT request_id FROM job_correlation WHERE job_id=?", (job_id,)
+        )
+        row.update(
+            project=project["slug"],
+            client_id=row["key_id"],
+            request_id=correlation["request_id"] if correlation else None,
+        )
         return row
 
     def cancel(self, project, job_id):

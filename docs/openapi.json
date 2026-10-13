@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PageQuay",
-    "version": "0.2.0"
+    "version": "0.2.2"
   },
   "paths": {
     "/health/live": {
@@ -207,6 +207,25 @@
               "type": "string",
               "title": "Slug"
             }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
@@ -224,7 +243,47 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchAccepted"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project/scope or URL/network policy refusal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Exact URL or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Shared REST quota or job capacity",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds until known retry deadline"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -408,6 +467,25 @@
               "type": "string",
               "title": "Tab Id"
             }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[A-Za-z0-9._:-]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
@@ -425,7 +503,47 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchAccepted"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project/scope or URL/network policy refusal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Exact URL or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Shared REST quota or job capacity",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds until known retry deadline"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -557,6 +675,24 @@
               "default": false,
               "title": "Include Dom"
             }
+          },
+          {
+            "name": "expected_url",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expected Url"
+            }
           }
         ],
         "responses": {
@@ -564,7 +700,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/SearchAccepted"
+                }
               }
             }
           },
@@ -663,11 +801,29 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Bounded artifact. Structured JSON follows StructuredSnapshot; legacy JSON, text, HTML and PNG retain their formats.",
             "content": {
               "application/json": {
-                "schema": {}
-              }
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/StructuredSnapshot"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    {
+                      "type": "array",
+                      "items": {}
+                    }
+                  ],
+                  "title": "Response 200 Artifact V1 Projects  Slug  Artifacts  Artifact Id  Get"
+                }
+              },
+              "text/plain": {},
+              "text/html": {},
+              "image/png": {}
             }
           },
           "422": {
@@ -888,6 +1044,39 @@
   },
   "components": {
     "schemas": {
+      "AcquisitionArtifact": {
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "title": "Artifact Id"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "media_type": {
+            "type": "string",
+            "title": "Media Type"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "navigation": {
+            "$ref": "#/components/schemas/NavigationMetadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "size",
+          "media_type",
+          "url",
+          "navigation"
+        ],
+        "title": "AcquisitionArtifact"
+      },
       "Action": {
         "properties": {
           "type": {
@@ -974,6 +1163,110 @@
         ],
         "title": "Actions"
       },
+      "ContextSelectionDiagnostic": {
+        "properties": {
+          "session_type": {
+            "type": "string",
+            "enum": [
+              "unattached",
+              "page",
+              "frame_target",
+              "ancestor_frame_target"
+            ],
+            "title": "Session Type"
+          },
+          "path_source": {
+            "type": "string",
+            "const": "isolated_frame_owners",
+            "title": "Path Source"
+          },
+          "candidate_count": {
+            "type": "integer",
+            "maximum": 128.0,
+            "minimum": 0.0,
+            "title": "Candidate Count"
+          },
+          "expected_path": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array",
+                "maxItems": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Path"
+          },
+          "observed_paths": {
+            "items": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Observed Paths"
+          },
+          "paths_truncated": {
+            "type": "boolean",
+            "title": "Paths Truncated"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "no_candidates",
+                  "path_mismatch"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          },
+          "selected_path": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array",
+                "maxItems": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Path"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "session_type",
+          "path_source",
+          "candidate_count",
+          "expected_path",
+          "observed_paths",
+          "paths_truncated",
+          "failure"
+        ],
+        "title": "ContextSelectionDiagnostic"
+      },
       "ErrorResponse": {
         "properties": {
           "error": {
@@ -989,6 +1282,168 @@
           "error"
         ],
         "title": "ErrorResponse"
+      },
+      "FrameDiagnostic": {
+        "properties": {
+          "cause": {
+            "type": "string",
+            "enum": [
+              "FRAME_DETACHED",
+              "TIMEOUT",
+              "WORLD_NOT_FOUND",
+              "JAVASCRIPT_EXCEPTION",
+              "SIZE_LIMIT",
+              "SCHEMA_REJECTED",
+              "OTHER_ERROR"
+            ],
+            "title": "Cause"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "visibility",
+              "cdp_session",
+              "context_selection",
+              "isolated_world",
+              "extraction",
+              "serialization",
+              "context_verification"
+            ],
+            "title": "Stage"
+          },
+          "duration_ms": {
+            "type": "number",
+            "title": "Duration Ms"
+          },
+          "limit_ms": {
+            "type": "integer",
+            "title": "Limit Ms"
+          },
+          "is_detached": {
+            "type": "boolean",
+            "title": "Is Detached"
+          },
+          "observed_at": {
+            "type": "string",
+            "title": "Observed At"
+          },
+          "interpretation": {
+            "type": "string",
+            "title": "Interpretation"
+          },
+          "context_selection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextSelectionDiagnostic"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cause",
+          "stage",
+          "duration_ms",
+          "limit_ms",
+          "is_detached",
+          "observed_at",
+          "interpretation"
+        ],
+        "title": "FrameDiagnostic"
+      },
+      "FrameSnapshot": {
+        "properties": {
+          "frame_id": {
+            "type": "string",
+            "title": "Frame Id"
+          },
+          "parent_frame_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Frame Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "extracted",
+              "omitted",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "cause_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cause Code"
+          },
+          "diagnostic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FrameDiagnostic"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "document": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document"
+          },
+          "context_selection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContextSelectionDiagnostic"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "frame_id",
+          "parent_frame_id",
+          "status"
+        ],
+        "title": "FrameSnapshot"
       },
       "HTTPValidationError": {
         "properties": {
@@ -1039,6 +1494,12 @@
                 "$ref": "#/components/schemas/SearchResult"
               },
               {
+                "$ref": "#/components/schemas/NavigationResult"
+              },
+              {
+                "$ref": "#/components/schemas/AcquisitionArtifact"
+              },
+              {
                 "additionalProperties": true,
                 "type": "object"
               },
@@ -1070,6 +1531,32 @@
               }
             ],
             "title": "Tab Id"
+          },
+          "project": {
+            "type": "string",
+            "title": "Project"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
           }
         },
         "additionalProperties": false,
@@ -1082,7 +1569,10 @@
           "updated_at",
           "result",
           "error",
-          "tab_id"
+          "tab_id",
+          "project",
+          "client_id",
+          "request_id"
         ],
         "title": "JobResponse"
       },
@@ -1217,6 +1707,32 @@
             ],
             "title": "Wait Until",
             "default": "domcontentloaded"
+          },
+          "expected_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Url",
+            "description": "Exact final browser URL after challenge resolution; mismatch returns scope_changed. Enables HTTPS-only navigation."
+          },
+          "allow_redirects": {
+            "type": "boolean",
+            "title": "Allow Redirects",
+            "description": "Defaults to true independently of expected_url and respect_robots. False rejects a different redirect target before follow.",
+            "default": true
+          },
+          "respect_robots": {
+            "type": "boolean",
+            "title": "Respect Robots",
+            "description": "Opt-in bounded robots.txt check; explicit denial blocks acquisition.",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -1225,6 +1741,139 @@
           "url"
         ],
         "title": "Navigate"
+      },
+      "NavigationMetadata": {
+        "properties": {
+          "requested_url": {
+            "type": "string",
+            "title": "Requested Url"
+          },
+          "final_url": {
+            "type": "string",
+            "title": "Final Url"
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Http Status",
+            "description": "Observed main-document HTTP status; never inferred from DOM"
+          },
+          "http_status_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Http Status Reason"
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Type",
+            "description": "Observed main-document Content-Type, distinct from artifact media_type"
+          },
+          "redirect_chain": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Redirect Chain"
+          },
+          "redirect_chain_truncated": {
+            "type": "boolean",
+            "title": "Redirect Chain Truncated"
+          },
+          "observed_at": {
+            "type": "string",
+            "title": "Observed At",
+            "description": "ISO 8601 UTC time of main-frame commit"
+          },
+          "navigation_id": {
+            "type": "string",
+            "title": "Navigation Id"
+          },
+          "source": {
+            "type": "string",
+            "const": "browser_main_document_response",
+            "title": "Source"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "requested_url",
+          "final_url",
+          "http_status",
+          "http_status_reason",
+          "content_type",
+          "redirect_chain",
+          "redirect_chain_truncated",
+          "observed_at",
+          "navigation_id",
+          "source"
+        ],
+        "title": "NavigationMetadata"
+      },
+      "NavigationResult": {
+        "properties": {
+          "tab_id": {
+            "type": "string",
+            "title": "Tab Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "title_truncated": {
+            "type": "boolean",
+            "title": "Title Truncated"
+          },
+          "navigation": {
+            "$ref": "#/components/schemas/NavigationMetadata"
+          },
+          "robots": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Robots"
+          },
+          "network_policy": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Network Policy"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tab_id",
+          "url",
+          "title",
+          "title_truncated",
+          "navigation",
+          "robots",
+          "network_policy"
+        ],
+        "title": "NavigationResult"
       },
       "Search": {
         "properties": {
@@ -1446,6 +2095,39 @@
             "type": "boolean",
             "title": "Idempotency Replayed",
             "default": false
+          },
+          "tab_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tab Id"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
           }
         },
         "additionalProperties": false,
@@ -1684,6 +2366,81 @@
           "cursor_expires_at"
         ],
         "title": "SearchResult"
+      },
+      "StructuredSnapshot": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Schema Version"
+          },
+          "source": {
+            "type": "string",
+            "const": "rendered_dom",
+            "title": "Source"
+          },
+          "navigation": {
+            "$ref": "#/components/schemas/NavigationMetadata"
+          },
+          "captured_at": {
+            "type": "string",
+            "title": "Captured At"
+          },
+          "artifact_id": {
+            "type": "string",
+            "title": "Artifact Id"
+          },
+          "blocks": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Blocks",
+            "description": "DOM-derived node_id and provenance.xpath; null XPath has an explicit reason"
+          },
+          "frames": {
+            "items": {
+              "$ref": "#/components/schemas/FrameSnapshot"
+            },
+            "type": "array",
+            "title": "Frames"
+          },
+          "partial": {
+            "type": "boolean",
+            "title": "Partial"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated"
+          },
+          "robots": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Robots"
+          },
+          "network_policy": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Network Policy"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "source",
+          "navigation",
+          "captured_at",
+          "artifact_id",
+          "blocks",
+          "frames",
+          "partial",
+          "truncated",
+          "robots",
+          "network_policy"
+        ],
+        "title": "StructuredSnapshot"
       },
       "ValidationError": {
         "properties": {

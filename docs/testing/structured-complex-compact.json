@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "title": "Page complexe PQ",
-  "url": "http://localhost:52550/complex",
+  "url": "http://localhost:57290/complex",
   "metadata": {
     "language": "fr",
     "meta": [
@@ -26,17 +26,29 @@
       "type": "heading",
       "node_id": "n6",
       "level": 1,
-      "text": "Catalogue"
+      "text": "Catalogue",
+      "provenance": {
+        "xpath": "/*[1]/*[2]/*[2]/*[1]",
+        "xpath_reason": null
+      }
     },
     {
       "type": "paragraph",
       "node_id": "n8",
-      "text": "Contenu après hydratation"
+      "text": "Contenu après hydratation",
+      "provenance": {
+        "xpath": "/*[1]/*[2]/*[2]/*[2]",
+        "xpath_reason": null
+      }
     },
     {
       "type": "paragraph",
       "node_id": "n10",
-      "text": "Lire la documentation."
+      "text": "Lire la documentation.",
+      "provenance": {
+        "xpath": "/*[1]/*[2]/*[2]/*[3]",
+        "xpath_reason": null
+      }
     },
     {
       "type": "list",
@@ -65,63 +77,95 @@
           "text": "Deuxième",
           "children": []
         }
-      ]
+      ],
+      "provenance": {
+        "xpath": "/*[1]/*[2]/*[2]/*[6]",
+        "xpath_reason": null
+      }
     },
     {
       "type": "table",
       "node_id": "n23",
-      "table_id": "n23"
+      "table_id": "n23",
+      "provenance": {
+        "xpath": "/*[1]/*[2]/*[2]/*[7]",
+        "xpath_reason": null
+      }
     },
     {
       "type": "table",
       "node_id": "n40",
-      "table_id": "n40"
+      "table_id": "n40",
+      "provenance": {
+        "xpath": "/*[1]/*[2]/*[2]/*[8]",
+        "xpath_reason": null
+      }
     },
     {
       "type": "paragraph",
       "node_id": "n53",
-      "text": "Adresse courrielMot de passeMessageChoixOuiNonEnvoyer"
+      "text": "Adresse courrielMot de passeMessageChoixOuiNonEnvoyer",
+      "provenance": {
+        "xpath": "/*[1]/*[2]/*[2]/*[9]/*[1]/text()[1]",
+        "xpath_reason": null
+      }
     },
     {
       "type": "heading",
       "node_id": "n73",
       "level": 2,
-      "text": "Composant ouvert"
+      "text": "Composant ouvert",
+      "provenance": {
+        "xpath": null,
+        "xpath_reason": "shadow_root"
+      }
     },
     {
       "type": "paragraph",
       "node_id": "n75",
-      "text": "Texte du composant Détails projetés"
+      "text": "Texte du composant Détails projetés",
+      "provenance": {
+        "xpath": null,
+        "xpath_reason": "shadow_root"
+      }
     },
     {
       "type": "frame",
       "node_id": "n83",
-      "url": "http://localhost:52551/child",
-      "title": "Document intégré"
+      "url": "http://localhost:57291/child#section",
+      "title": "Document intégré",
+      "provenance": {
+        "xpath": "/*[1]/*[2]/*[2]/*[15]",
+        "xpath_reason": null
+      }
     },
     {
       "type": "heading",
       "node_id": "n84",
       "level": 3,
-      "text": "Titre ARIA"
+      "text": "Titre ARIA",
+      "provenance": {
+        "xpath": "/*[1]/*[2]/*[2]/*[17]",
+        "xpath_reason": null
+      }
     }
   ],
   "links": [
     {
       "node_id": "n3",
       "text": "Navigation globale",
-      "url": "http://localhost:52550/navigation"
+      "url": "http://localhost:57290/navigation"
     },
     {
       "node_id": "n12",
       "text": "documentation",
-      "url": "http://localhost:52550/documentation"
+      "url": "http://localhost:57290/documentation"
     }
   ],
   "images": [
     {
       "node_id": "n81",
-      "url": "http://localhost:52550/image.png",
+      "url": "http://localhost:57290/image.png",
       "alt": "Illustration robot"
     }
   ],
@@ -289,7 +333,7 @@
   "forms": [
     {
       "node_id": "n51",
-      "action": "http://localhost:52550/send",
+      "action": "http://localhost:57290/send",
       "method": "post",
       "label": "",
       "control_ids": [
@@ -328,7 +372,7 @@
     "nodes_visited": 117,
     "nodes_included": 85,
     "open_shadow_roots": 1,
-    "characters": 908
+    "characters": 916
   },
   "truncated": false,
   "truncation_reasons": [],
@@ -339,11 +383,11 @@
       "frame_id": "f1",
       "parent_frame_id": "f0",
       "name": "",
-      "url": "http://localhost:52551/child",
+      "url": "http://localhost:57291/child#section",
       "status": "extracted",
       "document": {
         "title": "Enfant",
-        "url": "http://localhost:52551/child",
+        "url": "http://localhost:57291/child#section",
         "metadata": {
           "language": "",
           "meta": [],
@@ -357,12 +401,20 @@
             "type": "heading",
             "node_id": "n2",
             "level": 2,
-            "text": "Contenu iframe"
+            "text": "Contenu iframe",
+            "provenance": {
+              "xpath": "/*[1]/*[2]/*[1]",
+              "xpath_reason": null
+            }
           },
           {
             "type": "paragraph",
             "node_id": "n4",
-            "text": "Autre origine"
+            "text": "Autre origine",
+            "provenance": {
+              "xpath": "/*[1]/*[2]/*[2]",
+              "xpath_reason": null
+            }
           }
         ],
         "links": [],
@@ -376,17 +428,38 @@
           "nodes_visited": 5,
           "nodes_included": 5,
           "open_shadow_roots": 0,
-          "characters": 61
+          "characters": 69
         },
         "truncated": false,
         "truncation_reasons": []
+      },
+      "context_selection": {
+        "session_type": "page",
+        "candidate_count": 3,
+        "expected_path": [
+          0
+        ],
+        "observed_paths": [
+          [
+            1
+          ],
+          [
+            0
+          ]
+        ],
+        "paths_truncated": false,
+        "failure": null,
+        "path_source": "isolated_frame_owners",
+        "selected_path": [
+          0
+        ]
       }
     },
     {
       "frame_id": "f2",
       "parent_frame_id": "f0",
       "name": "",
-      "url": "http://localhost:52551/child?hidden=1",
+      "url": "http://localhost:57291/child#section?hidden=1",
       "status": "omitted",
       "reason": "hidden_frame"
     }
@@ -398,5 +471,46 @@
     "Closed shadow roots are inaccessible.",
     "Canvas and visual SVG content require a screenshot for visual interpretation.",
     "Node IDs refer to this snapshot only; they are not action selectors."
-  ]
+  ],
+  "navigation": {
+    "requested_url": "http://localhost:57290/complex",
+    "final_url": "http://localhost:57290/complex",
+    "http_status": 200,
+    "http_status_reason": null,
+    "content_type": "text/html; charset=utf-8",
+    "redirect_chain": [],
+    "redirect_chain_truncated": false,
+    "observed_at": "2026-10-12T20:31:09.243085+00:00",
+    "navigation_id": "444ec9f793cb42687a5765710b800117",
+    "source": "browser_main_document_response"
+  },
+  "robots": {
+    "status": "not_checked"
+  },
+  "network_policy": {
+    "schemes": [
+      "http",
+      "https"
+    ],
+    "ports": [
+      80,
+      443
+    ],
+    "url_credentials": "denied",
+    "dns": "all_addresses_public",
+    "connect": "validated_literal_ip",
+    "private_ipv4_ipv6": "denied",
+    "service_workers": "blocked",
+    "websockets": "blocked",
+    "subframe_network": "legacy_public_proxy",
+    "refusals": [],
+    "refusals_truncated": false,
+    "limitations": [
+      "DNS checked at routes, page-target redirects and new proxy connections; existing tunnels remain IP-pinned.",
+      "OOPIF redirects are not attested; strict mode denies all subframe network requests.",
+      "Ports reflect production policy; tests may inject local endpoints."
+    ]
+  },
+  "captured_at": "2026-10-12T20:31:09.352006+00:00",
+  "artifact_id": "1825e174ed6103a241f5c11ce7f687e0"
 }

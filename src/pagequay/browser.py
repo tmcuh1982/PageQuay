@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import time
 from contextlib import suppress
@@ -6,6 +7,7 @@ from dataclasses import dataclass, field
 from email.utils import parsedate_to_datetime
 from html import escape
 from urllib.parse import urlsplit
+from urllib.robotparser import RobotFileParser
 
 from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeout
@@ -14,6 +16,15 @@ from playwright.async_api import async_playwright
 from .audit import TabAudit
 from .bounds import short_url
 from .errors import PQError
+from .frame_context import register_frame_selector
+from .navigation import (
+    NavigationEvidence,
+    exact_error,
+    redirect_guard,
+    require_https,
+    scope_error,
+    utc_now,
+)
 from .network import EgressProxy, NetworkPolicy
 from .page_reader import click_classification, read_page, read_title
 from .profiles import ProfileLock, reset_directory
@@ -27,6 +38,18 @@ class Tab:
     page: object
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     audit: object = None
+    evidence: object = None
+    owner_key_id: str | None = None
+    expected_url: str | None = None
+    https_only: bool = False
+    scope_url: str | None = None
+    respect_robots: bool = False
+    robots_url: str | None = None
+    egress_guard: object = None
+    guard_errors: list = field(default_factory=list)
+    network_denials: list = field(default_factory=list)
+    network_denials_truncated: bool = False
+    robots: dict = field(default_factory=lambda: {"status": "not_checked"})
 
 
 @dataclass
@@ -45,11 +68,11 @@ class BrowserState:
     headless: bool = False
 
 
-async def challenge_detected(page):
+async def challenge_state(page, *, evidence=None):
     # Detection is deliberately conservative and imperfect; never solves a challenge.
     url = urlsplit(page.url)
     if url.hostname in {"google.com", "www.google.com"} and url.path.startswith("/sorry/"):
-        return True
+        return "human"
     sample = await read_page(page, "challenge", max_bytes=200000)
     title = sample["title"].lower()
     text = sample["text"].lower()
@@ -59,12 +82,30 @@ async def challenge_detected(page):
         "unusual traffic",
         "nos systèmes ont détecté un trafic exceptionnel",
         "vérifiez que vous êtes humain",
-        "checking your browser",
         "complete the captcha",
         "please complete the following challenge",
         "select all squares containing a duck",
     )
-    return "just a moment" in title or any(marker in text for marker in markers) or sample["frame"]
+    if any(marker in text for marker in markers) or sample["frame"]:
+        return "human"
+    if (
+        (evidence is not None and evidence.cf_challenge)
+        or "just a moment" in title
+        or any(
+            marker in text
+            for marker in (
+                "checking your browser",
+                "verifying you are human",
+                "performing security verification",
+            )
+        )
+    ):
+        return "automatic"
+    return None
+
+
+async def challenge_detected(page, *, evidence=None):
+    return await challenge_state(page, evidence=evidence) is not None
 
 
 class BrowserManager:
@@ -76,6 +117,7 @@ class BrowserManager:
         self.playwright = None
         self.busy = lambda project_id: False
         self.audit_tasks = set()
+        self.guard_tasks = set()
 
     async def start(self, project):
         async with self.lifecycle:
@@ -109,6 +151,7 @@ class BrowserManager:
             proxy_url = await proxy.start()
             if not self.playwright:
                 self.playwright = await async_playwright().start()
+                await register_frame_selector(self.playwright)
             context = await self.playwright.chromium.launch_persistent_context(
                 str(self.db.root / "profiles" / project["id"]),
                 headless=policy.headless,
@@ -119,6 +162,7 @@ class BrowserManager:
                 service_workers="block",
                 permissions=[],
                 viewport={"width": 1280, "height": 900},
+                user_agent="PageQuay/0.2.0",
                 args=[
                     "--disable-quic",
                     "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
@@ -129,10 +173,42 @@ class BrowserManager:
             state = BrowserState(project, context, lock, proxy, headless=policy.headless)
 
             async def guard(route):
+                tab = None
                 try:
+                    page = route.request.frame.page
+                    tab = next((tab for tab in state.tabs.values() if tab.page is page), None)
+                    if tab and tab.https_only:
+                        require_https(route.request.url)
+                        if route.request.frame != page.main_frame:
+                            # Strict mode fails closed until OOPIF interception is fully attested.
+                            raise PQError(
+                                "NAVIGATION_BLOCKED",
+                                "Strict subframe network is unavailable",
+                                403,
+                                details={"cause": "strict_subframe_network_unattested"},
+                            )
+                    if (
+                        tab
+                        and tab.expected_url
+                        and route.request.is_navigation_request()
+                        and route.request.frame == page.main_frame
+                        and route.request.url != tab.expected_url.split("#", 1)[0]
+                    ):
+                        raise exact_error(route.request.url)
                     await network.resolve(route.request.url)
                     await route.continue_()
-                except PQError:
+                except PQError as exc:
+                    if tab is not None:
+                        if len(tab.network_denials) < 32:
+                            tab.network_denials.append(
+                                {
+                                    "code": exc.code,
+                                    "cause": (exc.details or {}).get("cause", exc.code),
+                                    "main_document": route.request.frame == page.main_frame,
+                                }
+                            )
+                        else:
+                            tab.network_denials_truncated = True
                     if route.request.is_navigation_request():
                         state.blocked_navigations.add(route.request.frame.page)
                     await route.abort("blockedbyclient")
@@ -181,6 +257,7 @@ class BrowserManager:
             asyncio.create_task(page.close())
             return
         tab = Tab(uid(), page)
+        tab.evidence = NavigationEvidence(page)
         tab.audit = TabAudit(self.db, state.project, tab, self.audit_tasks)
         state.tabs[tab.id] = tab
         page.on("dialog", lambda dialog: asyncio.create_task(dialog.dismiss()))
@@ -191,8 +268,23 @@ class BrowserManager:
             "crash", lambda _: self.events.emit(state.project, "browser.crashed", tab_id=tab.id)
         )
 
+    async def _release_guard(self, tab):
+        if tab.egress_guard is not None:
+            guard, tab.egress_guard = tab.egress_guard, None
+            await guard.__aexit__(None, None, None)
+
+    async def _ensure_guard(self, project, tab):
+        if tab.egress_guard is None:
+            guard = redirect_guard(tab.page, self.states[project["id"]].proxy.policy, contract=tab)
+            tab.guard_errors = await guard.__aenter__()
+            tab.egress_guard = guard
+
     def _tab_closed(self, state, tab_id):
-        state.tabs.pop(tab_id, None)
+        tab = state.tabs.pop(tab_id, None)
+        if tab is not None and tab.egress_guard is not None:
+            task = asyncio.create_task(self._release_guard(tab))
+            self.guard_tasks.add(task)
+            task.add_done_callback(self.guard_tasks.discard)
         self.events.emit(state.project, "tab.closed", tab_id=tab_id)
 
     def _closed(self, state):
@@ -214,6 +306,8 @@ class BrowserManager:
         if state:
             state.closing = True
             try:
+                for tab in list(state.tabs.values()):
+                    await self._release_guard(tab)
                 await state.proxy.close()
                 await state.context.close()
             finally:
@@ -270,8 +364,10 @@ class BrowserManager:
         for state in self.states.values():
             state.proxy.policy.policy = self.db.policy(state.project)
 
-    async def close_tab(self, project, tab_id):
+    async def close_tab(self, project, tab_id, *, key_id=None):
         tab = self.tab(project, tab_id)
+        if key_id is not None and tab.owner_key_id is not None and key_id != tab.owner_key_id:
+            raise PQError("FORBIDDEN", "Only the originating key may close this tab", 403)
         if tab.lock.locked():
             raise PQError("CONFLICT", "Tab operation is running", 409)
         await tab.page.close()
@@ -326,7 +422,7 @@ class BrowserManager:
                     ) from exc
             self.db.audit("browser.minimized" if minimized else "browser.restored", project["id"])
 
-    async def new_tab(self, project):
+    async def new_tab(self, project, *, tab_id=None, owner_key_id=None):
         state = await self.state(project)
         async with state.creation_lock:
             state.last_used = time.time()
@@ -367,10 +463,95 @@ class BrowserManager:
             tab = next((tab for tab in state.tabs.values() if tab.page is page), None)
             if tab is None:
                 raise PQError("RATE_LIMITED", "Tab limit reached", 429)
+            if tab_id is not None and tab.id != tab_id:
+                state.tabs.pop(tab.id)
+                tab.id = tab_id
+                state.tabs[tab.id] = tab
+            tab.owner_key_id = owner_key_id
             return tab
 
-    async def human_guard(self, project, tab, job):
-        while await challenge_detected(tab.page):
+    async def check_robots(self, project, url, job):
+        # A dedicated, owned tab goes through the same egress controls, then is closed.
+        parts = urlsplit(url)
+        robots_url = f"{parts.scheme}://{parts.netloc}/robots.txt"
+        helper = await self.new_tab(project, owner_key_id=job.key_id)
+        helper.expected_url = robots_url
+        helper.https_only = parts.scheme == "https"
+        try:
+            network = self.network_factory(self.db.policy(project))
+            async with redirect_guard(
+                helper.page,
+                network,
+                expected_url=robots_url,
+                allow_redirects=False,
+                https_only=helper.https_only,
+            ) as errors:
+                response = await helper.page.goto(
+                    robots_url,
+                    wait_until="domcontentloaded",
+                    timeout=self.db.policy(project).navigation_timeout_seconds * 1000,
+                )
+                if errors:
+                    raise errors[0]
+                if response is None:
+                    raise PQError("ROBOTS_UNAVAILABLE", "Robots HTTP status unknown", 503)
+                evidence = {
+                    "status": "checked",
+                    "url": robots_url,
+                    "http_status": response.status,
+                    "observed_at": utc_now(),
+                    "content_type": response.headers.get("content-type", "")[:256],
+                    "user_agent": "PageQuay/0.2.0",
+                }
+                self._upstream_limit(response)
+                if response.status in {401, 403}:
+                    raise PQError(
+                        "ROBOTS_DENIED", "Robots access explicitly refused", 403, details=evidence
+                    )
+                if response.status in {404, 410}:
+                    return {**evidence, "allowed": True, "basis": "robots_not_found"}
+                if await challenge_detected(helper.page, evidence=helper.evidence):
+                    await self.human_guard(project, helper, job)
+                    raise PQError(
+                        "ROBOTS_UNAVAILABLE",
+                        "Robots changed after human intervention; "
+                        "explicit new acquisition required",
+                        503,
+                    )
+                if response.status != 200:
+                    raise PQError("ROBOTS_UNAVAILABLE", "Robots unavailable", 503)
+                if not response.headers.get("content-type", "").lower().startswith("text/plain"):
+                    raise PQError("ROBOTS_UNAVAILABLE", "Robots is not attested plain text", 503)
+                text = await read_page(helper.page, "text", 65536)
+                parser = RobotFileParser(robots_url)
+                parser.parse(text.splitlines())
+                allowed = parser.can_fetch("PageQuay", url)
+                if not allowed:
+                    raise PQError(
+                        "ROBOTS_DENIED",
+                        "Robots disallows this URL",
+                        403,
+                        details={**evidence, "allowed": False},
+                    )
+                return {
+                    **evidence,
+                    "allowed": True,
+                    "basis": "robots_rules",
+                    "body_sha256": hashlib.sha256(text.encode()).hexdigest(),
+                }
+        finally:
+            await helper.page.close()
+
+    async def human_guard(self, project, tab, job, *, deadline=None):
+        # Passive polling only: no solver, clicks, reload or new navigation budget.
+        if deadline is None:
+            deadline = time.monotonic() + self.db.policy(project).navigation_timeout_seconds
+        while state := await challenge_state(tab.page, evidence=tab.evidence):
+            if job:
+                job.check_authorization()
+            if state == "automatic" and time.monotonic() < deadline:
+                await asyncio.sleep(min(0.25, max(0, deadline - time.monotonic())))
+                continue
             if not job:
                 raise PQError("CHALLENGE_REQUIRED", "Manual intervention required", 409)
             capture = None
@@ -381,43 +562,128 @@ class BrowserManager:
                     "image/png",
                     "screenshot:read",
                 )
-            await job.wait_for_human(tab.id, capture)
+            await job.wait_for_human(tab.id, capture, navigation=tab.evidence.snapshot())
+
+    @staticmethod
+    def check_scope(tab, expected_url):
+        if expected_url is not None and tab.page.url != expected_url:
+            raise scope_error(tab.page.url, navigation=tab.evidence.snapshot())
 
     async def navigate(self, project, request, job, tab_id=None):
-        await self.network_factory(self.db.policy(project)).resolve(request.url)
-        tab = self.tab(project, tab_id) if tab_id else await self.new_tab(project)
+        network = self.network_factory(self.db.policy(project))
+        if (
+            not request.allow_redirects
+            and request.expected_url is not None
+            and request.url != request.expected_url
+        ):
+            raise exact_error(request.url)
+        strict = request.expected_url is not None or not request.allow_redirects
+        if strict:
+            require_https(request.url)
+        await network.resolve(request.url)
+        if tab_id:
+            tab = self.tab(project, tab_id)
+        else:
+            tab = await self.new_tab(project, tab_id=job.tab_id, owner_key_id=job.key_id)
         job.set_tab(tab.id)
-        async with tab.lock, tab.audit.operation("navigate", job, url=request.url):
-            try:
+        try:
+            async with tab.lock, tab.audit.operation("navigate", job, url=request.url):
                 state = self.states[project["id"]]
                 state.blocked_navigations.discard(tab.page)
                 blocked_before = state.proxy.blocked_count
-                response = await tab.page.goto(
-                    request.url,
-                    wait_until=request.wait_until,
-                    timeout=self.db.policy(project).navigation_timeout_seconds * 1000,
+                tab.expected_url = None
+                if not request.allow_redirects:
+                    tab.expected_url = request.expected_url or request.url
+                tab.https_only = strict
+                tab.scope_url = request.expected_url
+                tab.respect_robots = request.respect_robots
+                tab.robots_url = None
+                tab.network_denials.clear()
+                tab.network_denials_truncated = False
+                tab.robots = {"status": "not_checked"}
+                if request.respect_robots:
+                    tab.robots = await self.check_robots(project, request.url, job)
+                    tab.robots_url = request.url
+                await self._ensure_guard(project, tab)
+                tab.guard_errors.clear()
+                errors = tab.guard_errors
+                try:
+                    deadline = time.monotonic() + self.db.policy(project).navigation_timeout_seconds
+                    response = await tab.page.goto(
+                        request.url,
+                        wait_until=request.wait_until,
+                        timeout=self.db.policy(project).navigation_timeout_seconds * 1000,
+                    )
+                    if errors:
+                        raise errors[0]
+                    await self.human_guard(project, tab, job, deadline=deadline)
+                    if errors:
+                        raise errors[0]
+                    self.check_scope(tab, request.expected_url)
+                    self._upstream_limit(response)
+                    if request.respect_robots and tab.page.url != tab.robots_url:
+                        tab.robots = await self.check_robots(project, tab.page.url, job)
+                        tab.robots_url = tab.page.url
+                    checkpoint = tab.evidence.checkpoint(request.expected_url)
+                    title = await read_title(tab.page)
+                    tab.evidence.verify(checkpoint, request.expected_url)
+                    self.events.emit(project, "tab.navigated", tab_id=tab.id)
+                    return {
+                        "tab_id": tab.id,
+                        "url": short_url(tab.page.url),
+                        **title,
+                        "navigation": tab.evidence.snapshot(),
+                        "robots": tab.robots,
+                        "network_policy": self.network_attestation(tab),
+                    }
+                except (PlaywrightTimeout, PlaywrightError) as exc:
+                    if errors:
+                        raise errors[0] from exc
+                    if isinstance(exc, PlaywrightTimeout):
+                        raise PQError("TIMEOUT", "Navigation timed out", 504) from exc
+                    blocked = (
+                        tab.page in state.blocked_navigations
+                        or state.proxy.blocked_count > blocked_before
+                    )
+                    code = (
+                        "NAVIGATION_BLOCKED"
+                        if blocked
+                        else ("BROWSER_CRASHED" if tab.page.is_closed() else "UPSTREAM_UNAVAILABLE")
+                    )
+                    raise PQError(code, "Navigation failed", 502) from exc
+        finally:
+            if getattr(job, "kind", None) == "navigate":
+                partial = dict(job.partial_result or {})
+                partial.update(
+                    tab_id=tab.id,
+                    navigation=tab.evidence.snapshot(),
+                    robots=tab.robots,
+                    network_policy=self.network_attestation(tab),
                 )
-                await self.human_guard(project, tab, job)
-                self._upstream_limit(response)
-                self.events.emit(project, "tab.navigated", tab_id=tab.id)
-                return {
-                    "tab_id": tab.id,
-                    "url": short_url(tab.page.url),
-                    **await read_title(tab.page),
-                }
-            except PlaywrightTimeout as exc:
-                raise PQError("TIMEOUT", "Navigation timed out", 504) from exc
-            except PlaywrightError as exc:
-                blocked = (
-                    tab.page in state.blocked_navigations
-                    or state.proxy.blocked_count > blocked_before
-                )
-                code = (
-                    "NAVIGATION_BLOCKED"
-                    if blocked
-                    else ("BROWSER_CRASHED" if tab.page.is_closed() else "UPSTREAM_UNAVAILABLE")
-                )
-                raise PQError(code, "Navigation failed", 502) from exc
+                job.partial_result = partial
+
+    @staticmethod
+    def network_attestation(tab):
+        return {
+            "schemes": ["https"] if tab.https_only else ["http", "https"],
+            "ports": [443] if tab.https_only else [80, 443],
+            "url_credentials": "denied",
+            "dns": "all_addresses_public",
+            "connect": "validated_literal_ip",
+            "private_ipv4_ipv6": "denied",
+            "service_workers": "blocked",
+            "websockets": "blocked",
+            "subframe_network": "denied" if tab.https_only else "legacy_public_proxy",
+            "refusals": list(tab.network_denials),
+            "refusals_truncated": tab.network_denials_truncated,
+            "limitations": [
+                "DNS checked at routes, page-target redirects and new proxy connections; "
+                "existing tunnels remain IP-pinned.",
+                "OOPIF redirects are not attested; "
+                "strict mode denies all subframe network requests.",
+                "Ports reflect production policy; tests may inject local endpoints.",
+            ],
+        }
 
     def _upstream_limit(self, response):
         if response is None or response.status != 429:
@@ -516,29 +782,75 @@ class BrowserManager:
             await self.human_guard(project, tab, job)
             return {"tab_id": tab_id, "url": short_url(tab.page.url)}
 
-    async def extract(self, project, tab_id, format, job, *, include_dom=False):
+    async def extract(self, project, tab_id, format, job, *, include_dom=False, expected_url=None):
         tab = self.tab(project, tab_id)
         job.set_tab(tab_id)
         async with tab.lock, tab.audit.operation("extract", job, label=format):
-            await self.human_guard(project, tab, job)
-            if format == "structured":
-                snapshot = await extract_structured(
-                    tab.page,
-                    include_dom=include_dom,
-                    max_bytes=self.settings.max_content_bytes,
-                    check=job.check_authorization,
-                )
-                data, media = (
-                    json.dumps(snapshot, ensure_ascii=False, allow_nan=False),
-                    "application/json",
-                )
-            else:
-                value = await read_page(tab.page, format, self.settings.max_content_bytes)
-                if format in {"html", "text"}:
-                    data, media = value, "text/html" if format == "html" else "text/plain"
-                else:
-                    data, media = json.dumps(value), "application/json"
-            return self.artifacts.put(project, data.encode(), media)
+            expected_url = expected_url if expected_url is not None else tab.scope_url
+            deadline = time.monotonic() + self.db.policy(project).navigation_timeout_seconds
+            while True:
+                await self.human_guard(project, tab, job, deadline=deadline)
+                self.check_scope(tab, expected_url)
+                checkpoint = tab.evidence.checkpoint(expected_url)
+                if tab.respect_robots and tab.page.url != tab.robots_url:
+                    tab.robots = await self.check_robots(project, tab.page.url, job)
+                    tab.robots_url = tab.page.url
+                    tab.evidence.verify(checkpoint, expected_url)
+                try:
+                    artifact_id = uid()
+                    if format == "structured":
+                        snapshot = await extract_structured(
+                            tab.page,
+                            include_dom=include_dom,
+                            max_bytes=self.settings.max_content_bytes,
+                            check=lambda checkpoint=checkpoint: (
+                                job.check_authorization(),
+                                tab.evidence.verify(checkpoint, expected_url),
+                            ),
+                            correlation={
+                                "request_id": job.request_id,
+                                "job_id": job.id,
+                                "tab_id": tab_id,
+                                "artifact_id": artifact_id,
+                            },
+                        )
+                        if tab.network_denials:
+                            snapshot["partial"] = True
+                        snapshot.update(
+                            navigation=tab.evidence.snapshot(),
+                            robots=tab.robots,
+                            network_policy=self.network_attestation(tab),
+                            captured_at=utc_now(),
+                            artifact_id=artifact_id,
+                        )
+                        data, media = (
+                            json.dumps(snapshot, ensure_ascii=False, allow_nan=False),
+                            "application/json",
+                        )
+                    else:
+                        value = await read_page(tab.page, format, self.settings.max_content_bytes)
+                        if format in {"html", "text"}:
+                            data, media = value, "text/html" if format == "html" else "text/plain"
+                        else:
+                            data, media = json.dumps(value), "application/json"
+                except PQError as exc:
+                    if exc.code in {
+                        "NAVIGATION_CHANGED",
+                        "scope_changed",
+                    } and await challenge_detected(tab.page, evidence=tab.evidence):
+                        continue
+                    raise
+                if await challenge_detected(tab.page, evidence=tab.evidence):
+                    # Discard the unpublished snapshot. Resume captures a fresh document.
+                    continue
+                self.check_scope(tab, expected_url)
+                tab.evidence.verify(checkpoint, expected_url)
+                if tab.guard_errors:
+                    raise tab.guard_errors[0]
+                return {
+                    **self.artifacts.put(project, data.encode(), media, artifact_id=artifact_id),
+                    "navigation": tab.evidence.snapshot(),
+                }
 
     async def _screenshot(self, project, page):
         state = self.states[project["id"]]
@@ -571,5 +883,7 @@ class BrowserManager:
             await self.stop(state.project, force=True)
         if self.playwright:
             await self.playwright.stop()
+        if self.guard_tasks:
+            await asyncio.gather(*self.guard_tasks)
         if self.audit_tasks:
             await asyncio.gather(*self.audit_tasks)

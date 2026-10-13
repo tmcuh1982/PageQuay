@@ -66,6 +66,25 @@ class KeyInfo(Strict):
 class Navigate(Strict):
     url: str = Field(min_length=1, max_length=4096)
     wait_until: Literal["domcontentloaded", "load", "networkidle"] = "domcontentloaded"
+    expected_url: str | None = Field(
+        None,
+        min_length=1,
+        max_length=4096,
+        description=(
+            "Exact final browser URL after challenge resolution; mismatch returns scope_changed. "
+            "Enables HTTPS-only navigation."
+        ),
+    )
+    allow_redirects: bool = Field(
+        True,
+        description=(
+            "Defaults to true independently of expected_url and respect_robots. "
+            "False rejects a different redirect target before follow."
+        ),
+    )
+    respect_robots: bool = Field(
+        False, description="Opt-in bounded robots.txt check; explicit denial blocks acquisition."
+    )
 
 
 class Action(Strict):
@@ -182,6 +201,111 @@ class SearchAccepted(Strict):
     status: Literal["queued", "running", "waiting_for_human", "completed", "failed", "cancelled"]
     url: str
     idempotency_replayed: bool = False
+    tab_id: str | None = None
+    project: str | None = None
+    client_id: str | None = None
+
+
+class NavigationMetadata(Strict):
+    requested_url: str
+    final_url: str
+    http_status: int | None = Field(
+        description="Observed main-document HTTP status; never inferred from DOM"
+    )
+    http_status_reason: str | None
+    content_type: str | None = Field(
+        description="Observed main-document Content-Type, distinct from artifact media_type"
+    )
+    redirect_chain: list[dict[str, Any]]
+    redirect_chain_truncated: bool
+    observed_at: str = Field(description="ISO 8601 UTC time of main-frame commit")
+    navigation_id: str
+    source: Literal["browser_main_document_response"]
+
+
+class NavigationResult(Strict):
+    tab_id: str
+    url: str
+    title: str
+    title_truncated: bool
+    navigation: NavigationMetadata
+    robots: dict[str, Any]
+    network_policy: dict[str, Any]
+
+
+class AcquisitionArtifact(Strict):
+    artifact_id: str
+    size: int
+    media_type: str
+    url: str
+    navigation: NavigationMetadata
+
+
+class ContextSelectionDiagnostic(Strict):
+    session_type: Literal["unattached", "page", "frame_target", "ancestor_frame_target"]
+    path_source: Literal["isolated_frame_owners"]
+    candidate_count: int = Field(ge=0, le=128)
+    expected_path: list[int] | None = Field(max_length=32)
+    observed_paths: list[list[int] | None] = Field(max_length=8)
+    paths_truncated: bool
+    failure: Literal["no_candidates", "path_mismatch"] | None
+    selected_path: list[int] | None = Field(None, max_length=32)
+
+
+class FrameDiagnostic(Strict):
+    cause: Literal[
+        "FRAME_DETACHED",
+        "TIMEOUT",
+        "WORLD_NOT_FOUND",
+        "JAVASCRIPT_EXCEPTION",
+        "SIZE_LIMIT",
+        "SCHEMA_REJECTED",
+        "OTHER_ERROR",
+    ]
+    stage: Literal[
+        "visibility",
+        "cdp_session",
+        "context_selection",
+        "isolated_world",
+        "extraction",
+        "serialization",
+        "context_verification",
+    ]
+    duration_ms: float
+    limit_ms: int
+    is_detached: bool
+    observed_at: str
+    interpretation: str
+    context_selection: ContextSelectionDiagnostic | None = None
+
+
+class FrameSnapshot(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    frame_id: str
+    parent_frame_id: str | None
+    status: Literal["extracted", "omitted", "unavailable"]
+    reason: str | None = None
+    cause_code: str | None = None
+    diagnostic: FrameDiagnostic | None = None
+    document: dict[str, Any] | None = None
+    context_selection: ContextSelectionDiagnostic | None = None
+
+
+class StructuredSnapshot(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    schema_version: Literal["1.0"]
+    source: Literal["rendered_dom"]
+    navigation: NavigationMetadata
+    captured_at: str
+    artifact_id: str
+    blocks: list[dict[str, Any]] = Field(
+        description="DOM-derived node_id and provenance.xpath; null XPath has an explicit reason"
+    )
+    frames: list[FrameSnapshot]
+    partial: bool
+    truncated: bool
+    robots: dict[str, Any]
+    network_policy: dict[str, Any]
 
 
 class JobResponse(Strict):
@@ -190,9 +314,12 @@ class JobResponse(Strict):
     status: Literal["queued", "running", "waiting_for_human", "completed", "failed", "cancelled"]
     created_at: float
     updated_at: float
-    result: SearchResult | dict[str, Any] | None
+    result: SearchResult | NavigationResult | AcquisitionArtifact | dict[str, Any] | None
     error: dict[str, Any] | None
     tab_id: str | None
+    project: str
+    client_id: str | None
+    request_id: str | None
 
 
 class ErrorResponse(Strict):
