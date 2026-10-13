@@ -22,7 +22,7 @@ Passerelle Web privée et auto-hébergée : un projet possède son propre profil
 | [Acquisition exacte](docs/ACQUISITION.md) | Navigation attestée, URL stricte, robots, diagnostics iframe et client serveur |
 | [OpenAPI](docs/openapi.json) | Contrat API client 0.2.2, également disponible via `/openapi.json` |
 
-Au 10 octobre 2026, le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
+La [release 0.2.2](https://github.com/tmcuh1982/PageQuay/releases/tag/v0.2.2), ses paquets Python et leurs sommes SHA-256 sont publiés le 13 octobre 2026. Le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
 
 ## Installation macOS
 

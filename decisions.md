@@ -159,3 +159,8 @@ Utiliser le runtimejetable sans BearerUniversRobot pour reproductionréelle auto
 Conserver HTTPS/ports, proxy public/IP/DNS, refus strict des frames non attestées, mondes isolés et budgets. Détection Cloudflare via réponse principale cf-mitigated et marqueurs conservateurs ; le signal reste valable pendant les requêtes en cours et les changements de hash. Capture jetée si challenge intervient, sans retry global ni masquage des erreurs du lecteur. Client serveur expose --no-allow-redirects et --resume ; ne pas suivre les redirections HTTP du transport API avec Bearer.
 
 WORLD_NOT_FOUND KUKA reste un défaut de correspondance d’identité de frames/target CDP vérifié séparément. Recette réelle0.2.2 confirme f1extracted/partialfalse, sans établir de causalité avec Cloudflare/redirections. Version0.2.2 déployée, étatauthprojetsréglages vérifié inchangé ; UniversRobot exécute la recette installée avec sa clé existante.
+
+
+## 2026-10-13 — Publication de la release 0.2.2
+
+À la demande explicite de l’utilisateur, publier les changements d’acquisition, KUKA et navigation sur main et créer la release stable v0.2.2. Construire les paquets depuis le commit Git seul pour exclure les données privées ; joindre wheel, archive source et SHA256SUMS. Release publiée et fichiers retéléchargés vérifiés, tag conservé sur le commit de code a763418. L’actualisation documentaire après publication ne déplace pas ce tag immuable.

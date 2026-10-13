@@ -67,3 +67,8 @@ WORLD_NOT_FOUND reproduit sur le site réel puis corrigé dans un runtime jetabl
 Version 0.2.2 déployée : redirections autorisées par défaut sans false implicite dû à robots, attente passive bornée des vérifications automatiques, reprise du même job après intervention humaine, URL finale contrôlée avant extraction et refus scope_changed sans adoption implicite. Les gardes réseau, mondes isolés et budgets existants sont conservés. Suite générale265passed/4skipped, compléments finaux48passed et5passed (ensembles recouvrants), contrat OpenAPI livré identique au listener public et sources/package/module vérifiés. Sauvegarde /private/tmp/pq-navigation-022-backup-_vjth5ei ; clés/projets/réglages inchangés.
 
 KUKA réel revalidé séparément en service jetable : URL finale identique, 69blocs, f1extracted, partialfalse/truncatedfalse. Aucun lien causal entre redirections/Cloudflare et WORLD_NOT_FOUND n’est démontré. Le test authentifié installé reste à effectuer par UniversRobot. Voir [contrat et preuves](NAVIGATION_SCOPE.md) et [traces KUKA](KUKA_FRAME_FIX.md).
+
+
+## Release GitHub — 13 octobre 2026
+
+[PageQuay v0.2.2](https://github.com/tmcuh1982/PageQuay/releases/tag/v0.2.2) publiée, release stable et non brouillon. Le tag annoté v0.2.2 désigne le commit de code `a763418894ca30adbe5bf3779fa6e7e76fe46882`, publié sur main. Archives wheel Python et source tar.gz construites depuis ce commit, avec SHA256SUMS. Les trois fichiers ont été téléchargés depuis GitHub et comparés aux fichiers locaux : hashes identiques. Ressources JavaScript, templates, assets statiques et migration007 vérifiés dans le wheel ; script d’installation et notes inclus dans les sources. Aucun environnement, profil, base privée ou secret publié. Notes : [0.2.2](releases/0.2.2.md).
