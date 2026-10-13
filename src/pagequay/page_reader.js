@@ -12,8 +12,24 @@
   };
   const title = () => clip(document.title, 512);
   if (kind === 'title') return respond({title: title(), title_truncated: document.title.length > 512});
-  if (kind === 'challenge') return respond({title: title(), text: clip(document.body?.innerText, 20000),
-    frame: !!document.querySelector('iframe[src*="recaptcha"],iframe[src*="hcaptcha"],[data-pq-challenge="true"]')});
+  if (kind === 'challenge') {
+    // A form widget or invisible badge does not block reading the main document.
+    // Preserve explicit challenges and visible CAPTCHA frames covering the viewport.
+    const widgets = document.querySelectorAll('iframe[src*="recaptcha"],iframe[src*="hcaptcha"]');
+    let blockingFrame = !!document.querySelector('[data-pq-challenge="true"]');
+    const viewportArea = Math.max(1, innerWidth * innerHeight);
+    for (let i = 0; i < Math.min(widgets.length, 32); i++) {
+      const element = widgets[i];
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      const width = Math.max(0, Math.min(rect.right, innerWidth) - Math.max(0, rect.left));
+      const height = Math.max(0, Math.min(rect.bottom, innerHeight) - Math.max(0, rect.top));
+      if (style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0
+          && width * height >= viewportArea * 0.5) blockingFrame = true;
+    }
+    return respond({title: title(), text: clip(document.body?.innerText, 20000),
+      frame: blockingFrame, captcha_widget: widgets.length > 0});
+  }
   if (kind === 'text' || kind === 'html') {
     let value;
     if (kind === 'text') value = document.body?.innerText || '';
