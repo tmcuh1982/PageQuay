@@ -2,7 +2,7 @@
 ({ include_dom, text_budget }) => {
   const reasons = new Set();
   const limits = { nodes: 8000, depth: 32, blocks: 400, links: 300, images: 100,
-    tables: 20, rows: 50, cells: 30, controls: 100, forms: 30, json_ld: 10 };
+    tables: 20, rows: 50, cells: 30, controls: 100, forms: 30, options: 300, json_ld: 10 };
   let characters = 0, nodes = 0, visited = 0, shadowRoots = 0;
   const seen = new WeakSet();
   const cut = (reason) => reasons.add(reason);
@@ -223,7 +223,7 @@
       };
       if (node.tag === 'select') {
         control.options = [];
-        walk(node, (item) => { if (item.tag === 'option') append(control.options, textOf(item), 'options', 100); });
+        walk(node, (item) => { if (item.tag === 'option') append(control.options, textOf(item), 'options', limits.options); });
       }
       append(controls, control, 'controls', limits.controls);
       if (form && controls.includes(control)) form.control_ids.push(node.node_id);

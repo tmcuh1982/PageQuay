@@ -243,12 +243,13 @@ class AcquisitionArtifact(Strict):
 
 class ContextSelectionDiagnostic(Strict):
     session_type: Literal["unattached", "page", "frame_target", "ancestor_frame_target"]
-    path_source: Literal["isolated_frame_owners"]
+    path_source: Literal["isolated_frame_owners", "frame_target_root"]
     candidate_count: int = Field(ge=0, le=128)
+    stale_candidate_count: int | None = Field(None, ge=0, le=128)
     expected_path: list[int] | None = Field(max_length=32)
     observed_paths: list[list[int] | None] = Field(max_length=8)
     paths_truncated: bool
-    failure: Literal["no_candidates", "path_mismatch"] | None
+    failure: Literal["no_candidates", "path_mismatch", "target_root_ambiguous"] | None
     selected_path: list[int] | None = Field(None, max_length=32)
 
 

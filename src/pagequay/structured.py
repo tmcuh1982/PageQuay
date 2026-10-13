@@ -36,12 +36,6 @@ async def extract_structured(
             "name": frame.name[:256],
             "url": frame.url[:2048],
         }
-        if urlsplit(frame.url).scheme not in {"http", "https", "about"}:
-            if frame == page.main_frame:
-                raise PQError("NAVIGATION_BLOCKED", "Unsupported document scheme", 403)
-            entry.update(status="unavailable", reason="unsupported_frame_scheme")
-            documents.append(entry)
-            continue
         trace = ReadTrace(frame, {**(correlation or {}), "frame_id": entry["frame_id"]})
         try:
             async with asyncio.timeout(min(10, max(0, deadline - time.monotonic()))):
@@ -54,6 +48,12 @@ async def extract_structured(
                             continue
                     finally:
                         await handle.dispose()
+                if urlsplit(frame.url).scheme not in {"http", "https", "about"}:
+                    if frame == page.main_frame:
+                        raise PQError("NAVIGATION_BLOCKED", "Unsupported document scheme", 403)
+                    entry.update(status="unavailable", reason="unsupported_frame_scheme")
+                    documents.append(entry)
+                    continue
                 if read_frames >= MAX_FRAMES:
                     frame_limit_reached = truncated = True
                     break
@@ -122,7 +122,7 @@ async def extract_structured(
         "frame_limit_reached": frame_limit_reached,
         "limitations": [
             "Only mounted DOM content is captured; no automatic scrolling or clicks.",
-            "Closed shadow roots are inaccessible.",
+            "Closed shadow DOM is not traversed; known browser frames may be captured separately.",
             "Canvas and visual SVG content require a screenshot for visual interpretation.",
             "Node IDs refer to this snapshot only; they are not action selectors.",
         ],

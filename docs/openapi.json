@@ -1177,7 +1177,10 @@
           },
           "path_source": {
             "type": "string",
-            "const": "isolated_frame_owners",
+            "enum": [
+              "isolated_frame_owners",
+              "frame_target_root"
+            ],
             "title": "Path Source"
           },
           "candidate_count": {
@@ -1185,6 +1188,19 @@
             "maximum": 128.0,
             "minimum": 0.0,
             "title": "Candidate Count"
+          },
+          "stale_candidate_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 128.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Candidate Count"
           },
           "expected_path": {
             "anyOf": [
@@ -1229,7 +1245,8 @@
                 "type": "string",
                 "enum": [
                   "no_candidates",
-                  "path_mismatch"
+                  "path_mismatch",
+                  "target_root_ambiguous"
                 ]
               },
               {

@@ -45,11 +45,11 @@ L'arbre DOM **dans la réponse** est utile pour comprendre un composant personna
 ## Bornes et limites
 
 - Quatre lectures de documents visibles maximum, principal compris. Inventaire limité à 32 frames ; les frames cachées sont signalées comme omises sans consommer une lecture. Inventaire ou lectures visibles excédentaires : frame_limit_reached et partial. Durée totale 40 secondes, au plus 10 secondes par frame ; dépassement global typé TIMEOUT. Les frames détachées/non réactives restent indisponibles.
-- Par document : 8 000 nœuds visités (y compris cachés/omis), profondeur 32, budget texte de min(160 000, quota de contenu / 8) caractères ; URL puis titre réservent ce budget avant métadonnées et DOM ; valeurs textuelles bornées. Maximum 400 blocs, 300 liens, 100 images/contrôles, 20 tables, 50 lignes et 30 cellules par ligne, 30 formulaires. JSON-LD : 10 scripts visités, y compris invalides, 20 000 caractères par script, objets/niveaux/collections bornés ; contenu parsé, jamais exécuté.
+- Par document : 8 000 nœuds visités (y compris cachés/omis), profondeur 32, budget texte de min(160 000, quota de contenu / 8) caractères ; URL puis titre réservent ce budget avant métadonnées et DOM ; valeurs textuelles bornées. Maximum 400 blocs, 300 liens, 100 images/contrôles, 300 options textuelles par select, 20 tables, 50 lignes et 30 cellules par ligne, 30 formulaires. JSON-LD : 10 scripts visités, y compris invalides, 20 000 caractères par script, objets/niveaux/collections bornés ; contenu parsé, jamais exécuté.
 - Les limites sont signalées ; le quota global `max_content_bytes`, le quota disque et le TTL s'appliquent aussi à l'artefact. Une représentation encore trop volumineuse est refusée par les contrôles d'artefacts habituels.
 - Snapshot des éléments montés actuellement : pour une SPA/hydratation, attendre d'abord un sélecteur pertinent ; pour une liste virtualisée ou lazy loading, effectuer les actions explicites nécessaires puis extraire à nouveau. Aucun scroll/clic/chargement infini automatique.
 - Le filtrage CSS est heuristique (display/visibility/content-visibility, hidden et aria-hidden). Il ne reconstitue pas la géométrie, l'occlusion, le contenu des pseudo-éléments ni le rendu visuel exact. Les frames sont des snapshots séparés ; la réponse entière n'est pas une capture atomique de tous les documents.
-- Closed Shadow DOM et données internes JavaScript non exposées ne sont pas récupérés. Le DOM ne transforme pas les pixels d'un canvas ou un graphique SVG en données de graphique : utiliser une capture et, si disponible, les données accessibles textuellement. Aucune OCR ou interprétation d'image ajoutée ici.
+- Le DOM des racines Shadow fermées n’est pas parcouru. Les frames connues du navigateur peuvent être capturées séparément si leur identité est vérifiable, y compris sous un hôte Shadow fermé. Les données internes JavaScript non exposées ne sont pas récupérées. Le DOM ne transforme pas les pixels d'un canvas ou un graphique SVG en données de graphique : utiliser une capture et, si disponible, les données accessibles textuellement. Aucune OCR ou interprétation d'image ajoutée ici.
 - Aucun cookie, storage, script/style ni valeur d'input/textarea dans l'arbre. Les valeurs d'attribut value des options sont aussi exclues. L'extraction reste protégée par le projet et son scope ; elle ne résout pas les CAPTCHA.
 
 ## Recette
@@ -59,3 +59,10 @@ L'arbre DOM **dans la réponse** est utile pour comprendre un composant personna
 ```
 
 La fixture couvre l'hydratation JavaScript, un Shadow DOM ouvert avec slot, une racine fermée, une iframe d'une autre origine (port local distinct), une iframe cachée, une liste imbriquée, les tables HTML et ARIA, les spans, labels et contrôles externes au form, JSON-LD, canvas, valeurs privées omises, limites de profondeur/nœuds/frames et données malformées. Les serveurs locaux sont autorisés uniquement via la dépendance réseau des tests, pas en production.
+
+
+### Identité des frames sans slot Window — CHG-20261013-028
+
+Une frame Shadow peut ne pas apparaître dans window.frames. Le lecteur exige alors une session CDP liée à cette frame exacte ; DOM.getFrameOwner distingue la racine (propriétaire hors cible) des descendants locaux, sans FrameTree/TargetInfo ni titres/URL transférés. Une racine unique, le propriétaire monté et le même contexte sont vérifiés avant/après capture. Ancêtre/page ou racines absentes/ambiguës refusés. Diagnostic path_source=frame_target_root, failure=target_root_ambiguous ; compteur stale_candidate_count optionnel0..128, absent=inconnu.
+
+La visibilité est contrôlée avant le schéma : frame cachée omitted/hidden_frame sans lire son contenu ; blob visible reste unavailable/unsupported_frame_scheme. Options publiques de select limitées à300 ; dépassement toujours partial/options, valeurs de formulaire exclues. Aucun solver ni transfert d’approbation.

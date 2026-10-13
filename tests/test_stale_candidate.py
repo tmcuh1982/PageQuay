@@ -5,7 +5,9 @@ import pytest
 from playwright.async_api import Error
 
 from pagequay import page_reader
+from pagequay.diagnostics import ReadTrace
 from pagequay.errors import PQError
+from pagequay.models import ContextSelectionDiagnostic
 
 
 class Session:
@@ -56,6 +58,17 @@ async def test_candidate_disappearance_does_not_hide_live_main_document(monkeypa
             await page_reader.isolated_read(page, "fixed_reader", {}, max_bytes=1000)
         assert not any(p and p.get("frameId") == "main" for _, p in session.calls)
     else:
-        assert await page_reader.isolated_read(page, "fixed_reader", {}, max_bytes=1000) == {
-            "title": "valid"
-        }
+        trace = ReadTrace(frame)
+        assert await page_reader.isolated_read(
+            page, "fixed_reader", {}, max_bytes=1000, trace=trace
+        ) == {"title": "valid"}
+
+        assert ContextSelectionDiagnostic.model_validate(trace.selection).stale_candidate_count == 1
+
+        legacy = {k: v for k, v in trace.selection.items() if k != "stale_candidate_count"}
+        assert ContextSelectionDiagnostic.model_validate(legacy).stale_candidate_count is None
+        for bad in [-1, 129]:
+            with pytest.raises(ValueError):
+                ContextSelectionDiagnostic.model_validate(
+                    {**trace.selection, "stale_candidate_count": bad}
+                )

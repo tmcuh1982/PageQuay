@@ -34,3 +34,8 @@ La recherche DuckDuckGo 0.2 stocke les reliquats/formulaires Next dans `search_c
 ## Export AgXeed — CHG-20261013-026
 
 L’identité URL/titre est réservée avant métadonnées et DOM. Plafonds par document :8 000nœuds, min(160 000,max_content_bytes/8) caractères. Inventaire32frames, quatre lectures visibles, durée globale40s et dix secondes/frame ; frames cachées signalées sans consommer de lecture. Limites atteintes toujours signalées, captures incohérentes refusées. Aucun accès/profil/clé modifié ; lecture isolée et garde de portée inchangées. Voir EXTRACTION.md et AGXEED_EXPORT_FIX.md.
+
+
+## Frames Shadow et contrat de diagnostic — CHG-20261013-028
+
+Le lecteur associe les frames Shadow non énumérées par Window à la racine de leur cible CDP exacte, via des IDs de propriétaire opaques. Racine ambiguë, propriétaire changé, contexte remplacé ou session d’ancêtre refusés. Le DOM fermé du parent n’est pas parcouru ; les documents iframe connus restent séparés. Contrôle de visibilité avant schéma, blob visible toujours refusé. Contrat OpenAPI régénéré ; compteur de candidats périmés optionnel borné. Aucun accès, profil, clé, quota d’egress ou garde de portée modifié. Voir ONROBOT_FRAME_FIX.md.

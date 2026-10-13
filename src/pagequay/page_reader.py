@@ -30,6 +30,7 @@ FRAME_PATH = """function() {
 
 async def isolated_read(page, function, arguments, *, max_bytes, frame=None, trace=None):
     session = None
+    owner_handle = None
     trace = trace or ReadTrace(frame or page.main_frame)
     try:
         async with asyncio.timeout(10):
@@ -43,7 +44,13 @@ async def isolated_read(page, function, arguments, *, max_bytes, frame=None, tra
                 "failure": None,
                 "path_source": "isolated_frame_owners",
             }
-            expected = await frame_path(frame or page.main_frame)
+            path_error = None
+            try:
+                expected = await frame_path(frame or page.main_frame)
+            except PQError as exc:
+                if frame is None or exc.message != "Frame owner not present in current DOM":
+                    raise
+                path_error, expected = exc, None
             trace.selection["expected_path"] = expected
             trace.selection["session_type"] = "page"
             # Find the target that owns this frame. An in-process descendant of an
@@ -77,6 +84,33 @@ async def isolated_read(page, function, arguments, *, max_bytes, frame=None, tra
             trace.stage = "context_selection"
             await session.send("Runtime.enable")
             trace.selection["candidate_count"] = len(frame_ids)
+            if path_error is not None:
+                # The root of this EXACT target has its owner in the parent
+                # target. Local descendants return only an opaque backend node ID.
+                # Never select the first context or fetch titles/URLs/FrameTree.
+                if trace.selection["session_type"] != "frame_target":
+                    raise path_error
+                roots = []
+                for frame_id in frame_ids:
+                    try:
+                        await session.send("DOM.getFrameOwner", {"frameId": frame_id})
+                    except PlaywrightError as exc:
+                        if "Frame with the given id does not belong to the target" not in str(exc):
+                            raise
+                        roots.append(frame_id)
+                if len(roots) != 1:
+                    trace.selection["failure"] = "target_root_ambiguous"
+                    raise path_error
+                frame_ids = roots
+                owner_handle = await frame.frame_element()
+                if frame.is_detached() or await owner_handle.content_frame() != frame:
+                    raise PQError(
+                        "NAVIGATION_CHANGED",
+                        "Frame owner changed",
+                        409,
+                        details={"cause": "WORLD_NOT_FOUND"},
+                    )
+                trace.selection["path_source"] = "frame_target_root"
             world = None
             # Never fetch TargetInfo or FrameTree: these copy page-controlled titles,
             # URLs and every frame name before any document budget could be enforced.
@@ -87,6 +121,9 @@ async def isolated_read(page, function, arguments, *, max_bytes, frame=None, tra
                         "Page.createIsolatedWorld",
                         {"frameId": frame_id, "worldName": "pagequay-read"},
                     )
+                    if owner_handle is not None:
+                        world = candidate
+                        break
                     trace.stage = "context_selection"
                     probe = await session.send(
                         "Runtime.callFunctionOn",
@@ -130,7 +167,11 @@ async def isolated_read(page, function, arguments, *, max_bytes, frame=None, tra
                 )
             trace.selection["selected_path"] = expected
             # Inventory and context must still identify the same mounted frame.
-            if await frame_path(frame or page.main_frame) != expected:
+            if (
+                frame.is_detached() or await owner_handle.content_frame() != frame
+                if owner_handle is not None
+                else await frame_path(frame or page.main_frame) != expected
+            ):
                 raise PQError(
                     "NAVIGATION_CHANGED",
                     "Frame position changed during selection",
@@ -187,7 +228,11 @@ async def isolated_read(page, function, arguments, *, max_bytes, frame=None, tra
                     409,
                     details={"cause": "WORLD_NOT_FOUND"},
                 )
-            if await frame_path(frame or page.main_frame) != expected:
+            if (
+                frame.is_detached() or await owner_handle.content_frame() != frame
+                if owner_handle is not None
+                else await frame_path(frame or page.main_frame) != expected
+            ):
                 raise PQError(
                     "NAVIGATION_CHANGED",
                     "Frame position changed during capture",
@@ -207,6 +252,9 @@ async def isolated_read(page, function, arguments, *, max_bytes, frame=None, tra
             "UNAVAILABLE", "Document unavailable during extraction", 503, details=details
         ) from exc
     finally:
+        if owner_handle is not None:
+            with suppress(PlaywrightError, TimeoutError):
+                await asyncio.wait_for(owner_handle.dispose(), 1)
         if session is not None:
             with suppress(PlaywrightError, TimeoutError):
                 await asyncio.wait_for(session.detach(), 2)
