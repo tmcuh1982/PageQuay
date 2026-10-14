@@ -17,6 +17,7 @@ from .audit import TabAudit
 from .bounds import short_url
 from .errors import PQError
 from .navigation_diagnostics import navigation_error_details
+from .startup_diagnostics import startup_error_details
 from .frame_context import register_frame_selector
 from .navigation import (
     NavigationEvidence,
@@ -148,11 +149,15 @@ class BrowserManager:
         network = self.network_factory(policy)
         proxy = EgressProxy(network)
         context = None
+        startup_step = 'proxy_start'
         try:
             proxy_url = await proxy.start()
             if not self.playwright:
+                startup_step = 'playwright_start'
                 self.playwright = await async_playwright().start()
+                startup_step = 'selector_registration'
                 await register_frame_selector(self.playwright)
+            startup_step = 'browser_launch'
             context = await self.playwright.chromium.launch_persistent_context(
                 str(self.db.root / "profiles" / project["id"]),
                 headless=policy.headless,
@@ -170,6 +175,7 @@ class BrowserManager:
                     "--disable-background-networking",
                 ],
             )
+            startup_step = 'browser_setup'
             context.set_default_timeout(policy.navigation_timeout_seconds * 1000)
             state = BrowserState(project, context, lock, proxy, headless=policy.headless)
 
@@ -248,7 +254,8 @@ class BrowserManager:
             if isinstance(exc, PQError):
                 raise
             raise PQError(
-                "BROWSER_CRASHED", "Browser start failed; run scripts/doctor.sh", 503
+                "BROWSER_CRASHED", "Browser start failed; run scripts/doctor.sh", 503,
+                details=startup_error_details(exc, startup_step),
             ) from exc
 
     def _register(self, state, page):

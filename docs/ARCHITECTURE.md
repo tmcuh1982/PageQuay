@@ -1,5 +1,12 @@
 # Composants et flux
 
+Le démarrage du navigateur conserve BROWSER_CRASHED et fournit des diagnostics
+bornés stage/startup_step/cause/error_class. Les exceptions et logs Chromium
+ne traversent pas l'API ; timeout, exécutable manquant et marqueur de verrou
+reconnus sont distincts, les autres causes restent inconnues. Verrous/nettoyage,
+clés et profils sont préservés. Voir STARTUP_DIAGNOSTICS.md pour la reproduction
+sans profil installé et les limites du diagnostic historique.
+
 ```mermaid
 flowchart LR
     Client[Clients Tailscale] -->|HTTPS · Bearer REST / ticket WS| Public[API seule · 127.0.0.1:8766]
