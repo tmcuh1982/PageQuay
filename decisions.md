@@ -193,3 +193,8 @@ Conserver `launch_persistent_context` et toutes ses gardes, mais terminer le pip
 Refuser ws/wss par la catégorie native « autres proxys » de Chromium, avec un listener HTTP de refus distinct, sans remplacement JavaScript ni repli direct. Ne pas exposer le CDP local par l’API ou un proxy distant. Les essais Music Store constituent une observation limitée, pas une garantie d’accès ni un contournement automatique de CAPTCHA.
 
 Préparer et valider un commit local de release 0.2.4 avec notes, version, contrat et lock cohérents. Conserver le navigateur de démonstration déjà ouvert ; les tests automatisés utilisent leurs profils séparés. Le runtime installé conserve ses métadonnées 0.2.2 et sa configuration Chromium. La demande actuelle ne publie pas de tag ni de release GitHub.
+
+
+## 2026-10-14 — Première release v1
+
+La consigne « fais une v1 en release » remplace la publication prévue de 0.2.4 par v1.0.0. Conserver le commit 0.2.4 dans l’historique et aligner les métadonnées publiques sur 1.0.0 sans modifier le code navigateur validé. Publier le commit et le tag annoté, construire les archives uniquement depuis ce commit et vérifier les assets retéléchargés. Ne pas modifier les releases antérieures ni redémarrer le service installé.

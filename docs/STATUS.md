@@ -1,6 +1,6 @@
 # État de PageQuay — 14 octobre 2026
 
-Version **0.2.4**, MVP développé et vérifié localement sur macOS Apple Silicon. La recette de déploiement et le parcours Google depuis le MacBook Air restent partiels. Ce document décrit l'état observé, sans considérer une confirmation SSH comme un test API réussi.
+Version **1.0.0**, MVP développé et vérifié localement sur macOS Apple Silicon. La recette de déploiement et le parcours Google depuis le MacBook Air restent partiels. Ce document décrit l'état observé, sans considérer une confirmation SSH comme un test API réussi.
 
 ## Fonctionnalités livrées
 
@@ -79,3 +79,8 @@ L'action cookies et le choix UniversRobot ont été déployés et vérifiés dan
 Port CDP explicite loopback avec relais Playwright et blocage WebSocket par règle de proxy native, sans remplacement JavaScript. Chrome installé et Chromium vérifiés en profils neufs ; cinq recherches et cinq fiches Music Store supplémentaires réussies dans la même session Chromium (HTTP 200, aucun défi Cloudflare observé). Le premier clic a expiré puis la série a utilisé les liens observés via navigation API. Voir [transport et recette](BROWSER_TRANSPORT.md) et [notes 0.2.4](releases/0.2.4.md).
 
 Correctif runtime déployé dans le service, prêt et configuré sur Chromium ; profils précédents sauvegardés, réglages et permissions conservés. Métadonnées installées encore 0.2.2. Le dépôt prépare un commit local 0.2.4 ; aucune publication distante de cette version n’est revendiquée. La session de démonstration reste ouverte, soumise à son délai d’inactivité.
+
+
+## Version 1.0.0 — 14 octobre 2026
+
+L’utilisateur demande une release v1 à la place de la publication 0.2.4. Le commit 0.2.4 validé est conservé ; seules les métadonnées de version, le contrat public et les documents de release passent à 1.0.0. Code navigateur inchangé, suite complète 343 réussis/4 ignorés toujours applicable ; contrôle séparé du contrat/version avant publication. Notes et liste des archives : [1.0.0](releases/1.0.0.md). Cette publication ne réinstalle ni ne redémarre le service local.

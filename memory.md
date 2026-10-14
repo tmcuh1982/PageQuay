@@ -1,5 +1,9 @@
 # Mémoire de travail — PageQuay (PQ)
 
+## 14 octobre 2026 — Publication v1 demandée
+
+La demande de publier 0.2.4 a été remplacée avant toute mutation distante par « fais une v1 en release ». Préparer v1.0.0 depuis le commit local 31dd4ec (343 tests réussis/4 ignorés) : métadonnées et contrat à 1.0.0, notes dédiées, code navigateur inchangé. Compte GitHub tmcuh1982 et droit ADMIN sur tmcuh1982/PageQuay public vérifiés ; origin/main reste sur la release précédente. Construire wheel/sdist/SHA256SUMS depuis le commit Git, publier main puis tag annoté v1.0.0 et release stable, vérifier références et fichiers retéléchargés. Aucun déploiement ou redémarrage du service demandé.
+
 ## 14 octobre 2026 — Transport CDP, WebSockets natifs et commit 0.2.4
 
 État courant : relais `cdp_launch.py` du pipe Playwright vers le port CDP explicite loopback du navigateur enfant ; proxy natif à deux listeners pour HTTP/HTTPS publics et refus ws/wss avant DNS. Initialisation persistante et gardes conservées, `route_web_socket` retiré. Comparaisons suggérant l’effet de cette instrumentation sur Music Store, sans preuve générale des décisions Cloudflare. Tests Chrome/Chromium couvrant constructeur natif, frames/popups/workers, aucun handshake amont et absence de repli direct.

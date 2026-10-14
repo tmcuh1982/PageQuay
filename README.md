@@ -60,7 +60,7 @@ Les connexions WebSocket des pages sont refusées par une règle de proxy native
 
 `PQ_BROWSER_CHANNEL=chrome` sélectionne Google Chrome installé sur macOS ; `chromium` (défaut) conserve le navigateur fourni par Playwright, dont le binaire peut se nommer « Google Chrome for Testing ».
 
-Version 0.2.4 : [notes de release](docs/releases/0.2.4.md), [transport navigateur et recette Music Store](docs/BROWSER_TRANSPORT.md).
+Version 1.0.0 : [notes de release](docs/releases/1.0.0.md), [transport navigateur et recette Music Store](docs/BROWSER_TRANSPORT.md).
 
 ## Utilisation
 
