@@ -16,6 +16,7 @@ from playwright.async_api import async_playwright
 from .audit import TabAudit
 from .bounds import short_url
 from .errors import PQError
+from .navigation_diagnostics import navigation_error_details
 from .frame_context import register_frame_selector
 from .navigation import (
     NavigationEvidence,
@@ -674,7 +675,8 @@ class BrowserManager:
                         if blocked
                         else ("BROWSER_CRASHED" if tab.page.is_closed() else "UPSTREAM_UNAVAILABLE")
                     )
-                    raise PQError(code, "Navigation failed", 502) from exc
+                    details = navigation_error_details(str(exc)) if code == "UPSTREAM_UNAVAILABLE" else None
+                    raise PQError(code, "Navigation failed", 502, details=details) from exc
         finally:
             if getattr(job, "kind", None) == "navigate":
                 partial = dict(job.partial_result or {})
