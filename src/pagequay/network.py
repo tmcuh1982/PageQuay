@@ -85,28 +85,51 @@ class NetworkPolicy:
 class EgressProxy:
     def __init__(self, policy):
         self.policy, self.server = policy, None
+        self.websocket_server = None
         self.tasks = set()
         self.blocked_count = 0
+        self.websocket_blocked_count = 0
         self.closing = False
         self.connections = asyncio.Semaphore(64)
 
     async def start(self):
-        self.server = await asyncio.start_server(self.handle, "127.0.0.1", 0, limit=16384)
-        self.port = self.server.sockets[0].getsockname()[1]
+        try:
+            self.server = await asyncio.start_server(self.handle, "127.0.0.1", 0, limit=16384)
+            self.port = self.server.sockets[0].getsockname()[1]
+            self.websocket_server = await asyncio.start_server(
+                self.reject_websocket, "127.0.0.1", 0, limit=16384
+            )
+            self.websocket_port = self.websocket_server.sockets[0].getsockname()[1]
+        except BaseException:
+            await self.close()
+            raise
         return f"http://127.0.0.1:{self.port}"
+
+    @property
+    def browser_proxy_rules(self):
+        # Chrome uses the "other proxies" (socks=) mapping for BOTH ws and wss.
+        # An explicit HTTP proxy URI here avoids the implicit SOCKS4 scheme.
+        # No DIRECT or HTTP/HTTPS fallback: failure of the deny endpoint stays closed.
+        http = f"http://127.0.0.1:{self.port}"
+        deny = f"http://127.0.0.1:{self.websocket_port}"
+        return f"http={http};https={http};socks={deny}"
 
     async def close(self):
         self.closing = True
-        if self.server:
-            self.server.close()
+        servers = [s for s in (self.server, self.websocket_server) if s is not None]
+        for server in servers:
+            server.close()
         tasks = list(self.tasks)
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
-        if self.server:
-            await self.server.wait_closed()
+        for server in servers:
+            await server.wait_closed()
 
-    async def handle(self, reader, writer):
+    async def reject_websocket(self, reader, writer):
+        await self.handle(reader, writer, deny_all=True)
+
+    async def handle(self, reader, writer, *, deny_all=False):
         if self.closing or len(self.tasks) >= 64:
             writer.close()
             return
@@ -116,6 +139,11 @@ class EgressProxy:
         try:
             async with self.connections:
                 head = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), 10)
+                if deny_all:
+                    self.blocked_count += 1
+                    self.websocket_blocked_count += 1
+                    # Do not resolve a hostname or open an upstream connection.
+                    raise ValueError("WebSocket proxy connection denied")
                 lines = head.decode("latin-1").split("\r\n")
                 method, target, version = lines[0].split(" ")
                 if version not in {"HTTP/1.0", "HTTP/1.1"}:

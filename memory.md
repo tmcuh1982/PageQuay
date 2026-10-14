@@ -1,5 +1,14 @@
 # Mémoire de travail — PageQuay (PQ)
 
+## 14 octobre 2026 — Transport CDP, WebSockets natifs et commit 0.2.4
+
+État courant : relais `cdp_launch.py` du pipe Playwright vers le port CDP explicite loopback du navigateur enfant ; proxy natif à deux listeners pour HTTP/HTTPS publics et refus ws/wss avant DNS. Initialisation persistante et gardes conservées, `route_web_socket` retiré. Comparaisons suggérant l’effet de cette instrumentation sur Music Store, sans preuve générale des décisions Cloudflare. Tests Chrome/Chromium couvrant constructeur natif, frames/popups/workers, aucun handshake amont et absence de repli direct.
+
+Correctif runtime et dépendance déployés dans PageQuayService avec sauvegarde, readiness et conservation de la configuration/permissions. Service toujours sur Chromium, métadonnées 0.2.2. Chrome local puis Chromium : recherche test et Yamaha P-45 en HTTP200. Nouveau profil vierge Chromium laissé ouvert ; Shure SM58 puis cinq recherches/fiches différentes réussies dans le même processus et onglet, sans défi détecté. Premier clic Fender expiré ; cinq fiches ouvertes ensuite via les liens observés par navigation API. Session laissée sur Roland FP-10, délai d’inactivité inchangé. Les profils précédents restent en sauvegarde privée ; aucun secret/rapport brut versionné.
+
+Demande actuelle : documentation puis commit de release local 0.2.4. Versions paquet/module/OpenAPI/test/lock alignées ; notes et sécurité mises à jour. Aucun nouveau déploiement, fermeture de la fenêtre, tag ou publication GitHub pour cette demande. Contrôles finaux : suite complète avec navigateurs 343 passed/4 skipped en 95,71 s ; warning Starlette existant. Ruff check/format ciblés, lock offline et diff-check conformes. Exemples JSON régénérés par les tests restaurés à leur état versionné pour exclure les ports/dates/IDs temporaires. Voir `docs/BROWSER_TRANSPORT.md` et `docs/releases/0.2.4.md`.
+
+
 ### Graphiques par API / type et espace disque des profils — 11 octobre 2026
 
 Clarification utilisateur : « par projet / clé API, puis par opération ». Vue Projet par défaut, Clé API en deuxième choix, Endpoint HTTP disponible ensuite ; filtre technique renommé Endpoint HTTP pour éviter de confondre clé et endpoint. Le filtre Type d’appel et la ventilation des opérations restent disponibles pour chaque graphique.

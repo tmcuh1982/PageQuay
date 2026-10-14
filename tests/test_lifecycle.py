@@ -34,7 +34,9 @@ async def test_cancelled_browser_launch_releases_profile_and_proxy(tmp_path, mon
         await asyncio.Event().wait()
 
     manager.playwright = SimpleNamespace(
-        chromium=SimpleNamespace(launch_persistent_context=stalled_launch)
+        chromium=SimpleNamespace(
+            executable_path="/unused", launch_persistent_context=stalled_launch
+        )
     )
     task = asyncio.create_task(manager.start(project))
     await asyncio.wait_for(started.wait(), 2)

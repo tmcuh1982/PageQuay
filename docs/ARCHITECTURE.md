@@ -46,3 +46,10 @@ L’identité URL/titre est réservée avant métadonnées et DOM. Plafonds par 
 ## Frames Shadow et contrat de diagnostic — CHG-20261013-028
 
 Le lecteur associe les frames Shadow non énumérées par Window à la racine de leur cible CDP exacte, via des IDs de propriétaire opaques. Racine ambiguë, propriétaire changé, contexte remplacé ou session d’ancêtre refusés. Le DOM fermé du parent n’est pas parcouru ; les documents iframe connus restent séparés. Contrôle de visibilité avant schéma, blob visible toujours refusé. Contrat OpenAPI régénéré ; compteur de candidats périmés optionnel borné. Aucun accès, profil, clé, quota d’egress ou garde de portée modifié. Voir ONROBOT_FRAME_FIX.md.
+
+
+## Transport navigateur — 0.2.4
+
+`cdp_launch.py` fournit un wrapper privé par lancement et un relais du pipe Playwright vers le port CDP explicite du seul navigateur enfant. Le contexte persistant conserve son profil et les gardes existantes ; le navigateur ne reçoit plus `--remote-debugging-pipe`. Le wrapper est supprimé après lancement, et le relais ferme l’enfant à la fin du transport.
+
+`EgressProxy` possède deux listeners loopback : HTTP/HTTPS public à DNS/IP validée, et refus des connexions WebSocket avant résolution. La règle native Chromium `http=…;https=…;socks=http://…` affecte les WebSockets au listener de refus, sans injection dans l’objet JavaScript `WebSocket`. Les deux listeners et leurs handlers sont fermés ensemble ; une erreur de lancement ne laisse pas le premier listener ouvert. Contrat REST/WebSocket et schéma public inchangés, hormis la version. Voir [preuves et limites](BROWSER_TRANSPORT.md).

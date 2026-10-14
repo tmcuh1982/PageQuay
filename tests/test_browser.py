@@ -24,6 +24,8 @@ pytestmark = [
 def site():
     class Handler(BaseHTTPRequestHandler):
         private_hits = 0
+        worker_hits = 0
+        websocket_hits = 0
 
         def log_message(self, *args):
             pass
@@ -31,6 +33,10 @@ def site():
         def do_GET(self):
             if self.path == "/private":
                 Handler.private_hits += 1
+            if self.path == "/sw.js":
+                Handler.worker_hits += 1
+            if self.path == "/socket":
+                Handler.websocket_hits += 1
             if self.path == "/redirect":
                 self.send_response(302)
                 self.send_header("Location", f"http://127.0.0.1:{self.server.server_port}/private")
@@ -140,6 +146,34 @@ async def test_real_two_profiles_api_retention_challenge_and_crash(tmp_path, sit
             ).status_code == 404
             assert await rt.browser.tab(a, aid).page.locator("#network").inner_text() == "blocked"
             assert handler.private_hits == 0
+            page = rt.browser.tab(a, aid).page
+            assert (
+                await page.evaluate(
+                    "async () => (await navigator.permissions.query({name:'geolocation'})).state"
+                )
+                != "granted"
+            )
+            assert await page.evaluate(
+                "async () => (await navigator.serviceWorker.register('/sw.js')) === undefined"
+            )
+            assert not await page.evaluate("navigator.serviceWorker.getRegistrations()")
+            assert handler.worker_hits == 0
+            assert (
+                await page.evaluate(
+                    "url => new Promise(resolve => { const ws = new WebSocket(url);"
+                    "ws.onopen = () => resolve('opened'); ws.onclose = () => resolve('closed'); })",
+                    f"ws://localhost:{port}/socket",
+                )
+                == "closed"
+            )
+            assert handler.websocket_hits == 0
+            async with page.expect_download() as download_info:
+                await page.evaluate(
+                    "() => { const a = document.createElement('a');"
+                    "a.href = URL.createObjectURL(new Blob(['fixture']));"
+                    "a.download = 'fixture.txt'; a.click(); }"
+                )
+            assert await (await download_info.value).failure()
             for format in ("html", "text", "links", "metadata"):
                 response = await client.get(
                     f"/v1/projects/universrobot/tabs/{aid}/content?format={format}", headers=ha

@@ -99,7 +99,7 @@ Les verrous flock peuvent rester sous forme de fichiers après copie : ils n'ont
 - `UPSTREAM_CHANGED` / `UPSTREAM_UNAVAILABLE` : mise en page de moteur, erreur réseau ou page non reconnue. Le diagnostic en direct est séparé des fixtures ; ne pas ajouter de contournement anti-bot.
 - `waiting_for_human` : intervenir sur le Mac puis reprendre ou annuler. Le budget humain est limité ; la détection est imparfaite.
 - `RATE_LIMITED` : lire `error.details.scope/cause`, attendre `Retry-After` ou `retry_at` s’ils sont connus ; une capacité pleine n’a pas de délai prévisible. Le quota moteur de 6 tentatives/60 s est partagé par projet et moteur. Pour reprendre une continuation échouée, utiliser un nouveau `Idempotency-Key` si `can_resume_continuation=true`. Espacer les appels et le polling ; utiliser les événements WS pour réduire la fréquence. Par défaut, 60 requêtes par clé/minute, polling compris.
-- État de listener : `lsof -nP -iTCP:8765 -sTCP:LISTEN` doit indiquer loopback uniquement. Aucun port CDP n'est configuré ; Playwright utilise son transport interne.
+- État de listener : `lsof -nP -iTCP:8765 -sTCP:LISTEN` doit indiquer loopback uniquement. Chaque navigateur ouvre aussi un port CDP explicite non nul sur `127.0.0.1`, choisi à son lancement ; il n’est ni publié par Tailscale Serve ni exposé par l’API. Vérifier le listener du processus navigateur avec `lsof -nP -a -p <PID_NAVIGATEUR> -iTCP -sTCP:LISTEN`. Ne jamais publier ce port. Voir [transport navigateur](BROWSER_TRANSPORT.md).
 
 
 ## Budgets de ressources

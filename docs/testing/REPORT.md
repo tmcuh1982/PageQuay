@@ -269,3 +269,14 @@ Suite normale finale : **186 passed, 16 skipped**, 9,57 s. Structured/audit/budg
 Suite complète headed : **194 passed, 5 failed, 3 skipped** avant adaptation de quatre assertions d’audit au flush asynchrone. Ces quatre cas ont repassé ; le seul échec restant est le test natif macOS de minimisation/navigation. Une exécution identique sur les sources sauvegardées avant correction reproduit le timeout Browser.getWindowBounds, avant les nouveaux lecteurs. **198 tests distincts passent**, aucune suite complète verte ni recette de minimisation complète revendiquées. Les trois diagnostics tiers restent opt-in ; warning Starlette préexistant conservé.
 
 Service installé : zéro job inachevé, sauvegarde privée sources+SQLite, 19 fichiers synchronisés, hashes identiques, migration006, ready/login 200, admin API 404, key-info anonyme 401, OpenAPI 200, budgets respectés et compteur persisté. Ports conservés. Aucun profil/clé/projet ou route externe modifié. Le détail d’audit est partiel sous saturation ; plafonds logiques SQLite et copies applicatives bornées, mémoire native Chromium/driver et crash buffers hors garantie.
+
+
+## Release 0.2.4 — 14 octobre 2026
+
+Transport navigateur : port CDP explicite loopback via relais du pipe Playwright ; gardes persistantes conservées. Blocage ws/wss par le second listener du proxy natif, sans remplacement de `WebSocket`. Tests réels Chrome/Chromium : témoins positifs ws/wss, refus sans handshake amont, frames/popups/workers, constructor natif, maintien HTTP/HTTPS et absence de repli après fermeture du listener. Arrêt/échec de lancement, endpoint et fermeture des handlers vérifiés.
+
+Validation finale : `PQ_BROWSER_TESTS=1 .venv/bin/pytest -q` : **343 réussis, 4 ignorés**, 95,71 s, warning Starlette préexistant. Ruff check/format ciblés, `uv lock --check --offline`, cohérence paquet/module/OpenAPI/lock 0.2.4 et `git diff --check` conformes. Les tests emploient des profils isolés ; la session de démonstration du service reste ouverte.
+
+Recette installée : recherche et Yamaha P-45 en profils neufs Chrome puis Chromium ; série de cinq recherches et cinq fiches distinctes dans une même session Chromium, chaque recherche et fiche en HTTP200. Premier clic Fender expiré, reprise avec les liens observés via navigation API. Aucun défi Cloudflare observé, sans garantie future ni résolution de CAPTCHA. La fenêtre demeure sur Roland FP-10. [Protocole détaillé et limites](../BROWSER_TRANSPORT.md).
+
+Les changements générés dans les exemples JSON de la fixture complexe (ports, dates et IDs locaux) sont exclus de ce commit. Aucun rapport brut, profil, sauvegarde, secret ou capture du service n’est versionné. Le correctif runtime déployé conserve ses métadonnées installées 0.2.2 ; ce commit prépare le dépôt en 0.2.4 sans redémarrer le service.

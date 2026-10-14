@@ -54,6 +54,14 @@ export PQ_DATA_DIR="$PWD/.data"
 
 Ne changez pas de dossier de données entre l'initialisation et le démarrage. `.env` est lu à la racine du projet ; `.env.example` décrit la configuration sans secrets. Le chemin par défaut est `~/Library/Application Support/PageQuay/` avec SQLite, `profiles/`, `artifacts/` et `logs/` séparés. Aucun profil Chrome personnel n'est réutilisé.
 
+Le navigateur utilise un port CDP explicite, non nul, lié à `127.0.0.1` et choisi à chaque lancement. Un relais local conserve le contexte persistant et toutes les protections Playwright (sandbox, proxy filtrant, interceptions, blocage des Service Workers et téléchargements). Le pipe interne de Playwright se termine au relais ; Chrome reçoit uniquement le port CDP. Ce port de contrôle local n’est pas publié par l’API et se ferme avec le navigateur.
+
+Les connexions WebSocket des pages sont refusées par une règle de proxy native de Chrome : HTTP/HTTPS passent par le proxy filtrant, et la catégorie `socks=` (« autres proxys », utilisée par Chrome pour `ws://` et `wss://`) pointe vers un second port local qui refuse toute connexion sans résoudre de destination. Aucun repli direct n’est configuré. Ce contrôle couvre aussi les frames, fenêtres secondaires et workers ; l’objet JavaScript `WebSocket` reste natif. Le WebSocket de commande de l’API PageQuay reste disponible. Voir les [règles de proxy WebSocket de Chromium](https://chromium.googlesource.com/chromium/src/+/HEAD/net/docs/proxy.md#mapping-websockets-urls-to-a-proxy).
+
+`PQ_BROWSER_CHANNEL=chrome` sélectionne Google Chrome installé sur macOS ; `chromium` (défaut) conserve le navigateur fourni par Playwright, dont le binaire peut se nommer « Google Chrome for Testing ».
+
+Version 0.2.4 : [notes de release](docs/releases/0.2.4.md), [transport navigateur et recette Music Store](docs/BROWSER_TRANSPORT.md).
+
 ## Utilisation
 
 1. Créer `projectx` et `projet-b` dans **Projets / Profils**.

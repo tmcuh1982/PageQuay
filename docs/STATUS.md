@@ -1,6 +1,6 @@
 # État de PageQuay — 14 octobre 2026
 
-Version **0.2.3**, MVP développé et vérifié localement sur macOS Apple Silicon. La recette de déploiement et le parcours Google depuis le MacBook Air restent partiels. Ce document décrit l'état observé, sans considérer une confirmation SSH comme un test API réussi.
+Version **0.2.4**, MVP développé et vérifié localement sur macOS Apple Silicon. La recette de déploiement et le parcours Google depuis le MacBook Air restent partiels. Ce document décrit l'état observé, sans considérer une confirmation SSH comme un test API réussi.
 
 ## Fonctionnalités livrées
 
@@ -23,20 +23,13 @@ Les contrats détaillés sont dans [OpenAPI](openapi.json), [recherche](SEARCH_A
 
 | Vérification | Résultat observé |
 | --- | --- |
-| Suite finale de cette publication sans Chromium | 142 réussis, 14 tests navigateur/diagnostics externes ignorés |
-| Console des filtres et transport POST avec Chromium | 2 tests réussis séparément ; menus, corps POST et rendu desktop/mobile vérifiés |
-| Dernière suite complète avec Chromium visible, avant les filtres | 116 réussis, 3 diagnostics externes ignorés ; voir le rapport 0.2 |
-| Suite Chromium visible hors UI | 56 réussis, 2 ignorés avant le dernier renforcement des bornes |
-| Extraction structurée/OpenAPI après ce renforcement | 8 réussis, dont le cas de 5 000 éléments cachés |
-| Contrôle Ruff de tout le projet | Check et format conformes, 46 fichiers Python source/tests/exemples |
-| Page publique via API HTTP sur le mini | Navigation directe, extraction texte et JSON/DOM téléchargés |
-| Recherche Google/DDG en direct | Challenges détectés ; trois queries DDG récentes bloquées, trois pages natives réelles non validées |
-| SSH MacBook Air → mini | Fonctionnement confirmé par l'utilisateur ; parcours API depuis l'Air non exécuté par l'agent |
-| LaunchAgent sur le mini | Installé ; redémarrage du service et health vérifiés, reboot restant à vérifier |
-| Séparation console/API | Console locale 8765 ; API/health/OpenAPI 0.2 sur8766 ; admin refusée (tests + HTTP/HTTPS réels) |
-| Serve/ACL Tailscale, sauvegarde/restauration | Serve HTTPS activé vers8766, certificat/health/auth/admin vérifiés depuis le mini ; accès depuis un autre appareil, ACL et sauvegarde restant à vérifier |
+| Suite complète release 0.2.4 avec Chrome/Chromium | 343 réussis, 4 ignorés ; warning Starlette préexistant, Ruff ciblé et lock offline conformes |
+| Transport et WebSockets | Contrôles positifs ws/wss, refus sans handshake, constructeur natif, frames/popups/workers, arrêt du listener et maintien HTTP/HTTPS |
+| Music Store via API du service | Chrome et Chromium en profils neufs ; cinq recherches et cinq fiches supplémentaires en HTTP 200 dans une même session Chromium |
+| Service installé après déploiement | Readiness vérifiée ; configuration et permissions conservées ; métadonnées installées 0.2.2 |
+| Accès depuis un autre appareil, ACL Tailscale et restauration complète | Recette restant partielle ; aucun nouveau contrôle distant revendiqué pour 0.2.4 |
 
-Ces suites se recouvrent : leurs nombres ne s'additionnent pas. Les dates, commandes et réserves de chaque essai sont dans [le rapport](testing/REPORT.md). Le warning Starlette/TestClient/httpx demeure non bloquant.
+Les résultats historiques et les commandes de chaque essai sont dans [le rapport](testing/REPORT.md) ; les nombres de suites historiques ne s’additionnent pas. Le warning Starlette/TestClient/httpx demeure non bloquant.
 
 Les pages virtualisées nécessitent les attentes/actions explicites utiles avant extraction. Une racine Shadow DOM fermée et les données représentées seulement par des pixels ne sont pas accessibles par simple export DOM ; les captures restent une opération séparée. Aucun CAPTCHA n'est résolu automatiquement.
 
@@ -79,3 +72,10 @@ KUKA réel revalidé séparément en service jetable : URL finale identique, 69b
 État courant : action REST/WebSocket `validate_cookies`, choix automatique persistant par projet via GET/PUT cookie-policy, refus par défaut pour une action ponctuelle et règle désactivée par défaut. L'acceptation automatique est activée dans le service local pour UniversRobot seulement ; cette configuration privée ne fait pas partie des paquets publiés. User-Agent natif Chromium et règles robots fondées sur l'en-tête observé. Les correctifs d'extraction AgXeed, frames Shadow DOM, widgets CAPTCHA et diagnostics de navigation/démarrage publiés sur main depuis v0.2.2 sont inclus dans la nouvelle release.
 
 L'action cookies et le choix UniversRobot ont été déployés et vérifiés dans le service local, qui conserve actuellement ses métadonnées 0.2.2. La préparation de la release 0.2.3 ne redémarre pas ce service une nouvelle fois. Voir [les notes 0.2.3](releases/0.2.3.md) pour le contrat et les limites.
+
+
+## Version 0.2.4 — 14 octobre 2026
+
+Port CDP explicite loopback avec relais Playwright et blocage WebSocket par règle de proxy native, sans remplacement JavaScript. Chrome installé et Chromium vérifiés en profils neufs ; cinq recherches et cinq fiches Music Store supplémentaires réussies dans la même session Chromium (HTTP 200, aucun défi Cloudflare observé). Le premier clic a expiré puis la série a utilisé les liens observés via navigation API. Voir [transport et recette](BROWSER_TRANSPORT.md) et [notes 0.2.4](releases/0.2.4.md).
+
+Correctif runtime déployé dans le service, prêt et configuré sur Chromium ; profils précédents sauvegardés, réglages et permissions conservés. Métadonnées installées encore 0.2.2. Le dépôt prépare un commit local 0.2.4 ; aucune publication distante de cette version n’est revendiquée. La session de démonstration reste ouverte, soumise à son délai d’inactivité.

@@ -184,3 +184,12 @@ L'utilisateur demande explicitement le redéploiement et l'activation de l'accep
 ## 2026-10-14 — Release 0.2.3 depuis l'état courant
 
 À la demande de l'utilisateur, publier l'ensemble des changements courants dans un commit sur main et une nouvelle release stable v0.2.3, en conservant v0.2.2. Seules les métadonnées de version et la documentation de release complètent le travail existant ; les fichiers de diagnostics déjà publiés restent en l'état. Construire les assets depuis le commit Git, sans données locales de profils ou de configuration, et vérifier les références et les fichiers publiés. La configuration d'acceptation cookies UniversRobot est un réglage du service installé, pas un défaut de distribution.
+
+
+## 2026-10-14 — CDP explicite, refus WebSocket natif et release 0.2.4
+
+Conserver `launch_persistent_context` et toutes ses gardes, mais terminer le pipe Playwright dans un relais privé ; seul le navigateur enfant utilise un port CDP explicite non nul sur loopback. Vérifier l’endpoint annoncé par cet enfant et nettoyer le transport et les processus sur arrêt/échec.
+
+Refuser ws/wss par la catégorie native « autres proxys » de Chromium, avec un listener HTTP de refus distinct, sans remplacement JavaScript ni repli direct. Ne pas exposer le CDP local par l’API ou un proxy distant. Les essais Music Store constituent une observation limitée, pas une garantie d’accès ni un contournement automatique de CAPTCHA.
+
+Préparer et valider un commit local de release 0.2.4 avec notes, version, contrat et lock cohérents. Conserver le navigateur de démonstration déjà ouvert ; les tests automatisés utilisent leurs profils séparés. Le runtime installé conserve ses métadonnées 0.2.2 et sa configuration Chromium. La demande actuelle ne publie pas de tag ni de release GitHub.

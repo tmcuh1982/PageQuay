@@ -15,6 +15,7 @@ from playwright.async_api import async_playwright
 
 from .audit import TabAudit
 from .bounds import short_url
+from .cdp_launch import browser_executable, launch_executable
 from .cookies import validate_cookies
 from .errors import PQError
 from .frame_context import register_frame_selector
@@ -159,22 +160,27 @@ class BrowserManager:
                 startup_step = "selector_registration"
                 await register_frame_selector(self.playwright)
             startup_step = "browser_launch"
-            context = await self.playwright.chromium.launch_persistent_context(
-                str(self.db.root / "profiles" / project["id"]),
-                headless=policy.headless,
-                chromium_sandbox=True,
-                channel=self.settings.browser_channel,
-                proxy={"server": proxy_url, "bypass": "<-loopback>"},
-                accept_downloads=False,
-                service_workers="block",
-                permissions=[],
-                viewport={"width": 1280, "height": 900},
-                args=[
-                    "--disable-quic",
-                    "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
-                    "--disable-background-networking",
-                ],
-            )
+            executable = browser_executable(self.playwright.chromium, self.settings.browser_channel)
+            with launch_executable(self.db.root, executable) as launcher:
+                context = await self.playwright.chromium.launch_persistent_context(
+                    str(self.db.root / "profiles" / project["id"]),
+                    headless=policy.headless,
+                    chromium_sandbox=True,
+                    channel=self.settings.browser_channel,
+                    executable_path=launcher,
+                    proxy={"server": proxy_url, "bypass": "<-loopback>"},
+                    ignore_default_args=[f"--proxy-server={proxy_url}"],
+                    accept_downloads=False,
+                    service_workers="block",
+                    permissions=[],
+                    viewport={"width": 1280, "height": 900},
+                    args=[
+                        f"--proxy-server={proxy.browser_proxy_rules}",
+                        "--disable-quic",
+                        "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
+                        "--disable-background-networking",
+                    ],
+                )
             startup_step = "browser_setup"
             context.set_default_timeout(policy.navigation_timeout_seconds * 1000)
             state = BrowserState(project, context, lock, proxy, headless=policy.headless)
@@ -224,10 +230,8 @@ class BrowserManager:
 
             await context.route("**/*", guard)
 
-            async def block_websocket(ws):
-                await ws.close()
-
-            await context.route_web_socket("**/*", block_websocket)
+            # The browser-wide proxy map rejects ws/wss before their handshake,
+            # including workers/popups/frames, without replacing JS WebSocket.
             context.on("page", lambda page: self._register(state, page))
             context.on("close", lambda _: self._closed(state))
             for page in context.pages:
