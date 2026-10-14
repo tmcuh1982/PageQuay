@@ -1,6 +1,6 @@
-# État de PageQuay — 12 octobre 2026
+# État de PageQuay — 14 octobre 2026
 
-Version **0.2.2**, MVP développé et vérifié localement sur macOS Apple Silicon. La recette de déploiement et le parcours Google depuis le MacBook Air restent partiels. Ce document décrit l'état observé, sans considérer une confirmation SSH comme un test API réussi.
+Version **0.2.3**, MVP développé et vérifié localement sur macOS Apple Silicon. La recette de déploiement et le parcours Google depuis le MacBook Air restent partiels. Ce document décrit l'état observé, sans considérer une confirmation SSH comme un test API réussi.
 
 ## Fonctionnalités livrées
 
@@ -72,3 +72,10 @@ KUKA réel revalidé séparément en service jetable : URL finale identique, 69b
 ## Release GitHub — 13 octobre 2026
 
 [PageQuay v0.2.2](https://github.com/tmcuh1982/PageQuay/releases/tag/v0.2.2) publiée, release stable et non brouillon. Le tag annoté v0.2.2 désigne le commit de code `a763418894ca30adbe5bf3779fa6e7e76fe46882`, publié sur main. Archives wheel Python et source tar.gz construites depuis ce commit, avec SHA256SUMS. Les trois fichiers ont été téléchargés depuis GitHub et comparés aux fichiers locaux : hashes identiques. Ressources JavaScript, templates, assets statiques et migration007 vérifiés dans le wheel ; script d’installation et notes inclus dans les sources. Aucun environnement, profil, base privée ou secret publié. Notes : [0.2.2](releases/0.2.2.md).
+
+
+## Version 0.2.3 — 14 octobre 2026
+
+État courant : action REST/WebSocket `validate_cookies`, choix automatique persistant par projet via GET/PUT cookie-policy, refus par défaut pour une action ponctuelle et règle désactivée par défaut. L'acceptation automatique est activée dans le service local pour UniversRobot seulement ; cette configuration privée ne fait pas partie des paquets publiés. User-Agent natif Chromium et règles robots fondées sur l'en-tête observé. Les correctifs d'extraction AgXeed, frames Shadow DOM, widgets CAPTCHA et diagnostics de navigation/démarrage publiés sur main depuis v0.2.2 sont inclus dans la nouvelle release.
+
+L'action cookies et le choix UniversRobot ont été déployés et vérifiés dans le service local, qui conserve actuellement ses métadonnées 0.2.2. La préparation de la release 0.2.3 ne redémarre pas ce service une nouvelle fois. Voir [les notes 0.2.3](releases/0.2.3.md) pour le contrat et les limites.

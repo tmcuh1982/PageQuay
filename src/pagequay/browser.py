@@ -15,9 +15,8 @@ from playwright.async_api import async_playwright
 
 from .audit import TabAudit
 from .bounds import short_url
+from .cookies import validate_cookies
 from .errors import PQError
-from .navigation_diagnostics import navigation_error_details
-from .startup_diagnostics import startup_error_details
 from .frame_context import register_frame_selector
 from .navigation import (
     NavigationEvidence,
@@ -27,9 +26,11 @@ from .navigation import (
     scope_error,
     utc_now,
 )
+from .navigation_diagnostics import navigation_error_details
 from .network import EgressProxy, NetworkPolicy
 from .page_reader import click_classification, read_page, read_title
 from .profiles import ProfileLock, reset_directory
+from .startup_diagnostics import startup_error_details
 from .storage import uid
 from .structured import extract_structured
 
@@ -149,15 +150,15 @@ class BrowserManager:
         network = self.network_factory(policy)
         proxy = EgressProxy(network)
         context = None
-        startup_step = 'proxy_start'
+        startup_step = "proxy_start"
         try:
             proxy_url = await proxy.start()
             if not self.playwright:
-                startup_step = 'playwright_start'
+                startup_step = "playwright_start"
                 self.playwright = await async_playwright().start()
-                startup_step = 'selector_registration'
+                startup_step = "selector_registration"
                 await register_frame_selector(self.playwright)
-            startup_step = 'browser_launch'
+            startup_step = "browser_launch"
             context = await self.playwright.chromium.launch_persistent_context(
                 str(self.db.root / "profiles" / project["id"]),
                 headless=policy.headless,
@@ -168,14 +169,13 @@ class BrowserManager:
                 service_workers="block",
                 permissions=[],
                 viewport={"width": 1280, "height": 900},
-                user_agent="PageQuay/0.2.0",
                 args=[
                     "--disable-quic",
                     "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
                     "--disable-background-networking",
                 ],
             )
-            startup_step = 'browser_setup'
+            startup_step = "browser_setup"
             context.set_default_timeout(policy.navigation_timeout_seconds * 1000)
             state = BrowserState(project, context, lock, proxy, headless=policy.headless)
 
@@ -254,7 +254,9 @@ class BrowserManager:
             if isinstance(exc, PQError):
                 raise
             raise PQError(
-                "BROWSER_CRASHED", "Browser start failed; run scripts/doctor.sh", 503,
+                "BROWSER_CRASHED",
+                "Browser start failed; run scripts/doctor.sh",
+                503,
                 details=startup_error_details(exc, startup_step),
             ) from exc
 
@@ -503,13 +505,16 @@ class BrowserManager:
                     raise errors[0]
                 if response is None:
                     raise PQError("ROBOTS_UNAVAILABLE", "Robots HTTP status unknown", 503)
+                user_agent = await response.request.header_value("user-agent")
+                if not user_agent:
+                    raise PQError("ROBOTS_UNAVAILABLE", "Browser User-Agent unavailable", 503)
                 evidence = {
                     "status": "checked",
                     "url": robots_url,
                     "http_status": response.status,
                     "observed_at": utc_now(),
                     "content_type": response.headers.get("content-type", "")[:256],
-                    "user_agent": "PageQuay/0.2.0",
+                    "user_agent": user_agent,
                 }
                 self._upstream_limit(response)
                 if response.status in {401, 403}:
@@ -533,7 +538,7 @@ class BrowserManager:
                 text = await read_page(helper.page, "text", 65536)
                 parser = RobotFileParser(robots_url)
                 parser.parse(text.splitlines())
-                allowed = parser.can_fetch("PageQuay", url)
+                allowed = parser.can_fetch(user_agent, url)
                 if not allowed:
                     raise PQError(
                         "ROBOTS_DENIED",
@@ -656,6 +661,9 @@ class BrowserManager:
                     if request.respect_robots and tab.page.url != tab.robots_url:
                         tab.robots = await self.check_robots(project, tab.page.url, job)
                         tab.robots_url = tab.page.url
+                    cookie_consent = await self.apply_cookie_policy(
+                        project, tab, job, deadline=deadline
+                    )
                     title = await self.navigation_title(
                         project, tab, job, expected_url=request.expected_url, deadline=deadline
                     )
@@ -667,6 +675,7 @@ class BrowserManager:
                         "navigation": tab.evidence.snapshot(),
                         "robots": tab.robots,
                         "network_policy": self.network_attestation(tab),
+                        "cookie_consent": cookie_consent,
                     }
                 except (PlaywrightTimeout, PlaywrightError) as exc:
                     if errors:
@@ -682,7 +691,11 @@ class BrowserManager:
                         if blocked
                         else ("BROWSER_CRASHED" if tab.page.is_closed() else "UPSTREAM_UNAVAILABLE")
                     )
-                    details = navigation_error_details(str(exc)) if code == "UPSTREAM_UNAVAILABLE" else None
+                    details = (
+                        navigation_error_details(str(exc))
+                        if code == "UPSTREAM_UNAVAILABLE"
+                        else None
+                    )
                     raise PQError(code, "Navigation failed", 502, details=details) from exc
         finally:
             if getattr(job, "kind", None) == "navigate":
@@ -771,19 +784,59 @@ class BrowserManager:
             response = await nav.value
             await self.human_guard(project, tab, job)
             self._upstream_limit(response)
+            await self.apply_cookie_policy(project, tab, job)
+
+    async def cookie_action(self, project, tab, job, *, choice, timeout_ms, selector=None):
+        async with tab.audit.operation("validate_cookies", job, label=choice):
+            result = await validate_cookies(
+                tab.page,
+                choice=choice,
+                timeout_ms=timeout_ms,
+                selector=selector,
+                check=job.check_authorization,
+            )
+            tab.audit.current["label"] = f"{choice}: {result['status']}"
+        if tab.guard_errors:
+            raise tab.guard_errors[0]
+        await self.human_guard(project, tab, job)
+        self.check_scope(tab, tab.scope_url)
+        return result
+
+    async def apply_cookie_policy(self, project, tab, job, *, deadline=None):
+        policy = self.db.cookie_policy(project)
+        if policy["choice"] is None:
+            return None
+        timeout_ms = policy["timeout_ms"]
+        if deadline is not None:
+            timeout_ms = min(timeout_ms, int((deadline - time.monotonic()) * 1000))
+            if timeout_ms <= 0:
+                return {"choice": policy["choice"], "status": "timeout"}
+        return await self.cookie_action(project, tab, job, **{**policy, "timeout_ms": timeout_ms})
 
     async def actions(self, project, tab_id, request, job):
         tab = self.tab(project, tab_id)
         job.set_tab(tab_id)
         async with tab.lock, tab.audit.operation("actions", job):
             await self.human_guard(project, tab, job)
-            for action in request.actions:
+            cookie_results = []
+            for index, action in enumerate(request.actions):
                 job.check_authorization()
                 await self.human_guard(project, tab, job)
                 if action.selector and any(
                     s in action.selector.lower() for s in ("captcha", "turnstile")
                 ):
                     raise PQError("FORBIDDEN", "Challenge interactions are not allowed", 403)
+                if action.type == "validate_cookies":
+                    result = await self.cookie_action(
+                        project,
+                        tab,
+                        job,
+                        choice=action.value or "reject",
+                        timeout_ms=action.timeout_ms,
+                        selector=action.selector,
+                    )
+                    cookie_results.append({"action_index": index, **result})
+                    continue
                 locator = tab.page.locator(action.selector) if action.selector else None
                 if action.type not in {"scroll", "wait_for_navigation"} and locator is None:
                     raise PQError("INVALID_INPUT", "Selector required")
@@ -812,8 +865,16 @@ class BrowserManager:
                         await tab.page.wait_for_load_state(
                             "domcontentloaded", timeout=action.timeout_ms
                         )
+                if action.type in {"click", "wait_for_navigation"}:
+                    await self.human_guard(project, tab, job)
+                    result = await self.apply_cookie_policy(project, tab, job)
+                    if result is not None:
+                        cookie_results.append({"action_index": index, "automatic": True, **result})
             await self.human_guard(project, tab, job)
-            return {"tab_id": tab_id, "url": short_url(tab.page.url)}
+            result = {"tab_id": tab_id, "url": short_url(tab.page.url)}
+            if cookie_results:
+                result["cookie_consent"] = cookie_results
+            return result
 
     async def extract(self, project, tab_id, format, job, *, include_dom=False, expected_url=None):
         tab = self.tab(project, tab_id)

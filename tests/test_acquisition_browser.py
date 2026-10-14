@@ -51,7 +51,10 @@ async def acquisition_site(tmp_path):
                 self.send_header("cf-mitigated", "challenge")
             self.end_headers()
             html = {
-                "/robots.txt": "User-agent: PageQuay\nDisallow: /denied\nAllow: /allowed\n",
+                "/robots.txt": (
+                    "User-agent: PageQuay\nDisallow: /allowed\n\n"
+                    "User-agent: Mozilla\nDisallow: /denied\nAllow: /allowed\n"
+                ),
                 "/automatic": (
                     "<title>Just a moment</title><p>Checking your browser</p><script>"
                     "setTimeout(()=>{document.title='Ready';document.body.innerHTML="
@@ -152,7 +155,7 @@ async def test_real_http_status_content_type_and_xpath(acquisition_site, path, s
     for block in data["blocks"]:
         xpath = block["provenance"]["xpath"]
         assert xpath and await page.locator("xpath=" + xpath).count() == 1
-    assert any(ua == "PageQuay/0.2.0" for _, ua in hits)
+    assert hits and all(ua.startswith("Mozilla/5.0 ") and "Chrome/" in ua for _, ua in hits)
 
 
 @pytest.mark.parametrize("path", ["/redirect", "/cross-host"])
@@ -186,6 +189,9 @@ async def test_robots_denied_before_document_and_helper_cleanup(acquisition_site
     )
     assert row["status"] == "completed", row
     assert row["result"]["robots"]["allowed"] is True
+    robots_agents = {ua for path, ua in hits if path == "/robots.txt"}
+    assert robots_agents == {row["result"]["robots"]["user_agent"]}
+    assert row["result"]["robots"]["user_agent"].startswith("Mozilla/5.0 ")
     assert len(rt.browser.list_tabs(project)) == 2
 
 

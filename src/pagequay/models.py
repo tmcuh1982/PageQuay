@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .auth import SCOPES
 from .search_options import DDG_REGIONS
@@ -89,12 +89,33 @@ class Navigate(Strict):
 
 class Action(Strict):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=False)
-    type: Literal["click", "fill", "select", "scroll", "wait_for_selector", "wait_for_navigation"]
+    type: Literal[
+        "click",
+        "fill",
+        "select",
+        "scroll",
+        "wait_for_selector",
+        "wait_for_navigation",
+        "validate_cookies",
+    ]
     selector: str | None = Field(None, max_length=500)
     value: str | None = Field(None, max_length=4096)
     x: int = Field(0, ge=-10000, le=10000)
     y: int = Field(0, ge=-10000, le=10000)
     timeout_ms: int = Field(5000, ge=100, le=10000)
+
+    @model_validator(mode="after")
+    def cookie_choice(self):
+        if self.type == "validate_cookies" and self.value not in {None, "reject", "accept"}:
+            raise ValueError("validate_cookies value must be reject or accept")
+        return self
+
+
+class CookiePolicy(Strict):
+    choice: Literal["reject", "accept"] | None = Field(
+        None, description="Persistent project choice; null disables automatic cookie clicks."
+    )
+    timeout_ms: int = Field(1500, ge=100, le=10000)
 
 
 class Actions(Strict):
@@ -231,6 +252,7 @@ class NavigationResult(Strict):
     navigation: NavigationMetadata
     robots: dict[str, Any]
     network_policy: dict[str, Any]
+    cookie_consent: dict[str, Any] | None = None
 
 
 class AcquisitionArtifact(Strict):

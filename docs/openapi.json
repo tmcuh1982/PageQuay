@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PageQuay",
-    "version": "0.2.2"
+    "version": "0.2.3"
   },
   "paths": {
     "/health/live": {
@@ -626,6 +626,104 @@
         ]
       }
     },
+    "/v1/projects/{slug}/cookie-policy": {
+      "get": {
+        "summary": "Cookie Policy",
+        "description": "Read the persistent cookie choice for this project (disabled by default).",
+        "operationId": "cookie_policy_v1_projects__slug__cookie_policy_get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CookiePolicy"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "summary": "Set Cookie Policy",
+        "description": "Apply this choice on subsequent API visits, including search pages and action clicks.\n\nDoes not change existing site cookies or immediately act on already open tabs.",
+        "operationId": "set_cookie_policy_v1_projects__slug__cookie_policy_put",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CookiePolicy"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CookiePolicy"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/v1/projects/{slug}/tabs/{tab_id}/content": {
       "get": {
         "summary": "Content",
@@ -1087,7 +1185,8 @@
               "select",
               "scroll",
               "wait_for_selector",
-              "wait_for_navigation"
+              "wait_for_navigation",
+              "validate_cookies"
             ],
             "title": "Type"
           },
@@ -1283,6 +1382,36 @@
           "failure"
         ],
         "title": "ContextSelectionDiagnostic"
+      },
+      "CookiePolicy": {
+        "properties": {
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reject",
+                  "accept"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choice",
+            "description": "Persistent project choice; null disables automatic cookie clicks."
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 100.0,
+            "title": "Timeout Ms",
+            "default": 1500
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CookiePolicy"
       },
       "ErrorResponse": {
         "properties": {
@@ -1877,6 +2006,18 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Network Policy"
+          },
+          "cookie_consent": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cookie Consent"
           }
         },
         "additionalProperties": false,

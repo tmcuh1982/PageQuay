@@ -25,7 +25,7 @@ def test_versioned_public_client_contract_on_api_listener(client):
     response = client.get("http://127.0.0.1:8766/openapi.json")
     assert response.status_code == 200
     schema = response.json()
-    assert schema["info"]["version"] == "0.2.2"
+    assert schema["info"]["version"] == "0.2.3"
     assert all(path.startswith(("/v1/", "/health/")) for path in schema["paths"])
     search = schema["paths"]["/v1/projects/{slug}/search"]["post"]
     assert any(p["name"] == "idempotency-key" and p["in"] == "header" for p in search["parameters"])
@@ -63,6 +63,18 @@ def test_acquisition_and_typed_frame_diagnostics_contract():
     )
     assert "navigation_id" in schema["components"]["schemas"]["NavigationMetadata"]["properties"]
     assert "StructuredSnapshot" in schema["components"]["schemas"]
+
+
+def test_cookie_action_and_persistent_policy_contract():
+    schema = create_app(Settings()).openapi()
+    assert (
+        "validate_cookies"
+        in schema["components"]["schemas"]["Action"]["properties"]["type"]["enum"]
+    )
+    policy = schema["components"]["schemas"]["CookiePolicy"]["properties"]
+    assert {"type": "null"} in policy["choice"]["anyOf"]
+    assert policy["timeout_ms"]["maximum"] == 10000
+    assert set(schema["paths"]["/v1/projects/{slug}/cookie-policy"]) == {"get", "put"}
 
 
 def test_checked_in_contract_matches_public_listener(client):

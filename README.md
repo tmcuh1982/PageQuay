@@ -89,6 +89,8 @@ Toutes les routes de cette table utilisent `Authorization: Bearer <clé>` et con
 | DELETE `/tabs/{id}` | `browser:interact` | Fermeture, conflit si opération active |
 | POST `/tabs/{id}/navigate` | `browser:interact` | 202, job |
 | POST `/tabs/{id}/actions` | `browser:interact` | 202, job |
+| GET `/cookie-policy` | `browser:read` | Choix automatique du projet |
+| PUT `/cookie-policy` | `browser:interact` | Enregistrement du choix automatique |
 | GET `/tabs/{id}/content?format=text\|html\|links\|metadata\|structured` | `content:read` | 202, job et artefact temporaire |
 | GET `/tabs/{id}/screenshot` | `screenshot:read` | 202, capture PNG du viewport |
 | GET `/artifacts/{id}` | Droit associé à l'artefact | Téléchargement protégé |
@@ -133,7 +135,35 @@ Le client doit utiliser `effective_requests_per_minute` : c’est le minimum ent
 
 `expires_at` est une date en secondes Unix UTC ou `null` pour **sans expiration**. `scopes` contient les droits accordés, détaillés dans la table des routes. Les réglages modifiés depuis l’administration apparaissent au prochain appel ; une clé expirée/révoquée renvoie 401, une clé d’un autre projet ou un projet désactivé renvoie 403. Aucun secret ni hash n’est retourné. Les limites propres aux opérations (captures, moteurs de recherche) et aux messages WebSocket s’appliquent en plus de ce quota REST. Le client Python autonome [key_info.py](examples/key_info.py) utilise `PQ_URL`, `PQ_PROJECT` et `PQ_API_KEY`.
 
-Actions : `click`, `fill`, `select`, `scroll`, `wait_for_selector`, `wait_for_navigation`. Cette dernière attend l'état de chargement de la navigation courante ; pour un clic qui navigue, le clic Playwright attend lui-même sa navigation. Au plus 20 actions, sélecteurs et valeurs bornés, délais par action limités. Aucun `eval`, CDP, shell, upload ou chemin de fichier fourni par le client.
+Actions : `click`, `fill`, `select`, `scroll`, `wait_for_selector`, `wait_for_navigation`, `validate_cookies`. `wait_for_navigation` attend l'état de chargement de la navigation courante ; pour un clic qui navigue, le clic Playwright attend lui-même sa navigation. Au plus 20 actions, sélecteurs et valeurs bornés, délais par action limités. Aucun `eval`, CDP, shell, upload ou chemin de fichier fourni par le client.
+
+**Valider cookies** détecte une bannière de consentement et clique sur **Refuser** par défaut. Appel ponctuel REST (202, puis lecture du job), également disponible dans la commande WebSocket `actions` :
+
+```http
+POST /v1/projects/{slug}/tabs/{tab_id}/actions
+Authorization: Bearer <clé>
+Content-Type: application/json
+
+{"actions":[{"type":"validate_cookies","value":"reject","timeout_ms":5000}]}
+```
+
+`value` accepte `reject` ou `accept` ; son omission signifie `reject`. Un `selector` facultatif désigne le **conteneur de la bannière**, dont le texte doit toujours concerner les cookies. Le bouton doit avoir un libellé exact reconnu pour le choix demandé ; le refus ne bascule jamais vers l'acceptation si le site ne propose pas de refus direct.
+
+Pour répéter le choix lors des visites suivantes du projet, enregistrer une règle persistante :
+
+```http
+PUT /v1/projects/{slug}/cookie-policy
+Authorization: Bearer <clé>
+Content-Type: application/json
+
+{"choice":"reject","timeout_ms":1500}
+```
+
+La règle est désactivée par défaut (`choice: null`). `choice: "accept"` active l'acceptation ; `choice: null` désactive les clics automatiques. Elle s'applique aux ouvertures et navigations REST/WebSocket, aux pages de recherche et à leur pagination native, ainsi qu'après les actions `click` et `wait_for_navigation`. Elle est commune aux clés du projet, conservée après redémarrage et relue à chaque opération. L'enregistrement ne clique pas immédiatement dans les onglets ouverts et ne réécrit pas les cookies existants. Les navigations manuelles hors API et les bannières apparaissant après le délai nécessitent l'action ponctuelle. Le budget automatique est borné par le temps restant de navigation ; `timeout_ms` accepte 100 à 10 000 ms.
+
+Le résultat du job contient `cookie_consent` : objet pour une navigation automatique, liste avec `action_index` pour des actions (et `automatic: true` pour une application de la règle). Statuts : `clicked` (clic effectué, sans garantie que le site ait enregistré le consentement), `not_found`, `choice_unavailable`, `ambiguous`, `scan_limit`, `timeout`, `unavailable`. Une bannière absente ou non reconnue ne fait pas échouer la visite. Le choix et le statut sont aussi consignés dans l'audit `function.validate_cookies`.
+
+Détection bornée à huit frames et 32 conteneurs/boutons par frame, incluant les iframes visibles et le Shadow DOM ouvert. Libellés courants français, anglais, allemand et polonais ; les CMP personnalisées et les parcours nécessitant plusieurs écrans de préférences ne sont pas garantis. Aucun clic si plusieurs boutons correspondent, si l'inventaire dépasse les bornes ou si le choix demandé manque. Les contrôles de challenge, d'autorisation et de réseau restent appliqués.
 
 `format=structured` renvoie un JSON versionné à partir du **DOM rendu** : blocs ordonnés, listes imbriquées, tableaux HTML/ARIA, liens, images, contrôles/formulaires, métadonnées/JSON-LD et documents des iframes. Les Shadow DOM ouverts et leurs slots sont parcourus. `include_dom=true` ajoute un arbre DOM filtré avec IDs de nœuds ; cette option est réservée au format `structured`. Les valeurs des input/textarea, scripts, styles et contenus cachés sont exclus. Pour les applications qui chargent des éléments plus tard, utiliser d'abord les actions `wait_for_selector`/scroll/click nécessaires, puis extraire à nouveau. Voir [le contrat et les limites](docs/EXTRACTION.md), [l'exemple JSON](docs/testing/structured-complex-compact.json) et [l'exemple avec arbre](docs/testing/structured-complex.json).
 

@@ -134,6 +134,18 @@ class Storage:
         self.audit("project.created", project_id)
         return self.project(slug)
 
+    def cookie_policy(self, project):
+        return self.one(
+            "SELECT choice,timeout_ms FROM cookie_policies WHERE project_id=?", (project["id"],)
+        ) or {"choice": None, "timeout_ms": 1500}
+
+    def set_cookie_policy(self, project, policy):
+        self.execute(
+            "INSERT INTO cookie_policies VALUES (?,?,?) ON CONFLICT(project_id) "
+            "DO UPDATE SET choice=excluded.choice,timeout_ms=excluded.timeout_ms",
+            (project["id"], policy.choice, policy.timeout_ms),
+        )
+
     def close(self):
         self.telemetry.close()
         self.conn.close()

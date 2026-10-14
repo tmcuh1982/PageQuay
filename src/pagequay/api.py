@@ -13,6 +13,7 @@ from .errors import PQError, error_body
 from .models import (
     Actions,
     ContentFormat,
+    CookiePolicy,
     ErrorResponse,
     JobResponse,
     KeyInfo,
@@ -246,6 +247,26 @@ async def actions(slug: str, tab_id: str, body: Actions, request: Request):
         request=request,
         tab_id=tab_id,
     )
+
+
+@router.get("/projects/{slug}/cookie-policy", response_model=CookiePolicy)
+async def cookie_policy(slug: str, request: Request, response: Response):
+    """Read the persistent cookie choice for this project (disabled by default)."""
+    rt, project, _ = access(request, slug, "browser:read")
+    response.headers["Cache-Control"] = "no-store"
+    return rt.db.cookie_policy(project)
+
+
+@router.put("/projects/{slug}/cookie-policy", response_model=CookiePolicy)
+async def set_cookie_policy(slug: str, body: CookiePolicy, request: Request):
+    """Apply this choice on subsequent API visits, including search pages and action clicks.
+
+    Does not change existing site cookies or immediately act on already open tabs.
+    """
+    rt, project, key = access(request, slug, "browser:interact")
+    rt.db.set_cookie_policy(project, body)
+    rt.db.audit("cookie.policy_updated", project["id"], key["id"], details=body.model_dump())
+    return body
 
 
 @router.get(

@@ -164,3 +164,23 @@ WORLD_NOT_FOUND KUKA reste un défaut de correspondance d’identité de frames/
 ## 2026-10-13 — Publication de la release 0.2.2
 
 À la demande explicite de l’utilisateur, publier les changements d’acquisition, KUKA et navigation sur main et créer la release stable v0.2.2. Construire les paquets depuis le commit Git seul pour exclure les données privées ; joindre wheel, archive source et SHA256SUMS. Release publiée et fichiers retéléchargés vérifiés, tag conservé sur le commit de code a763418. L’actualisation documentaire après publication ne déplace pas ce tag immuable.
+
+
+## 2026-10-14 — User-Agent natif du navigateur
+
+À la demande de l’utilisateur, supprimer la surcharge `PageQuay/0.2.0` au lancement Chromium. Conserver le User-Agent natif du moteur, sans valeur forgée ni rotation. La preuve robots et `RobotFileParser.can_fetch` utilisent le User-Agent réellement envoyé dans la requête `/robots.txt`. Cette modification de compatibilité ne garantit pas la résolution des challenges Cloudflare.
+
+
+## 2026-10-14 — Consentement cookies par API
+
+« Valider cookies » est une action `validate_cookies`, avec refus par défaut et acceptation seulement explicite. Une règle persistante par projet est exposée par GET/PUT cookie-policy, désactivée par défaut et distincte de la configuration générale afin que browser:interact ne puisse modifier aucune autre politique. La détection exige un conteneur de consentement, du texte associé et un libellé exact ; l'absence du refus, une ambiguïté ou un dépassement de bornes n'autorisent aucun repli vers l'acceptation. Application aux visites pilotées par API ; les bannières tardives ou parcours de préférences non reconnus utilisent une action explicite. Les résultats rapportent le clic observé sans prétendre vérifier les cookies décidés par le site.
+
+
+## 2026-10-14 — Acceptation automatique UniversRobot
+
+L'utilisateur demande explicitement le redéploiement et l'activation de l'acceptation automatique pour UniversRobot. Activer choice=accept avec budget de détection 1500 ms uniquement pour universrobot, via le stockage de l'option déployée ; aucune activation globale. Le choix s'applique aux prochaines visites pilotées par API où une bannière et un bouton d'acceptation sont reconnus. Redémarrage du service autorisé, sources et base sauvegardées, profils conservés ; le job testing actif est interrompu par l'arrêt normal.
+
+
+## 2026-10-14 — Release 0.2.3 depuis l'état courant
+
+À la demande de l'utilisateur, publier l'ensemble des changements courants dans un commit sur main et une nouvelle release stable v0.2.3, en conservant v0.2.2. Seules les métadonnées de version et la documentation de release complètent le travail existant ; les fichiers de diagnostics déjà publiés restent en l'état. Construire les assets depuis le commit Git, sans données locales de profils ou de configuration, et vérifier les références et les fichiers publiés. La configuration d'acceptation cookies UniversRobot est un réglage du service installé, pas un défaut de distribution.
