@@ -27,7 +27,7 @@ from .navigation import (
     scope_error,
     utc_now,
 )
-from .navigation_diagnostics import navigation_error_details
+from .navigation_diagnostics import navigation_error_details, navigation_timeout_details
 from .network import EgressProxy, NetworkPolicy
 from .page_reader import click_classification, read_page, read_title
 from .profiles import ProfileLock, reset_directory
@@ -648,29 +648,38 @@ class BrowserManager:
                 await self._ensure_guard(project, tab)
                 tab.guard_errors.clear()
                 errors = tab.guard_errors
+                budget_seconds = self.db.policy(project).navigation_timeout_seconds
+                navigation_started = time.monotonic()
+                navigation_step = "goto"
                 try:
-                    deadline = time.monotonic() + self.db.policy(project).navigation_timeout_seconds
+                    deadline = navigation_started + budget_seconds
                     response = await tab.page.goto(
                         request.url,
                         wait_until=request.wait_until,
-                        timeout=self.db.policy(project).navigation_timeout_seconds * 1000,
+                        timeout=budget_seconds * 1000,
                     )
                     if errors:
                         raise errors[0]
+                    navigation_step = "human_guard"
                     await self.human_guard(project, tab, job, deadline=deadline)
                     if errors:
                         raise errors[0]
+                    navigation_step = "scope_check"
                     self.check_scope(tab, request.expected_url)
                     self._upstream_limit(response)
                     if request.respect_robots and tab.page.url != tab.robots_url:
+                        navigation_step = "robots_redirect"
                         tab.robots = await self.check_robots(project, tab.page.url, job)
                         tab.robots_url = tab.page.url
+                    navigation_step = "cookie_consent"
                     cookie_consent = await self.apply_cookie_policy(
                         project, tab, job, deadline=deadline
                     )
+                    navigation_step = "title"
                     title = await self.navigation_title(
                         project, tab, job, expected_url=request.expected_url, deadline=deadline
                     )
+                    navigation_step = "result"
                     self.events.emit(project, "tab.navigated", tab_id=tab.id)
                     return {
                         "tab_id": tab.id,
@@ -681,11 +690,30 @@ class BrowserManager:
                         "network_policy": self.network_attestation(tab),
                         "cookie_consent": cookie_consent,
                     }
+                except PQError as exc:
+                    if exc.code == "TIMEOUT" and exc.details is None and exc not in errors:
+                        exc.details = navigation_timeout_details(
+                            navigation_step,
+                            budget_seconds,
+                            time.monotonic() - navigation_started,
+                            source="pagequay",
+                        )
+                    raise
                 except (PlaywrightTimeout, PlaywrightError) as exc:
                     if errors:
                         raise errors[0] from exc
                     if isinstance(exc, PlaywrightTimeout):
-                        raise PQError("TIMEOUT", "Navigation timed out", 504) from exc
+                        raise PQError(
+                            "TIMEOUT",
+                            "Navigation timed out",
+                            504,
+                            details=navigation_timeout_details(
+                                navigation_step,
+                                budget_seconds,
+                                time.monotonic() - navigation_started,
+                                source="playwright",
+                            ),
+                        ) from exc
                     blocked = (
                         tab.page in state.blocked_navigations
                         or state.proxy.blocked_count > blocked_before
