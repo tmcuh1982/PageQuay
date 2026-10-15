@@ -14,7 +14,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def main():
-    base = os.environ.get("PQ_URL", "http://127.0.0.1:8766").rstrip("/")
+    base = os.environ.get("PQ_URL", "http://127.0.0.1:8787").rstrip("/")
     slug = urllib.parse.quote(os.environ.get("PQ_PROJECT", "projectx"), safe="")
     request = urllib.request.Request(
         f"{base}/v1/projects/{slug}/key-info",

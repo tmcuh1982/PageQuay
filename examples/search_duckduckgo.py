@@ -215,7 +215,7 @@ def collect(
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--url", default=os.environ.get("PQ_URL", "http://127.0.0.1:8766"))
+    parser.add_argument("--url", default=os.environ.get("PQ_URL", "http://127.0.0.1:8787"))
     parser.add_argument("--project", default=os.environ.get("PQ_PROJECT", "projectx"))
     parser.add_argument("--query", action="append", required=True)
     parser.add_argument("--locale", default="fr-FR")

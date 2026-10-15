@@ -354,3 +354,10 @@ Migration 008 appliquée et règle UniversRobot (`universrobot`) enregistrée pa
 ### 14 octobre 2026 — Préparation du commit et de la release 0.2.3
 
 Utilisateur demande « fait un commit release github en l'état ». Publication publique autorisée sur tmcuh1982/PageQuay/main ; accès gh confirmé, origin/main égal au HEAD initial d6f6ecd. Le lot conserve tout le travail cookies et User-Agent courant et les correctifs déjà publiés depuis v0.2.2 ; version paquet/module/OpenAPI/lockfile mise à 0.2.3, notes docs/releases/0.2.3.md. Suite générale 257 passed/69 skipped, lock offline conforme, Ruff check/format sur onze fichiers du lot conformes. Styles préexistants des diagnostics conservés en l'état, sans nettoyage fonctionnel ou formatage ajouté. Tests Chromium de l'implémentation 37 passed/1 skipped toujours applicables. Paquets à construire depuis le commit Git seulement, puis publication du tag/release v0.2.3 avec wheel, sdist et SHA256SUMS ; vérification distante obligatoire avant annonce de succès. Aucun nouveau redémarrage du service local ni changement du choix UniversRobot pour la préparation de publication.
+
+
+### 15 octobre 2026 — Release 1.0.1, ports locaux distincts
+
+Ajout du port administrateur dans Paramètres → Accès local, sauvegarde atomique avec le port API dans local-api.json, compatibilité des anciens fichiers et adaptation des origines loopback au démarrage. Déployé : console 8767, API 8787. Tailscale Serve corrigé sur autorisation explicite : HTTPS 8443 conservé, destination 8787. Tests HTTP et Bearer via loopback et HTTPS depuis le Mac réussis ; clés temporaires révoquées. Aucun test depuis un autre appareil revendiqué.
+
+Demande : commit release local. Métadonnées paquet/module/OpenAPI/lock alignées sur 1.0.1 et notes docs/releases/1.0.1.md. Suite générale 276 passed/74 skipped, warning Starlette préexistant ; Ruff ciblé, uv lock --check --offline et diff-check conformes. Aucune publication GitHub demandée pour cette tâche.

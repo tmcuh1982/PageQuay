@@ -60,7 +60,7 @@ Les connexions WebSocket des pages sont refusées par une règle de proxy native
 
 `PQ_BROWSER_CHANNEL=chrome` sélectionne Google Chrome installé sur macOS ; `chromium` (défaut) conserve le navigateur fourni par Playwright, dont le binaire peut se nommer « Google Chrome for Testing ».
 
-Version 1.0.0 : [notes de release](docs/releases/1.0.0.md), [transport navigateur et recette Music Store](docs/BROWSER_TRANSPORT.md).
+Version 1.0.1 : [notes de release](docs/releases/1.0.1.md), [transport navigateur et recette Music Store](docs/BROWSER_TRANSPORT.md).
 
 ## Utilisation
 
@@ -70,7 +70,7 @@ Version 1.0.0 : [notes de release](docs/releases/1.0.0.md), [transport navigateu
 4. Utiliser **Recherche** ou **Sessions / Onglets** pour tester manuellement. Les opérations longues créent un job ; son état et son résultat apparaissent dans la console.
 5. En cas de challenge, intervenir dans la fenêtre Chromium sur le Mac puis confirmer **Reprendre**. L'onglet reste ouvert ; aucune résolution automatique.
 
-Dans **Paramètres → Accès local**, définir le **Port API local** puis cliquer **Enregistrer le port local**. Ce réglage fonctionne sans Tailscale et permet de choisir un port libre quand un autre service tourne sur le même Mac. Les ports occupés et le port de la console sont refusés. Redémarrer le service pour activer le nouveau port, puis adapter les clients locaux ; le port actif et le changement en attente sont affichés séparément. Pour configurer le port avant le premier démarrage, utiliser `PQ_API_PORT` dans `.env`. Voir [le port API local](docs/OPERATIONS.md#port-api-local-depuis-la-console).
+Dans **Paramètres → Accès local**, définir le **Port administrateur** et le **Port API local** (deux ports distincts), puis cliquer **Enregistrer le port local**. Ce réglage fonctionne sans Tailscale et permet de choisir un port libre quand un autre service tourne sur le même Mac. Les ports occupés et le port de la console sont refusés. Redémarrer le service pour activer le nouveau port, puis adapter les clients locaux ; le port actif et le changement en attente sont affichés séparément. Pour configurer le port avant le premier démarrage, utiliser `PQ_API_PORT` dans `.env`. Voir [le port API local](docs/OPERATIONS.md#port-api-local-depuis-la-console).
 
 Dans **Paramètres → Accès externe**, définir le **Port HTTPS externe** puis cliquer **Appliquer le port HTTPS** pour changer le port utilisé par les clients Tailscale (443 par défaut). L’adresse active est affichée ; par exemple, le port 8443 donne `https://mac-mini.votre-tailnet.ts.net:8443`. Le changement est immédiat et persistant dans Serve. Mettre à jour les clients et les règles d’accès du tailnet. La destination API locale (`PQ_API_PORT`, 8766 par défaut) et le port de la console restent distincts. Tailscale connecté, Serve/HTTPS activé et hostname dans `PQ_ALLOWED_HOSTS` sont requis ; un port occupé, partagé ou publié via Funnel est refusé. Voir [l’exploitation réseau](docs/OPERATIONS.md#port-https-externe-depuis-la-console).
 

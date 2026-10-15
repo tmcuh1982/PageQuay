@@ -155,3 +155,77 @@ def test_invalid_saved_port_fails_before_listener_start(tmp_path, content):
     config_path(settings).write_text(content)
     with pytest.raises((ValueError, ValidationError)):
         load_local_port(settings)
+
+
+def test_admin_and_api_ports_move_together(client):
+    headers = login(client)
+    rt = client.app.state.rt
+    api_port = free_port()
+    response = client.post(
+        URL,
+        json={
+            "admin_port": 8766,
+            "api_port": api_port,
+            "configured_port": 8766,
+            "configured_admin_port": 8765,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["configured_admin_port"] == 8766
+    assert rt.settings.port == 8765
+    rt.settings.allowed_origins.append("http://127.0.0.1:8765")
+    rt.settings.allowed_hosts.append("127.0.0.1")
+    restarted = load_local_port(rt.settings)
+    assert restarted.port == 8766
+    assert restarted.api_port == api_port
+    assert "http://127.0.0.1:8766" in restarted.allowed_origins
+    assert "http://127.0.0.1:8765" not in restarted.allowed_origins
+    api = TestClient(client.app, base_url="http://127.0.0.1:8766", client=("127.0.0.1", 99))
+    assert api.get("/admin/login").status_code == 404
+
+
+def test_identical_admin_and_api_ports_rejected(client):
+    assert (
+        client.post(
+            URL,
+            json={
+                "admin_port": 18767,
+                "api_port": 18767,
+                "configured_port": 8766,
+                "configured_admin_port": 8765,
+            },
+            headers=login(client),
+        ).status_code
+        == 409
+    )
+
+
+def test_login_and_csrf_after_admin_port_change(tmp_path):
+    from pagequay.auth import PASSWORDS
+    from pagequay.storage import uid
+
+    settings = Settings(data_dir=tmp_path)
+    config_path(settings).write_text('{"admin_port":8767,"api_port":8787}')
+    app = create_app(load_local_port(settings))
+    with TestClient(app, base_url="http://127.0.0.1:8767", client=("127.0.0.1", 99)) as admin:
+        app.state.rt.db.execute(
+            "INSERT INTO admins VALUES (?,?,?)",
+            (uid(), "admin", PASSWORDS.hash("TestPassword-42-Only!")),
+        )
+        headers = login(admin)
+        headers["Origin"] = "http://127.0.0.1:8767"
+        response = admin.post(
+            URL,
+            json={
+                "admin_port": 8767,
+                "api_port": 8787,
+                "configured_admin_port": 8767,
+                "configured_port": 8787,
+            },
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert not response.json()["restart_required"]
+        headers["Origin"] = "http://127.0.0.1:8765"
+        assert admin.post(URL, json={}, headers=headers).status_code == 403

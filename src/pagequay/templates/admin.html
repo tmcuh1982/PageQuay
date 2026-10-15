@@ -69,13 +69,16 @@
 <label>Période<select name="time_range" data-ddg-filter disabled>{% for code, label in search_periods.items() %}<option value="{{ code }}">{{ label }}</option>{% endfor %}</select></label></div>
 <p class="field-help">Pour cibler un pays et une période, choisissez DuckDuckGo. Une publication récente peut parler d’un événement ancien.</p><label>Votre recherche<input name="query" required maxlength="500" placeholder="Robotique agricole"></label><button class="primary" {% if not projects %}disabled{% endif %}>Lancer la recherche →</button></form><p class="footnote">Les moteurs peuvent limiter leur accès ou demander une intervention humaine. Aucun CAPTCHA n’est résolu automatiquement.</p></section>
 {% elif view=='settings' %}
-<section class="card"><h2>Accès local</h2><p class="muted">Choisissez un port API libre si un autre projet fonctionne sur ce Mac. Ce réglage fonctionne sans Tailscale.</p>
+<section class="card"><h2>Accès local</h2><p class="muted">Choisissez des ports distincts pour la console administrateur et l’API locale. Ce réglage fonctionne sans Tailscale.</p>
+<p>Console active : <a href="http://127.0.0.1:{{ local_access.current_admin_port }}/admin/">http://127.0.0.1:{{ local_access.current_admin_port }}/admin/</a></p>
 <p>API active : <code>http://127.0.0.1:{{ local_access.current_port }}</code></p>
-{% if local_access.restart_required %}<div class="notice warning">Port {{ local_access.configured_port }} enregistré. Redémarrez le service PageQuay pour l’activer, puis mettez à jour l’adresse de vos clients locaux.</div>{% endif %}
+{% if local_access.restart_required %}<div class="notice warning">Port {{ local_access.configured_port }} enregistré. Redémarrez le service PageQuay pour l’activer, puis mettez à jour vos adresses. Console enregistrée : http://127.0.0.1:{{ local_access.configured_admin_port }}/admin/.</div>{% endif %}
 <form data-api="/admin/settings/local-access" class="inline-form">
 <input type="hidden" name="configured_port" value="{{ local_access.configured_port }}" data-number>
+<input type="hidden" name="configured_admin_port" value="{{ local_access.configured_admin_port }}" data-number>
+<label>Port administrateur<input type="number" name="admin_port" value="{{ local_access.configured_admin_port }}" min="1024" max="65535" step="1" required data-number></label>
 <label>Port API local<input type="number" name="api_port" value="{{ local_access.configured_port }}" min="1024" max="65535" step="1" required data-number></label><button class="primary">Enregistrer le port local</button></form>
-<p class="footnote">Le changement s’applique au prochain démarrage du service. La console garde son port actuel. Si vous utilisez Tailscale Serve, adaptez aussi sa destination API au nouveau port.</p></section>
+<p class="footnote">Le changement s’applique au prochain démarrage du service. Le port administrateur sert au login ; le port API sert aux clients avec une clé Bearer. Si vous utilisez Tailscale Serve, adaptez aussi sa destination API au nouveau port.</p></section>
 <section class="card"><h2>Accès externe</h2><p class="muted">Choisissez le port HTTPS utilisé par vos clients dans le réseau Tailscale.</p>
 {% if external_access.url %}<p>Adresse active : <a href="{{ external_access.url }}/health/ready" target="_blank" rel="noopener">{{ external_access.url }}</a> <span class="pill green">HTTPS · privé</span></p>{% else %}<p class="muted">Aucune adresse HTTPS privée PageQuay confirmée.</p>{% endif %}
 {% if external_access.notice %}<div class="notice warning">{{ external_access.notice }}</div>{% endif %}
