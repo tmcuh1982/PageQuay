@@ -1,5 +1,7 @@
 # Lecture OnRobot RG2 — frames et options — CHG-20261013-028
 
+[Français](ONROBOT_FRAME_FIX.md) | [English](ONROBOT_FRAME_FIX.en.md)
+
 Demande : résoudre les tickets sources/extraction, conserver les causes précises et publier les corrections PageQuay. TODO-068 (frame), TODO-083 (options), TODO-084 (contrat de diagnostic). Aucun solver, clé/profil/permission ni approbation modifiés.
 
 ## Reproduction et défauts

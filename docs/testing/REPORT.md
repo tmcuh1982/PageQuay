@@ -1,5 +1,7 @@
 # Rapport de vérification — PageQuay 0.1
 
+[Français](REPORT.md) | [English](REPORT.en.md)
+
 Exécuté le **9 octobre 2026**, macOS Apple Silicon, Python **3.14.7**, Chromium Playwright **1243 / Chrome for Testing 153.0.8010.12**. Versions exactes dans `uv.lock`.
 
 Les captures et diagnostics de navigation restent locaux et sont exclus du dépôt public : ils peuvent contenir des noms de machines, adresses réseau ou pages capturées. Ce rapport conserve leurs résultats ; les exemples structurés issus de la fixture restent versionnés.

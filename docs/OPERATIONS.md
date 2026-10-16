@@ -1,5 +1,7 @@
 # Exploitation macOS et accès privé
 
+[Français](OPERATIONS.md) | [English](OPERATIONS.en.md)
+
 ## Démarrage et diagnostic
 
 Dans la racine du dépôt : `./scripts/start.sh`. Arrêt foreground : Ctrl-C. `./scripts/doctor.sh` vérifie l'environnement, le navigateur installé, le schéma, l'administrateur et l'état Serve si la CLI Tailscale existe. Cette commande crée le dossier de données et applique les migrations si nécessaire ; elle ne lance aucun navigateur.

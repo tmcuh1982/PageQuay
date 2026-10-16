@@ -1,5 +1,7 @@
 # Extraction JSON structurée
 
+[Français](EXTRACTION.md) | [English](EXTRACTION.en.md)
+
 Sur un onglet déjà navigué, avec une clé `content:read` du projet :
 
 ```http
@@ -44,7 +46,7 @@ L'arbre DOM **dans la réponse** est utile pour comprendre un composant personna
 
 ## Bornes et limites
 
-- Quatre lectures de documents visibles maximum, principal compris. Inventaire limité à 32 frames ; les frames cachées sont signalées comme omises sans consommer une lecture. Inventaire ou lectures visibles excédentaires : frame_limit_reached et partial. Durée totale 40 secondes, au plus 10 secondes par frame ; dépassement global typé TIMEOUT. Les frames détachées/non réactives restent indisponibles.
+- Quatre lectures de documents visibles maximum, principal compris. Inventaire limité à 32 frames ; les frames cachées sont signalées comme omises sans consommer une lecture, y compris depuis 1.1.0 les iframes dimensionnées portant `aria-hidden="true"`. Inventaire ou lectures visibles excédentaires : frame_limit_reached et partial. Durée totale 40 secondes, au plus 10 secondes par frame ; dépassement global typé TIMEOUT. Les frames détachées/non réactives restent indisponibles.
 - Par document : 8 000 nœuds visités (y compris cachés/omis), profondeur 32, budget texte de min(160 000, quota de contenu / 8) caractères ; URL puis titre réservent ce budget avant métadonnées et DOM ; valeurs textuelles bornées. Maximum 400 blocs, 300 liens, 100 images/contrôles, 300 options textuelles par select, 20 tables, 50 lignes et 30 cellules par ligne, 30 formulaires. JSON-LD : 10 scripts visités, y compris invalides, 20 000 caractères par script, objets/niveaux/collections bornés ; contenu parsé, jamais exécuté.
 - Les limites sont signalées ; le quota global `max_content_bytes`, le quota disque et le TTL s'appliquent aussi à l'artefact. Une représentation encore trop volumineuse est refusée par les contrôles d'artefacts habituels.
 - Snapshot des éléments montés actuellement : pour une SPA/hydratation, attendre d'abord un sélecteur pertinent ; pour une liste virtualisée ou lazy loading, effectuer les actions explicites nécessaires puis extraire à nouveau. Aucun scroll/clic/chargement infini automatique.

@@ -1,5 +1,7 @@
 # Recherche PageQuay — contrat 0.2.0
 
+[Français](SEARCH_API.md) | [English](SEARCH_API.en.md)
+
 Ce contrat ajoute des champs aux réponses et des paramètres optionnels aux requêtes de l’API `/v1`, sans modifier les états ni les chemins des jobs. `GET /openapi.json` publie le schéma des routes client et health sur le port API 8766 et via le HTTPS privé. Aucun login admin ni secret n’y figure. La copie versionnée est [openapi.json](openapi.json).
 
 ## Diagnostic des limites précédentes

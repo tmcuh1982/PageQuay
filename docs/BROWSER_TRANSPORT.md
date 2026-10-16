@@ -1,5 +1,7 @@
 # Transport navigateur et WebSockets — 0.2.4
 
+[Français](BROWSER_TRANSPORT.md) | [English](BROWSER_TRANSPORT.en.md)
+
 ## Fonctionnement
 
 Chaque projet conserve un profil persistant séparé. `PQ_BROWSER_CHANNEL=chromium` est le défaut ; ce navigateur est fourni par Playwright et son exécutable macOS peut porter le nom « Google Chrome for Testing ». `PQ_BROWSER_CHANNEL=chrome` sélectionne Google Chrome installé dans `/Applications`. Aucun profil personnel Chrome n’est utilisé.

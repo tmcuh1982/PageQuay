@@ -1,5 +1,7 @@
 # Correctif WORLD_NOT_FOUND de l’iframe KUKA — PageQuay 0.2.1
 
+[Français](KUKA_FRAME_FIX.md) | [English](KUKA_FRAME_FIX.en.md)
+
 ## Résultat
 
 Défaut reproduit puis corrigé sur l’URL réelle `https://my.kuka.com/s/?language=en_US`, via un service PageQuay jetable utilisant l’API HTTP/ASGI, Bearer éphémère, proxy public normal et navigateur Chromium. Aucune clé ni aucun profil du service installé utilisés. L’utilisateur a demandé que le test authentifié du service installé soit ensuite effectué depuis UniversRobot avec sa clé existante.

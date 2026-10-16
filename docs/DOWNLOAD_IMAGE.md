@@ -1,5 +1,7 @@
 # Acquisition d’une image originale — PageQuay 1.1.0
 
+[Français](DOWNLOAD_IMAGE.md) | [English](DOWNLOAD_IMAGE.en.md)
+
 Version minimale : **1.1.0**, paquet, module et OpenAPI. Les versions 0.2.2 et
 1.0.1 ne fournissent pas cette acquisition. `pq` reste le lanceur du service ;
 la commande livrée est REST : `POST /v1/projects/{slug}/download_image`.

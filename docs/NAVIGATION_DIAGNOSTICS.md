@@ -1,5 +1,7 @@
 # Diagnostics de navigation
 
+[Français](NAVIGATION_DIAGNOSTICS.md) | [English](NAVIGATION_DIAGNOSTICS.en.md)
+
 Une navigation refusée par Chromium reste refusée. PageQuay conserve le code
 `UPSTREAM_UNAVAILABLE` et le message générique `Navigation failed`, mais ajoute
 des `error.details` lorsque la première ligne de l'erreur `Page.goto` contient

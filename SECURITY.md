@@ -1,5 +1,7 @@
 # Sécurité PageQuay
 
+[Français](SECURITY.md) | [English](SECURITY.en.md)
+
 ## Périmètre et invariants
 
 Application privée pour un opérateur et des clients connus. Les pages Web sont non fiables ; les clés API et profils sont des secrets. Chaque ressource possède une relation serveur vers un projet identifié par un ID aléatoire. Les slugs ne deviennent jamais des chemins. Aucun administrateur par défaut, API d'administration pour clés clients, CDP public ou exécution de code fourni par un client.
@@ -20,7 +22,7 @@ Le proxy propre à chaque profil écoute sur une adresse loopback et un port ép
 
 Chromium est lancé avec `chromium_sandbox=True` : Playwright le désactive sinon par défaut ([documentation officielle](https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch-option-chromium-sandbox)). QUIC et UDP WebRTC non proxifié sont désactivés ; WebSockets distants et service workers bloqués. Le refus des WebSockets `ws`/`wss` utilise un second listener proxy loopback qui rejette avant DNS ou connexion amont, sans remplacer l’objet JavaScript `WebSocket`. La catégorie Chromium `socks=` (« autres proxys ») vise ce listener avec une URI de proxy HTTP explicite ; aucun repli `DIRECT` n’est configuré. Les frames, popups et workers sont couverts ; la fermeture de ce listener ne rétablit pas un accès direct. Le WebSocket de commande PageQuay n’est pas concerné.
 
-Permissions caméra, micro, localisation et clipboard non accordées. Téléchargements annulés, uploads et accès arbitraires aux fichiers non exposés. Les dialogues sont fermés sans validation de challenge.
+Permissions caméra, micro, localisation et clipboard non accordées. Téléchargements annulés, uploads et accès arbitraires aux fichiers non exposés. Les dialogues sont fermés sans validation de challenge. L’API explicite [download_image](docs/DOWNLOAD_IMAGE.md) lit séparément les octets originaux d’images bornées et validées via le navigateur protégé ; elle n’active pas les téléchargements ordinaires du navigateur.
 
 Ce dispositif **n'est pas un pare-feu OS** : un navigateur compromis, une extension ajoutée manuellement, un processus local autorisé ou une modification manuelle du profil sortent du modèle de confiance. Les tunnels ne déchiffrent pas les requêtes HTTP internes à TLS et ne garantissent pas une politique par URL à eux seuls. Le filtrage par origine, Playwright et l'IP de connexion s'appliquent conjointement. Une infrastructure exigeant un confinement complet doit ajouter un contrôle réseau OS administré. Aucune exception LAN de production dans cette version. Les exceptions des tests sont injectées uniquement en Python dans leur processus.
 

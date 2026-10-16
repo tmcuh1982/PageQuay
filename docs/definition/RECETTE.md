@@ -1,5 +1,7 @@
 # RECETTE — Tests de réception vérifiables
 
+[Français](RECETTE.md) | [English](RECETTE.en.md)
+
 Lancer les tests unitaires et d'intégration sur localhost. **Aucun compte Google/Brave/DDG et aucun contournement Cloudflare ne sont nécessaires pour vérifier la sécurité.** Le test de moteur tiers réel est une vérification additionnelle, non une garantie.
 
 ## Sécurité / authentification

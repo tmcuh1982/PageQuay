@@ -1,5 +1,7 @@
 # Export AgXeed et identité sous budget — 13 octobre 2026
 
+[Français](AGXEED_EXPORT_FIX.md) | [English](AGXEED_EXPORT_FIX.en.md)
+
 Demande utilisateur UniversRobot : traiter TODO-070, terminer Ask IA jusqu’aux avis DeepSeek/Jev et publier corrections/tests. Clés, profil, configuration et approbations conservés.
 
 ## Défaut et correction

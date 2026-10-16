@@ -1,5 +1,7 @@
 # Acquisition exacte et diagnostic des frames — extension du contrat 0.2.0
 
+[Français](ACQUISITION.md) | [English](ACQUISITION.en.md)
+
 Cette extension est additive : Bearer, projets/scopes, formats historiques, curseurs DuckDuckGo et hashes d’idempotence des anciennes recherches sont conservés. Aucun navigateur n’est nécessaire sur le serveur client. [Exemple Python](../examples/acquire.py), [OpenAPI](openapi.json), [preuves et limites](testing/ACQUISITION_REPORT.md).
 
 ## Navigation et acquisition

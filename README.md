@@ -1,8 +1,12 @@
 # PageQuay (PQ)
 
+[Français](README.md) | [English](README.en.md)
+
 Passerelle Web privée et auto-hébergée : un projet possède son propre profil Chromium persistant, ses onglets, ses clés API et ses contenus temporaires. API FastAPI REST + WebSocket et administration HTML/CSS/JavaScript locaux, sans build frontend, Docker ni abonnement.
 
 **Version 1.1.0 — acquisition d’images binaires.** Consulter [le rapport de tests](docs/testing/REPORT.md) pour distinguer les vérifications exécutées et les limites. Les sources initiales sont conservées dans `docs/definition/`. L'état de travail et les choix sont dans `memory.md` et `decisions.md`.
+
+Consulter [l’index bilingue complet](docs/README.md) pour les guides, notes de version, rapports et références en français et en anglais. L’interface administrateur reste en français.
 
 ## Documentation et état du projet
 
@@ -95,6 +99,7 @@ Toutes les routes de cette table utilisent `Authorization: Bearer <clé>` et con
 | --- | --- | --- |
 | GET `/key-info` | Clé du projet, aucun scope supplémentaire | Droits, expiration et quota effectif de la clé appelante |
 | POST `/search` | `search:read` | 202, job de recherche |
+| POST `/download_image` | `content:read` + `browser:interact` | 202, acquisition de l’image originale |
 | POST `/tabs` | `browser:interact` | 202, job d'ouverture/navigation |
 | GET `/tabs`, GET `/tabs/{id}` | `browser:read` | Liste / état |
 | DELETE `/tabs/{id}` | `browser:interact` | Fermeture, conflit si opération active |
@@ -185,7 +190,7 @@ Exemple curl (clé saisie sans l'inscrire dans l'historique) :
 ```sh
 read -s PQ_API_KEY
 export PQ_API_KEY
-curl --fail-with-body http://127.0.0.1:8765/v1/projects/projectx/search \
+curl --fail-with-body http://127.0.0.1:8766/v1/projects/projectx/search \
   -H "Authorization: Bearer $PQ_API_KEY" -H 'Content-Type: application/json' \
   -d '{"query":"robotique agricole","engine":"duckduckgo","limit":5}'
 unset PQ_API_KEY

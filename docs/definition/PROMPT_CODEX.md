@@ -1,5 +1,7 @@
 # PROMPT CODEX — Home Browser Gateway (Mac mini)
 
+[Français](PROMPT_CODEX.md) | [English](PROMPT_CODEX.en.md)
+
 > **Consigne** : coller l'intégralité de ce fichier dans Codex, dans un dépôt vide. Les fichiers `SPEC_API.md` et `RECETTE.md` fournis dans ce ZIP détaillent le contrat et les tests de réception ; les lire avant de commencer.
 
 ## Mission

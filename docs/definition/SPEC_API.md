@@ -1,6 +1,10 @@
 # SPEC_API — Contrat de référence (v1)
 
+[Français](SPEC_API.md) | [English](SPEC_API.en.md)
+
 Cette annexe décrit la surface fonctionnelle attendue. Les chemins sont indicatifs mais le schéma livré doit être cohérent, versionné, documenté par OpenAPI et couvert par des tests. **Toute route API client exige authentification ET autorisation par projet.** Les routes d'administration exigent une session admin Web avec CSRF pour mutations, ou un canal administratif strictement séparé non accessible aux clés clients.
+
+**Référence historique :** le contrat livré actuel est [OpenAPI](../openapi.json). Le WebSocket PageQuay livré transmet son ticket dans le premier message, pas dans la query string.
 
 ## Administration Web
 

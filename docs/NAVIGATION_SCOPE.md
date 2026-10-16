@@ -1,5 +1,7 @@
 # Navigation, challenges et portée d’extraction — PageQuay 0.2.2
 
+[Français](NAVIGATION_SCOPE.md) | [English](NAVIGATION_SCOPE.en.md)
+
 ## Contrat
 
 Navigation et extraction sont deux opérations. `allow_redirects` vaut **true par défaut**, indépendamment de `expected_url` et `respect_robots`. La navigation peut suivre les destinations intermédiaires autorisées par la politique réseau ; elle attend passivement la fin des vérifications automatiques reconnues. Elle compare ensuite la chaîne complète de l’URL finale à `expected_url`, avant la lecture du titre ou toute extraction métier. Aucune autorisation par domaine/préfixe n’est déduite.

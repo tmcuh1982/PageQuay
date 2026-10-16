@@ -1,5 +1,7 @@
 # Validation download_image — 15 octobre 2026
 
+[Français](DOWNLOAD_IMAGE_REPORT.md) | [English](DOWNLOAD_IMAGE_REPORT.en.md)
+
 Version de travail PageQuay 1.1.0. Ajout REST, pas de sous-commande du lanceur
 `pq`. Le service installé et UniversRobot n’ont pas été modifiés.
 
@@ -21,6 +23,8 @@ Version de travail PageQuay 1.1.0. Ajout REST, pas de sous-commande du lanceur
 - Ruff sur tous les fichiers Python modifiés/ajoutés : conforme ;
   `git diff --check` conforme ; `uv sync --locked --extra dev --offline` conforme.
   Paquet/module 1.1.0, OpenAPI public testé contre le fichier versionné.
+
+Ces suites historiques se recouvrent et sont distinctes des vérifications du 16 octobre : **292 réussis/96 ignorés** dans la suite générale et **72 réussis** avec Chromium ciblé, voir [les notes de release](../releases/1.1.0.md).
 
 Les tests d’acquisition utilisent de vrais Chromium et serveur HTTP local simulé.
 HTTP local est permis uniquement dans leurs dépendances injectées ; la commande

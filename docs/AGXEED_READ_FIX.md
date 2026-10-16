@@ -1,5 +1,7 @@
 # Correction AgXeed UNAVAILABLE — 13 octobre 2026
 
+[Français](AGXEED_READ_FIX.md) | [English](AGXEED_READ_FIX.en.md)
+
 Demande utilisateur UniversRobot : lire les logs, corriger et retester. Service installé 0.2.2, session console lolo active, clés/profil conservés. Commit et push GitHub explicitement demandés ensuite par l’utilisateur pour conserver les corrections dans le dépôt PageQuay.
 
 Erreur historique, SQLite lu en mode readonly : URL https://www.agxeed.com/, job navigate 005425b5c8c68f2031f7079c301cd37a, request e24970adf026c4035e1b5070, tab a0d63808962b3619107c13b19b7d6dd4. Le 13 octobre 2026 à16:48:56.109821UTC, UNAVAILABLE / Document unavailable during extraction, cause WORLD_NOT_FOUND, étape isolated_world, trois candidats et zéro probe.

@@ -1,5 +1,7 @@
 # Publier et synchroniser PageQuay
 
+[Français](PUBLISHING.md) | [English](PUBLISHING.en.md)
+
 Le dépôt cible est [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), public, branche `main`. La publication publique a été explicitement autorisée. Le dépôt Git local est configuré avec `origin` en HTTPS et `main` suit `origin/main`.
 
 ## Accès GitHub requis
@@ -23,7 +25,7 @@ Lors de cette connexion, GitHub CLI a stocké ses identifiants dans un fichier l
 
 Sources dans `src/`, tests et fixtures dans `tests/`, scripts/exemples, `pyproject.toml`, `uv.lock`, README, politique de sécurité, documentation, `memory.md` et `decisions.md`.
 
-`.gitignore` exclut les environnements, secrets `.env`, bases SQLite, profils, artefacts, sauvegardes, logs et diagnostics locaux. `.env.example` est conservé comme configuration sans secrets. Dans `docs/testing/`, seuls le rapport et les deux JSON issus de la fixture complexe sont versionnés ; les captures et rapports de navigation peuvent contenir des informations propres aux machines.
+`.gitignore` exclut les environnements, secrets `.env`, bases SQLite, profils, artefacts, sauvegardes, logs et diagnostics locaux. `.env.example` est conservé comme configuration sans secrets. Dans `docs/testing/`, seuls les rapports explicitement autorisés par `.gitignore` et les JSON de la fixture complexe sont versionnés ; les captures et rapports de navigation peuvent contenir des informations propres aux machines.
 
 Avant publication, inspecter les fichiers suivis et la différence préparée ; un `.gitignore` ne retire pas un fichier déjà suivi par Git.
 
@@ -65,3 +67,9 @@ git status --short --branch
 ```
 
 Pour un push Git complet, les deux commits doivent être identiques et le dossier propre. Si seuls les documents ont été publiés par API, comparer ces fichiers explicitement : cela ne signifie pas que le code a aussi été publié. Actualiser [l'état du projet](STATUS.md) et la mémoire seulement d'après les résultats confirmés. Publier le dépôt n'installe ni le LaunchAgent ni Tailscale Serve et ne lance pas le service.
+
+## Documentation bilingue
+
+Les guides publics, notes de version, rapports publiés et références initiales possèdent une version française `.md` et une version anglaise `.en.md`, reliées depuis [l’index](README.md). Toute modification de comportement ou de preuve doit être reportée dans les deux versions, en conservant endpoints, clés JSON, commandes, versions, dates et mesures. OpenAPI, code et fixtures JSON sont communs. `memory.md` et `decisions.md` sont des journaux internes de développement en français, distincts des guides publics. Les consignes d’origine restent des exigences historiques, pas une preuve de réalisation.
+
+La release stable 1.1.0 a été publiée le 16 octobre 2026 depuis 11ce7dd, avec wheel, archive source et SHA256SUMS vérifiés. Les mises à jour documentaires ultérieures de main ne modifient ni le tag ni ces paquets ; la description GitHub peut pointer vers la documentation bilingue actuelle.

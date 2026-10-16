@@ -1,5 +1,7 @@
 # Diagnostic de démarrage du navigateur
 
+[Français](STARTUP_DIAGNOSTICS.md) | [English](STARTUP_DIAGNOSTICS.en.md)
+
 `BROWSER_CRASHED` conserve son code et son message compatibles. Le retour
 ajoute `stage=startup`, `startup_step` et une cause bornée ; jamais une exception
 brute, un chemin de profil/exécutable, une commande Chromium ou des variables.

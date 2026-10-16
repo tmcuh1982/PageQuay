@@ -1,5 +1,7 @@
 # Rapport d’acquisition PageQuay — 12 octobre 2026
 
+[Français](ACQUISITION_REPORT.md) | [English](ACQUISITION_REPORT.en.md)
+
 Demandes : CHG-20261010-004 et diagnostic iframe CHG-20261012-029 fournis par l’utilisateur. Implémentation Python/FastAPI/Playwright, extension additive du contrat 0.2.0, sans dépendance ajoutée. Aucun navigateur client.
 
 ## Réalisé

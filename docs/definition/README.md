@@ -1,5 +1,9 @@
 # Home Browser Gateway — dossier de consignes pour Codex
 
+[Français](README.md) | [English](README.en.md)
+
+**Archive historique :** le nom HBG est devenu PageQuay. Pour le comportement livré, consulter [le README actuel](../../README.md), [l’état](../STATUS.md) et [OpenAPI](../openapi.json). Ces exigences ne prouvent pas leur réalisation ou leur validation.
+
 Ce ZIP contient un **prompt de réalisation**, pas le programme déjà développé.
 
 ## Utilisation

@@ -1,5 +1,7 @@
 # Composants et flux
 
+[Français](ARCHITECTURE.md) | [English](ARCHITECTURE.en.md)
+
 Le démarrage du navigateur conserve BROWSER_CRASHED et fournit des diagnostics
 bornés stage/startup_step/cause/error_class. Les exceptions et logs Chromium
 ne traversent pas l'API ; timeout, exécutable manquant et marqueur de verrou
@@ -53,3 +55,7 @@ Le lecteur associe les frames Shadow non énumérées par Window à la racine de
 `cdp_launch.py` fournit un wrapper privé par lancement et un relais du pipe Playwright vers le port CDP explicite du seul navigateur enfant. Le contexte persistant conserve son profil et les gardes existantes ; le navigateur ne reçoit plus `--remote-debugging-pipe`. Le wrapper est supprimé après lancement, et le relais ferme l’enfant à la fin du transport.
 
 `EgressProxy` possède deux listeners loopback : HTTP/HTTPS public à DNS/IP validée, et refus des connexions WebSocket avant résolution. La règle native Chromium `http=…;https=…;socks=http://…` affecte les WebSockets au listener de refus, sans injection dans l’objet JavaScript `WebSocket`. Les deux listeners et leurs handlers sont fermés ensemble ; une erreur de lancement ne laisse pas le premier listener ouvert. Contrat REST/WebSocket et schéma public inchangés, hormis la version. Voir [preuves et limites](BROWSER_TRANSPORT.md).
+
+## Images originales — 1.1.0
+
+Le handler de réponse de l’onglet possédé lit les octets JPEG/PNG/WebP originaux par flux CDP borné, les valide avec Pillow, vérifie l’URL finale exacte et publie un artifact privé avec SHA-256. Le délai total inclut file et attente humaine ; un échec supprime l’artifact non validé et ferme l’onglet possédé. Voir [le contrat image](DOWNLOAD_IMAGE.md).

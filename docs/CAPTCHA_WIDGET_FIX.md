@@ -1,5 +1,7 @@
 # Distinguer widget CAPTCHA et challenge principal — 13 octobre 2026
 
+[Français](CAPTCHA_WIDGET_FIX.md) | [English](CAPTCHA_WIDGET_FIX.en.md)
+
 Demande UniversRobot : terminer Ask IA AgXeed. L’utilisateur confirme dans Jump Desktop que la page s’ouvre sans CAPTCHA. Ancien job836bf8d624cb1a5d45d517e76917ae10, tabdeae0e88bd2985b0778902496bff568e, request0d9fe12faeef57c2da35e385 : waiting_for_human à extraction alors que la capture montre le site normal.
 
 Cause : la lecture challenge traitait la simple présence d’une iframe recaptcha/hcaptcha comme un challenge humain. Une iframe invisible ou un petit widget de formulaire ne démontre pas que le document principal est bloqué.
