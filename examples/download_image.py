@@ -3,7 +3,9 @@
 import argparse
 import hashlib
 import json
+import math
 import os
+import re
 import stat
 import tempfile
 import time
@@ -31,12 +33,18 @@ def artifact_to_file(client, path, result, output):
         raise ValueError("Unexpected artifact endpoint")
     fd, temporary = tempfile.mkstemp(dir=output.parent, prefix=".pq-image-")
     digest, size = hashlib.sha256(), 0
+    deadline = time.monotonic() + 30
     try:
         with os.fdopen(fd, "wb") as handle, client.stream("GET", path) as response:
             response.raise_for_status()
             if response.headers.get("content-type", "").split(";")[0] != result["media_type"]:
                 raise ValueError("Artifact MIME mismatch")
-            for block in response.iter_bytes(65536):
+            if response.headers.get("content-encoding", "identity").lower() != "identity":
+                raise ValueError("Encoded artifact refused")
+            # Do not wait indefinitely to fill a fixed-size output chunk.
+            for block in response.iter_bytes():
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("Artifact transfer deadline exceeded")
                 size += len(block)
                 if size > min(LIMIT, result["size"]):
                     raise ValueError("Artifact size exceeded")
@@ -61,7 +69,17 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--allow-redirects", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--job-id", help="Follow an existing job without submitting another image POST"
+    )
+    parser.add_argument("--resume", action="store_true", help="Explicitly resume --job-id")
     args = parser.parse_args()
+    if not math.isfinite(args.timeout) or not 0 < args.timeout <= 180:
+        parser.error("--timeout must be finite, positive and at most 180 seconds")
+    if args.resume and not args.job_id:
+        parser.error("--resume requires --job-id")
+    if args.job_id and not re.fullmatch(r"[a-f0-9]{32}", args.job_id):
+        parser.error("--job-id must be a PageQuay job identifier")
     report = {
         "stage": "startup",
         "version": "unknown",
@@ -79,7 +97,9 @@ def main():
             "stage": report["stage"],
             "cause": "http_status" if status else type(exc).__name__,
             "http_status": status,
-            "retryable": status == 429 or isinstance(exc, httpx.TimeoutException),
+            "retryable": False if report.get("submission") == "uncertain" else status == 429,
+            "replay_post": False,
+            "cleanup_verified": False,
             "observed_at": datetime.now(UTC).isoformat(),
             "expected": "complete binary artifact with matching MIME, size and SHA-256",
             "observed": "client operation failed",
@@ -98,6 +118,14 @@ def execute(args, report):
         "max_bytes": LIMIT,
         "timeout": args.timeout,
     }
+    if args.job_id:
+        report["command"] = {
+            "method": "POST" if args.resume else "GET",
+            "path": prefix + "/jobs/" + args.job_id + ("/resume" if args.resume else ""),
+        }
+    else:
+        report["command"] = {"method": "POST", "path": prefix + "/download_image", "body": body}
+        report["submission"] = "not_attempted"
     # Secret is sent only to the configured PageQuay service, never a redirect target.
     with httpx.Client(
         base_url=args.service,
@@ -105,16 +133,29 @@ def execute(args, report):
         timeout=15,
         headers={"Authorization": "Bearer " + private_token(args.bearer_file)},
     ) as client:
+        report["stage"] = "contract"
         contract = client.get("/openapi.json")
         contract.raise_for_status()
         report["version"] = contract.json().get("info", {}).get("version", "unknown")
         if "/v1/projects/{slug}/download_image" not in contract.json().get("paths", {}):
-            raise ValueError("download_image is unavailable; install PageQuay >=1.1.0")
-        report["command"] = {"method": "POST", "path": prefix + "/download_image", "body": body}
+            raise ValueError("download_image is unavailable; install PageQuay >=1.1.1")
+        operation = contract.json()["paths"]["/v1/projects/{slug}/download_image"].get("post", {})
+        report["image_transport"] = operation.get("x-pagequay-image-transport", "unknown")
+        if report["image_transport"] != "chromium-byob-integers-v1":
+            raise ValueError("Service does not attest the required image transport without Base64")
         report["stage"] = "admission"
-        response = client.post(prefix + "/download_image", json=body)
-        response.raise_for_status()
-        accepted = response.json()
+        if args.job_id:
+            accepted = {"job_id": args.job_id, "url": prefix + "/jobs/" + args.job_id}
+            if args.resume:
+                report["stage"] = "human_resume"
+                client.post(accepted["url"] + "/resume").raise_for_status()
+        else:
+            # A lost response may mean the server received the POST. Never replay it.
+            report["submission"] = "uncertain"
+            response = client.post(prefix + "/download_image", json=body)
+            response.raise_for_status()
+            accepted = response.json()
+            report["submission"] = "accepted"
         report.update(accepted)
         report["stage"] = "job_poll"
         print(json.dumps(accepted))  # Save job/tab identifiers even if this process stops.
@@ -123,6 +164,8 @@ def execute(args, report):
             response = client.get(accepted["url"])
             response.raise_for_status()
             job = response.json()
+            if job.get("kind") != "download_image":
+                raise ValueError("Existing job is not an image acquisition")
             if job["status"] == "waiting_for_human":
                 print(json.dumps(job, ensure_ascii=False))
                 print(
@@ -142,7 +185,9 @@ def execute(args, report):
                 print(json.dumps(result, ensure_ascii=False))
                 return 0
             time.sleep(2)
+        report["stage"] = "cancellation"
         client.post(accepted["url"] + "/cancel").raise_for_status()
+        report["cleanup_verified"] = False
         raise TimeoutError("Polling deadline: cancellation requested; poll saved job for cleanup")
 
 

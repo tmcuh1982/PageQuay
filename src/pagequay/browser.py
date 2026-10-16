@@ -573,13 +573,14 @@ class BrowserManager:
             if not job:
                 raise PQError("CHALLENGE_REQUIRED", "Manual intervention required", 409)
             capture = None
-            with suppress(PlaywrightError, PQError):
-                capture = self.artifacts.put(
-                    project,
-                    await self._screenshot(project, tab.page),
-                    "image/png",
-                    "screenshot:read",
-                )
+            if getattr(job, "kind", None) != "download_image":
+                with suppress(PlaywrightError, PQError):
+                    capture = self.artifacts.put(
+                        project,
+                        await self._screenshot(project, tab.page),
+                        "image/png",
+                        "screenshot:read",
+                    )
             await job.wait_for_human(tab.id, capture, navigation=tab.evidence.snapshot())
 
     @staticmethod

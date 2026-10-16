@@ -69,13 +69,14 @@ def validate_navigation(body):
     status_code=202,
     response_model=SearchAccepted,
     responses=ACQUISITION_ERRORS,
+    openapi_extra={"x-pagequay-image-transport": "chromium-byob-integers-v1"},
 )
 async def download_image(slug: str, body: DownloadImage, request: Request):
-    """Acquire original JPEG/PNG/WebP through the guarded browser. No Base64 in the API.
+    """Acquire original JPEG/PNG/WebP through the guarded browser without Base64.
 
     Requires content:read and browser:interact; poll/cancel/resume the ordinary job.
     expected_url is mandatory and exact. timeout includes queue, startup and human waiting;
-    cleanup has a separate maximum of five seconds.
+    decoder termination has one second, then tab/guard cleanup has five seconds.
     """
     from .image_download import download_image as acquire_image
 

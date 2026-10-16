@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.staticfiles import StaticFiles
 
@@ -21,6 +23,7 @@ from .events import Events
 from .external_access import ExternalAccess
 from .jobs import Jobs
 from .local_access import LocalAccess, load_local_port
+from .navigation import utc_now
 from .network import NetworkPolicy
 from .profiles import ProfileLock
 from .retention import Retention
@@ -28,6 +31,34 @@ from .search import SearchService
 from .settings import Settings
 from .storage import Storage
 from .usage import ApiUsageMiddleware
+
+
+def operation_error_details(request, code, *, cause="unknown"):
+    path = request.url.path
+    if not path.startswith("/v1/projects/"):
+        return None
+    if path.endswith("/download_image"):
+        stage = "admission"
+    elif "/artifacts/" in path:
+        stage = "artifact_download"
+    elif "/jobs/" in path:
+        stage = "job_poll" if request.method == "GET" else "job_control"
+    else:
+        return None
+    return {
+        "stage": stage,
+        "cause": cause,
+        "retryable": False,
+        "request_id": getattr(request.state, "request_id", None),
+        "version": __version__,
+        "observed_at": utc_now(),
+        "command": {"method": request.method, "path": path},
+        "expected": "authorized bounded operation with valid input",
+        "observed": code,
+        "job_id": None,
+        "body_available": False,
+        "body_reason": "retain the client request; no unvalidated body is echoed",
+    }
 
 
 @dataclass
@@ -89,7 +120,14 @@ class SafetyMiddleware:
             message = await receive()
             consumed += len(message.get("body", b""))
             if consumed > self.settings.max_payload_bytes:
-                raise PQError("INVALID_INPUT", "Request too large", 413)
+                raise PQError(
+                    "INVALID_INPUT",
+                    "Request too large",
+                    413,
+                    details=operation_error_details(
+                        Request(scope), "INVALID_INPUT", cause="payload_limit"
+                    ),
+                )
             return message
 
         async def secured_send(message):
@@ -119,7 +157,15 @@ class SafetyMiddleware:
             oversized = True
         if oversized:
             return await JSONResponse(
-                error_body("INVALID_INPUT", "Request too large", request_id), status_code=413
+                error_body(
+                    "INVALID_INPUT",
+                    "Request too large",
+                    request_id,
+                    details=operation_error_details(
+                        Request(scope), "INVALID_INPUT", cause="payload_limit"
+                    ),
+                ),
+                status_code=413,
             )(scope, receive, secured_send)
         await self.app(scope, limited_receive, secured_send)
 
@@ -196,7 +242,7 @@ def create_app(settings=None, *, network_factory=NetworkPolicy):
                 exc.code,
                 exc.message,
                 getattr(request.state, "request_id", None),
-                details=exc.details,
+                details=exc.details or operation_error_details(request, exc.code),
             ),
             status_code=exc.status,
             headers=headers,
@@ -205,12 +251,60 @@ def create_app(settings=None, *, network_factory=NetworkPolicy):
     @app.exception_handler(RequestValidationError)
     async def invalid_input(request: Request, exc: RequestValidationError):
         # Pydantic errors include input values; do not echo passwords or form contents.
-        return JSONResponse(error_body("INVALID_INPUT", "Invalid request fields"), status_code=422)
+        details = None
+        if request.url.path.endswith("/download_image"):
+            safe_fields = {"body", *api.DownloadImage.model_fields}
+            details = {
+                "stage": "admission",
+                "cause": "request_validation",
+                "retryable": False,
+                "version": __version__,
+                "observed_at": utc_now(),
+                "command": {"method": request.method, "path": request.url.path},
+                "body_available": False,
+                "body_reason": "unvalidated_body_not_echoed; retain the client request",
+                "expected": "valid bounded image acquisition request",
+                "observed": "INVALID_INPUT",
+                "invalid_fields": [
+                    {
+                        "location": [
+                            part if part in safe_fields else "<unknown>" for part in error["loc"]
+                        ],
+                        "type": error["type"],
+                    }
+                    for error in exc.errors()[:20]
+                ],
+                "job_id": None,
+                "partial_artifact": False,
+            }
+        return JSONResponse(
+            error_body(
+                "INVALID_INPUT",
+                "Invalid request fields",
+                getattr(request.state, "request_id", None),
+                details=details,
+            ),
+            status_code=422,
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(request: Request, exc: StarletteHTTPException):
+        # FastAPI wraps receive/body-limit failures. Preserve the original diagnostic
+        # for this operation without changing other endpoints' HTTP contracts.
+        if request.url.path.endswith("/download_image") and isinstance(exc.__cause__, PQError):
+            return await handle_error(request, exc.__cause__)
+        return await http_exception_handler(request, exc)
 
     @app.exception_handler(Exception)
     async def unexpected(request: Request, exc: Exception):
         return JSONResponse(
-            error_body("INTERNAL_ERROR", "Unexpected service error"), status_code=500
+            error_body(
+                "INTERNAL_ERROR",
+                "Unexpected service error",
+                getattr(request.state, "request_id", None),
+                details=operation_error_details(request, "INTERNAL_ERROR"),
+            ),
+            status_code=500,
         )
 
     @app.get("/health/live")

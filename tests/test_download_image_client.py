@@ -53,3 +53,144 @@ def test_binary_client_checks_and_no_partial_file(tmp_path, outcome):
             assert not output.exists()
         assert calls == ["https://pagequay.example/v1/projects/a/artifacts/1"]
         assert not list(tmp_path.glob(".pq-image-*"))
+
+
+def client_args(tmp_path, **overrides):
+    from types import SimpleNamespace
+
+    token = tmp_path / "token"
+    token.write_text("private-test-token")
+    token.chmod(0o600)
+    return SimpleNamespace(
+        url="https://example.org/image.png",
+        expected_url="https://example.org/image.png",
+        allow_redirects=True,
+        timeout=10,
+        project="fixture",
+        service="https://pagequay.example",
+        bearer_file=token,
+        output=tmp_path / "output.png",
+        **overrides,
+    )
+
+
+@pytest.mark.parametrize("resume", [False, True])
+def test_follow_existing_human_job_without_image_post(tmp_path, monkeypatch, resume):
+    args = client_args(tmp_path, job_id="a" * 32, resume=resume)
+    calls = []
+
+    def handler(request):
+        calls.append((request.method, request.url.path))
+        if request.url.path == "/openapi.json":
+            return httpx.Response(
+                200,
+                json={
+                    "info": {"version": "1.1.0"},
+                    "paths": {
+                        "/v1/projects/{slug}/download_image": {
+                            "post": {"x-pagequay-image-transport": "chromium-byob-integers-v1"}
+                        }
+                    },
+                },
+            )
+        if request.url.path.endswith("/resume"):
+            return httpx.Response(200, json={"status": "resume_requested"})
+        return httpx.Response(200, json={"kind": "download_image", "status": "waiting_for_human"})
+
+    factory = httpx.Client
+    monkeypatch.setattr(
+        client_module.httpx,
+        "Client",
+        lambda **kwargs: factory(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    report = {}
+    assert client_module.execute(args, report) == 2
+    assert report["job_id"] == args.job_id
+    assert ("POST", "/v1/projects/fixture/download_image") not in calls
+    assert sum(method == "POST" for method, _ in calls) == int(resume)
+
+
+def test_uncertain_image_post_is_never_replayed(tmp_path, monkeypatch):
+    args = client_args(tmp_path, job_id=None, resume=False)
+    calls = []
+
+    def handler(request):
+        calls.append(request.method)
+        if request.method == "GET":
+            return httpx.Response(
+                200,
+                json={
+                    "info": {"version": "1.1.0"},
+                    "paths": {
+                        "/v1/projects/{slug}/download_image": {
+                            "post": {"x-pagequay-image-transport": "chromium-byob-integers-v1"}
+                        }
+                    },
+                },
+            )
+        raise httpx.ReadTimeout("fixture: response lost after receipt", request=request)
+
+    factory = httpx.Client
+    monkeypatch.setattr(
+        client_module.httpx,
+        "Client",
+        lambda **kwargs: factory(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    report = {}
+    with pytest.raises(httpx.ReadTimeout):
+        client_module.execute(args, report)
+    assert report["submission"] == "uncertain"
+    assert calls == ["GET", "POST"]
+
+
+def test_legacy_service_without_transport_marker_never_receives_post(tmp_path, monkeypatch):
+    args = client_args(tmp_path, job_id=None, resume=False)
+    calls = []
+
+    def handler(request):
+        calls.append(request.method)
+        return httpx.Response(
+            200,
+            json={
+                "info": {"version": "1.1.0"},
+                "paths": {"/v1/projects/{slug}/download_image": {"post": {}}},
+            },
+        )
+
+    factory = httpx.Client
+    monkeypatch.setattr(
+        client_module.httpx,
+        "Client",
+        lambda **kwargs: factory(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    report = {}
+    with pytest.raises(ValueError, match="required image transport"):
+        client_module.execute(args, report)
+    assert calls == ["GET"]
+    assert report["submission"] == "not_attempted"
+    assert report["image_transport"] == "unknown"
+
+
+def test_slow_artifact_blocks_observe_total_deadline(tmp_path, monkeypatch):
+    from test_download_image import original
+
+    data = original()
+    result = {
+        "size": len(data),
+        "media_type": "image/png",
+        "sha256": hashlib.sha256(data).hexdigest(),
+    }
+    clock = iter([0, 31])
+    monkeypatch.setattr(client_module.time, "monotonic", lambda: next(clock))
+    with httpx.Client(
+        base_url="https://pagequay.example",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, content=data, headers={"Content-Type": "image/png"})
+        ),
+    ) as client:
+        with pytest.raises(TimeoutError, match="transfer deadline"):
+            client_module.artifact_to_file(
+                client, "/v1/projects/fixture/artifacts/1", result, tmp_path / "image.png"
+            )
+    assert not (tmp_path / "image.png").exists()
+    assert not list(tmp_path.glob(".pq-image-*"))

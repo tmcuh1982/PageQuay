@@ -198,3 +198,7 @@ Préparer et valider un commit local de release 0.2.4 avec notes, version, contr
 ## 2026-10-14 — Première release v1
 
 La consigne « fais une v1 en release » remplace la publication prévue de 0.2.4 par v1.0.0. Conserver le commit 0.2.4 dans l’historique et aligner les métadonnées publiques sur 1.0.0 sans modifier le code navigateur validé. Publier le commit et le tag annoté, construire les archives uniquement depuis ce commit et vérifier les assets retéléchargés. Ne pas modifier les releases antérieures ni redémarrer le service installé.
+
+## 16 octobre 2026 — Transport image et release locale 1.1.1
+
+Le refus de Base64 couvre aussi les octets internes du protocole image. Les corps binaires CDP sont donc remplacés par un lecteur BYOB dans un monde isolé Chromium, sans accès universel. Le second GET est déclaré explicitement, ses en-têtes et sa destination sont revérifiés ; une réponse HTML nouvelle échoue. Le projet conserve son proxy et ses interdictions de téléchargements natifs. Les limites d’octets et de pixels sont maintenues ; pas de plafond RSS OS revendiqué sur macOS. Le marqueur OpenAPI est requis par le client pour éviter un ancien service 1.1.0. La demande « fait le commit release » autorise le commit local 1.1.1 ; push, tag distant, publication et installation restent distincts.

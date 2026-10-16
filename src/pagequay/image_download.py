@@ -1,7 +1,6 @@
 """Bounded original-image acquisition on the existing Chromium egress path."""
 
 import asyncio
-import base64
 import hashlib
 import io
 import warnings
@@ -12,6 +11,8 @@ from playwright.async_api import Error as PlaywrightError
 
 from . import __version__
 from .errors import PQError
+from .image_stream import metadata, read_image
+from .image_validator import validate_image
 from .models import Navigate
 from .navigation import utc_now
 
@@ -62,6 +63,10 @@ class ImageResponse:
         self.redirects = []
         self.network_id = None
         self.stage = "navigation"
+        self.bootstrap = False
+        self.streaming = False
+        self.stream_error = None
+        self.session = None
 
     def authorize(self):
         self.job.check_authorization()
@@ -76,6 +81,112 @@ class ImageResponse:
             )
 
     async def __call__(self, session, event):
+        self.session = session
+        if self.bootstrap:
+            if (
+                event.get("resourceType") == "Document"
+                and event.get("frameId") == self.frame_id
+                and "responseStatusCode" not in event
+                and event["request"]["url"] == self.request.expected_url
+            ):
+                self.authorize()
+                # At REQUEST stage the omitted body means an empty body, not Base64.
+                await session.send(
+                    "Fetch.fulfillRequest",
+                    {
+                        "requestId": event["requestId"],
+                        "responseCode": 200,
+                        "responseHeaders": [
+                            {"name": "Content-Type", "value": "text/html; charset=utf-8"},
+                            {"name": "Content-Length", "value": "0"},
+                            {"name": "Cache-Control", "value": "no-store"},
+                            {
+                                "name": "Content-Security-Policy",
+                                "value": "default-src 'none'; connect-src 'self'",
+                            },
+                        ],
+                    },
+                )
+                return True
+            return False
+        if self.streaming:
+            if event.get("frameId") != self.frame_id:
+                return False
+            if event.get("resourceType") == "Document":
+                self.stream_error = PQError("NAVIGATION_CHANGED", "Image document changed", 409)
+                await session.send(
+                    "Fetch.failRequest",
+                    {
+                        "requestId": event["requestId"],
+                        "errorReason": "Aborted",
+                    },
+                )
+                return True
+            if event.get("resourceType") != "Fetch":
+                return False
+            if "responseStatusCode" not in event:
+                return False
+            url = event["request"]["url"]
+            self.final_url = url
+            self.network_id = event.get("networkId")
+            status = event["responseStatusCode"]
+            if 300 <= status < 400:
+                # The ordinary redirect guard validates policy before following.
+                if not self.request.allow_redirects:
+                    self.stream_error = PQError("REDIRECT_BLOCKED", "Image fetch redirected", 409)
+                elif len(self.redirects) < 20:
+                    from urllib.parse import urljoin
+
+                    headers = {
+                        h["name"].lower(): h["value"] for h in event.get("responseHeaders", [])
+                    }
+                    self.redirects.append(
+                        {
+                            "url": url,
+                            "status": status,
+                            "target_url": urljoin(url, headers.get("location", "")),
+                            "phase": "acquisition",
+                        }
+                    )
+                    return False
+                else:
+                    self.stream_error = PQError("IMAGE_REDIRECT_LIMIT", "Too many redirects")
+            elif url != self.request.expected_url:
+                self.stage = "final_scope"
+                self.stream_error = PQError(
+                    "scope_changed",
+                    "Final image URL changed",
+                    409,
+                    details={"cause": "exact_final_url_mismatch", "final_url": url},
+                )
+            if self.stream_error:
+                await session.send(
+                    "Fetch.failRequest",
+                    {
+                        "requestId": event["requestId"],
+                        "errorReason": "Aborted",
+                    },
+                )
+                return True
+            try:
+                self.authorize()
+                metadata(
+                    self.request,
+                    url,
+                    status,
+                    {h["name"].lower(): h["value"] for h in event.get("responseHeaders", [])},
+                )
+            except PQError as exc:
+                self.stream_error = exc
+                await session.send(
+                    "Fetch.failRequest",
+                    {
+                        "requestId": event["requestId"],
+                        "errorReason": "Aborted",
+                    },
+                )
+                return True
+            return False
         if event.get("resourceType") != "Document" or event.get("frameId") != self.frame_id:
             return False
         if self.future.done():
@@ -113,7 +224,6 @@ class ImageResponse:
         self.final_url = url
         self.revision = self.tab.evidence.frame_revision
         self.network_id = event.get("networkId")
-        handle = None
         try:
             self.authorize()
             self.stage = "final_scope"
@@ -125,73 +235,16 @@ class ImageResponse:
                     details={"cause": "exact_final_url_mismatch"},
                 )
             self.stage = "acquisition"
-            if status != 200:
-                raise PQError(
-                    "IMAGE_HTTP_STATUS",
-                    "Image requires a complete HTTP 200 response",
-                    502,
-                    details={"cause": "http_status", "http_status": status},
-                )
-            if mime not in MIMES.values():
-                raise PQError(
-                    "IMAGE_FORMAT_FORBIDDEN",
-                    "Only JPEG, PNG and WebP are supported",
-                    415,
-                    details={"cause": "unsupported_mime"},
-                )
-            if headers.get("content-encoding", "identity").lower() != "identity":
-                raise PQError(
-                    "IMAGE_ENCODING_UNSUPPORTED",
-                    "Encoded representation refused",
-                    422,
-                    details={"cause": "content_encoding"},
-                )
-            length = headers.get("content-length")
-            try:
-                length = int(length) if length is not None else None
-                if length is not None and length < 0:
-                    raise ValueError
-            except ValueError as exc:
-                raise PQError("IMAGE_INCOMPLETE", "Invalid Content-Length", 422) from exc
-            if length is not None and length > self.request.max_bytes:
-                raise PQError("IMAGE_TOO_LARGE", "Image exceeds max_bytes", 413)
-            handle = (
-                await session.send(
-                    "Fetch.takeResponseBodyAsStream", {"requestId": event["requestId"]}
-                )
-            )["stream"]
-            data = bytearray()
-            while True:
+            mime, _ = metadata(self.request, url, status, headers)
+            if self.job.status == "waiting_for_human":
+                await self.job.resume.wait()
                 self.authorize()
-                block = await session.send(
-                    "IO.read",
-                    {"handle": handle, "size": min(65536, self.request.max_bytes - len(data) + 1)},
-                )
-                # CDP's internal binary framing is decoded here; never exposed in API or logs.
-                chunk = (
-                    base64.b64decode(block["data"], validate=True)
-                    if block.get("base64Encoded")
-                    else block["data"].encode()
-                )
-                if len(data) + len(chunk) > self.request.max_bytes:
-                    raise PQError("IMAGE_TOO_LARGE", "Image exceeds max_bytes while reading", 413)
-                data.extend(chunk)
-                if block.get("eof"):
-                    break
-            if length is not None and length != len(data):
-                raise PQError("IMAGE_INCOMPLETE", "Content-Length differs from received bytes", 422)
-            self.verify_scope()
-            await asyncio.to_thread(verify_image, bytes(data), mime)
-            self.authorize()
-            self.verify_scope()
-            self.future.set_result((bytes(data), mime, status))
+            self.future.set_result((mime, status))
         except Exception as exc:
             if not self.future.done():
                 self.future.set_exception(exc)
         finally:
-            if handle:
-                with suppress(PlaywrightError):
-                    await session.send("IO.close", {"handle": handle})
+            # Do not transfer binary CDP bodies: that protocol encodes them in Base64.
             with suppress(PlaywrightError):
                 await session.send(
                     "Fetch.failRequest", {"requestId": event["requestId"], "errorReason": "Aborted"}
@@ -241,7 +294,16 @@ async def download_image(browser, project, request, job):
                         422,
                         details={"cause": "html_after_challenge_check"},
                     )
-            data, mime, status = await collector.future
+            await collector.future
+            navigation.cancel()
+            await asyncio.gather(navigation, return_exceptions=True)
+            navigation = None
+            async with (
+                tab.lock,
+                tab.audit.operation("download_image", job, url=request.expected_url),
+            ):
+                data, mime, status = await read_image(tab, collector)
+                await validate_image(data, mime)
             collector.authorize()
             collector.verify_scope()
             stage = "artifact_creation"
@@ -273,7 +335,8 @@ async def download_image(browser, project, request, job):
                 code, cause = "HUMAN_REQUIRED_TIMEOUT", "total_deadline_waiting_for_human"
         details = dict(exc.details or {}) if isinstance(exc, PQError) else {}
         details.update(
-            stage=collector.stage if collector and stage == "navigation" else stage,
+            stage=details.get("stage")
+            or (collector.stage if collector and stage == "navigation" else stage),
             cause=cause,
             retryable=code in {"IMAGE_TIMEOUT", "UPSTREAM_UNAVAILABLE"},
             requested_url=request.url,
@@ -285,6 +348,7 @@ async def download_image(browser, project, request, job):
             job_id=job.id,
             tab_id=job.tab_id,
             frame_id=collector.frame_id if collector else None,
+            network_request_id=collector.network_id if collector else None,
             observed_at=utc_now(),
             version=__version__,
             command={
@@ -294,8 +358,9 @@ async def download_image(browser, project, request, job):
             },
             expected="complete original binary image; exact approved final URL",
             observed=code,
-            partial_artifact=False,
+            partial_artifact=details.get("partial_artifact", False),
         )
+        job.image_failure = {"code": code, "details": details}
         raise PQError(
             code,
             exc.message if isinstance(exc, PQError) else "Image acquisition failed",
@@ -303,20 +368,19 @@ async def download_image(browser, project, request, job):
             details=details,
         ) from exc
     finally:
-        if navigation:
-            navigation.cancel()
-            await asyncio.gather(navigation, return_exceptions=True)
-        if collector:
-            if collector.future.done() and not collector.future.cancelled():
-                collector.future.exception()  # Retrieve errors even when navigation failed first.
-            else:
-                collector.future.cancel()
-        if tab:
-            # Closing first aborts pending IO.read. Disabling Fetch with a live body stream
-            # can leave Chromium waiting indefinitely for its owner to release the response.
-            guard, tab.egress_guard = tab.egress_guard, None
-            try:
-                async with asyncio.timeout(5):
+        try:
+            async with asyncio.timeout(5):
+                if navigation:
+                    navigation.cancel()
+                    await asyncio.gather(navigation, return_exceptions=True)
+                if collector:
+                    if collector.future.done() and not collector.future.cancelled():
+                        collector.future.exception()
+                    else:
+                        collector.future.cancel()
+                if tab:
+                    # Close before disabling interception to abort pending body reads.
+                    guard, tab.egress_guard = tab.egress_guard, None
                     with suppress(PlaywrightError):
                         await tab.page.close()
                     if not tab.page.is_closed():
@@ -332,11 +396,12 @@ async def download_image(browser, project, request, job):
                         )
                     if guard:
                         await guard.__aexit__(None, None, None)
-            except TimeoutError as exc:
-                raise PQError(
-                    "IMAGE_CLEANUP_FAILED",
-                    "Image tab cleanup deadline exceeded",
-                    504,
-                    details={"stage": "cleanup", "cause": "cleanup_deadline", "retryable": False},
-                ) from exc
-        job.cleanup_verified = True
+        except TimeoutError as exc:
+            raise PQError(
+                "IMAGE_CLEANUP_FAILED",
+                "Image operation cleanup deadline exceeded",
+                504,
+                details={"stage": "cleanup", "cause": "cleanup_deadline", "retryable": False},
+            ) from exc
+        # If startup never returned ownership of a tab, its cleanup is not attested here.
+        job.cleanup_verified = tab is not None

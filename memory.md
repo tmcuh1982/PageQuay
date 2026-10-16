@@ -1,5 +1,9 @@
 # Mémoire de travail — PageQuay (PQ)
 
+## 16 octobre 2026 — Commit de release 1.1.1 demandé
+
+Utilisateur : audit en lecture seule puis correction approuvée, recette UBTECH réelle approuvée, puis demande de commit de release local. Acquisition sans Base64 interne par second GET Chromium contrôlé, reprise explicite du même job, décodeur jetable, nettoyage et diagnostics renforcés. Client refuse les services sans marqueur de transport et ne rejoue pas de POST incertain. Recette du 16 octobre réussie : JPEG 1080 × 1530, 689381 octets, empreinte concordante, GET authentifié 200, anonyme 401, autre projet 403, nettoyage confirmé ; premier essai interrompu par le polling trop fréquent du script (429), puis nouvelle recette après annulation confirmée. Preuves dans docs/testing/DOWNLOAD_IMAGE_REPORT.md. Sources testées avant version : 307 passed/104 skipped, Chromium ciblé 98 passed. Release locale 1.1.1, versions alignées, dépendances inchangées. Après version : 307 passed/104 skipped, 12,43 s ; Ruff/format, contrat, lock offline et diff conformes. Pas de push, tag, paquets publiés ou installation autorisés par cette demande ; aucun service installé, donnée réelle, profil, clé, droit, pause/horaire ou fichier UniversRobot modifié. Les limites mémoire sous macOS reposent sur octets/blocs/pixels, pas sur un plafond RSS OS.
+
 ## 14 octobre 2026 — Publication v1 demandée
 
 La demande de publier 0.2.4 a été remplacée avant toute mutation distante par « fais une v1 en release ». Préparer v1.0.0 depuis le commit local 31dd4ec (343 tests réussis/4 ignorés) : métadonnées et contrat à 1.0.0, notes dédiées, code navigateur inchangé. Compte GitHub tmcuh1982 et droit ADMIN sur tmcuh1982/PageQuay public vérifiés ; origin/main reste sur la release précédente. Construire wheel/sdist/SHA256SUMS depuis le commit Git, publier main puis tag annoté v1.0.0 et release stable, vérifier références et fichiers retéléchargés. Aucun déploiement ou redémarrage du service demandé.

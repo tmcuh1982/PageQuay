@@ -60,8 +60,28 @@ class Artifacts:
                     len(data),
                 ),
             )
-        except Exception:
-            path.unlink(missing_ok=True)
+        except Exception as exc:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as cleanup:
+                if image:
+                    raise PQError(
+                        "IMAGE_CLEANUP_FAILED",
+                        "Partial image artifact removal could not be confirmed",
+                        503,
+                        details={
+                            "stage": "cleanup",
+                            "cause": "artifact_write_rollback_unconfirmed",
+                            "artifact_id": artifact_id,
+                            "cleanup_verified": False,
+                            "partial_artifact": "unknown",
+                            "previous_error": {
+                                "code": "IMAGE_ARTIFACT_WRITE_FAILED",
+                                "cause": type(exc).__name__,
+                            },
+                        },
+                    ) from cleanup
+                raise
             raise
         result = {
             "artifact_id": artifact_id,

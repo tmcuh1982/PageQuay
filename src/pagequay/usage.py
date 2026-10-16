@@ -31,6 +31,7 @@ class ApiUsageMiddleware:
                         "endpoint": scope["method"] + " " + endpoint,
                         "http_status": status,
                         "key_id": key_id,
+                        "request_id": scope.get("state", {}).get("request_id"),
                     },
                 )
 

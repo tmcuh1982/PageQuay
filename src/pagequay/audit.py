@@ -107,6 +107,7 @@ class TabAudit:
         self.current = {
             "function": function,
             "job_id": getattr(job, "id", None),
+            "request_id": getattr(job, "request_id", None),
             "actor": getattr(job, "key_id", None) or "admin",
             "label": label,
         }

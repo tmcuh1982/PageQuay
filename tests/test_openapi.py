@@ -25,7 +25,7 @@ def test_versioned_public_client_contract_on_api_listener(client):
     response = client.get("http://127.0.0.1:8766/openapi.json")
     assert response.status_code == 200
     schema = response.json()
-    assert schema["info"]["version"] == "1.1.0"
+    assert schema["info"]["version"] == "1.1.1"
     assert all(path.startswith(("/v1/", "/health/")) for path in schema["paths"])
     search = schema["paths"]["/v1/projects/{slug}/search"]["post"]
     assert any(p["name"] == "idempotency-key" and p["in"] == "header" for p in search["parameters"])
@@ -85,3 +85,9 @@ def test_checked_in_contract_matches_public_listener(client):
     public = client.get("http://127.0.0.1:8766/openapi.json")
     assert public.status_code == 200
     assert documented == public.json()
+    assert (
+        documented["paths"]["/v1/projects/{slug}/download_image"]["post"][
+            "x-pagequay-image-transport"
+        ]
+        == "chromium-byob-integers-v1"
+    )

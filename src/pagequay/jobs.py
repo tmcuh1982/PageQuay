@@ -29,12 +29,14 @@ class Job:
         self.uncommitted_artifact = None
         self.deadline = None
         self.image_request = None
+        self.image_failure = None
         self.cleanup_verified = False
         self.cancel_reason = "unknown"
 
     def audit_details(self):
         return {
             "job_id": self.id,
+            "request_id": self.request_id,
             "tab_id": self.tab_id,
             "function": self.kind,
             "duration_ms": self.duration_ms,
@@ -304,8 +306,7 @@ class Jobs:
                 job.update("completed", result)
                 self.events.emit(job.project, "job.completed", job_id=job.id, scope=job.scope)
         except asyncio.CancelledError:
-            error = self.image_error(job, {"code": "IMAGE_CANCELLED", "message": "Cancelled"})
-            job.update("cancelled", result=job.partial_result, error=error)
+            self.fail(job, "cancelled", {"code": "IMAGE_CANCELLED", "message": "Cancelled"})
             self.events.emit(job.project, "job.failed", job_id=job.id, scope=job.scope)
         except (PQError, TimeoutError, PlaywrightError) as exc:
             if isinstance(exc, PQError):
@@ -319,25 +320,12 @@ class Jobs:
                     else "BROWSER_CRASHED",
                     "message": "Browser operation failed",
                 }
-            job.update("failed", result=job.partial_result, error=self.image_error(job, error))
+            self.fail(job, "failed", error)
             self.events.emit(job.project, "job.failed", job_id=job.id, scope=job.scope)
         except Exception:
-            job.update(
-                "failed",
-                result=job.partial_result,
-                error=self.image_error(
-                    job, {"code": "INTERNAL_ERROR", "message": "Operation failed"}
-                ),
-            )
+            self.fail(job, "failed", {"code": "INTERNAL_ERROR", "message": "Operation failed"})
             self.events.emit(job.project, "job.failed", job_id=job.id, scope=job.scope)
         finally:
-            if job.status != "completed" and job.uncommitted_artifact:
-                artifact_id = job.uncommitted_artifact
-                (self.db.root / "artifacts" / artifact_id).unlink(missing_ok=True)
-                self.db.execute(
-                    "DELETE FROM artifacts WHERE id=? AND project_id=?",
-                    (artifact_id, job.project["id"]),
-                )
             if started is not None:
                 job.duration_ms = round((time.perf_counter() - started) * 1000, 3)
             if job.status == "completed":
@@ -360,6 +348,33 @@ class Jobs:
             with suppress(asyncio.CancelledError):
                 await monitor
             self.active.pop(job.id, None)
+
+    def fail(self, job, status, error):
+        # Record terminal state only after attempting to remove unpublished output.
+        if job.uncommitted_artifact:
+            artifact_id = job.uncommitted_artifact
+            try:
+                self.db.execute(
+                    "DELETE FROM artifacts WHERE id=? AND project_id=?",
+                    (artifact_id, job.project["id"]),
+                )
+                (self.db.root / "artifacts" / artifact_id).unlink(missing_ok=True)
+                job.uncommitted_artifact = None
+            except Exception:
+                job.cleanup_verified = False
+                error = {
+                    "code": "IMAGE_CLEANUP_FAILED",
+                    "message": "Unpublished artifact removal could not be confirmed",
+                    "details": {
+                        "stage": "cleanup",
+                        "cause": "artifact_removal_unconfirmed",
+                        "retryable": False,
+                        "artifact_id": artifact_id,
+                        "previous_error": error,
+                        "partial_artifact": "unknown",
+                    },
+                }
+        job.update(status, result=job.partial_result, error=self.image_error(job, error))
 
     @staticmethod
     def image_error(job, error):
@@ -389,11 +404,15 @@ class Jobs:
             "partial_artifact": False,
         }
         details.update(error.get("details", {}))
+        if job.image_failure and job.image_failure["code"] != error["code"]:
+            details.setdefault("previous_error", job.image_failure)
         if error["code"] == "IMAGE_CANCELLED":
             details.update(cause=job.cancel_reason, retryable=False)
             if job.status == "waiting_for_human":
                 details["stage"] = "human_verification"
-        details["cleanup_verified"] = job.cleanup_verified or job.status == "queued"
+        details["cleanup_verified"] = (
+            job.cleanup_verified or job.status == "queued"
+        ) and details.get("cleanup_verified", True)
         if error["code"] == "TIMEOUT":
             if job.status == "waiting_for_human":
                 error["code"] = "HUMAN_REQUIRED_TIMEOUT"

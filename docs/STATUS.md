@@ -2,6 +2,8 @@
 
 [Français](STATUS.md) | [English](STATUS.en.md)
 
+Version locale préparée : **1.1.1**, acquisition sans Base64 interne ; [notes](releases/1.1.1.md). Recette UBTECH du 16 octobre réussie. Aucune nouvelle publication ni installation.
+
 Version publique **1.1.0**, publiée sous [v1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), commit source 11ce7dd. Le wheel, l’archive source et SHA256SUMS ont été retéléchargés et comparés aux fichiers construits. La publication n’a ni déployé ni redémarré le service installé. Le déploiement et les recettes Google depuis un autre appareil, ACL Tailscale et restauration complète restent distincts de la publication des sources.
 
 ## Fonctionnalités livrées
