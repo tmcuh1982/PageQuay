@@ -29,6 +29,12 @@ Consulter [l’index bilingue complet](docs/README.md) pour les guides, notes de
 
 La [release 1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), ses paquets Python et leurs sommes SHA-256 sont publiés le 16 octobre 2026. Le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
 
+## Utilisation et non-responsabilité
+
+Le code source et le logiciel PageQuay sont fournis « en l’état », sans garantie de disponibilité, d’exactitude ou d’adéquation à un usage particulier. Vous utilisez, modifiez et déployez ce code sous votre propre responsabilité.
+
+Dans les limites permises par la loi applicable, les auteurs et contributeurs déclinent toute responsabilité pour les usages du code source ou du logiciel et les dommages qui en résultent, notamment la perte de données, l’interruption de service ou l’utilisation de contenus obtenus auprès de tiers. Il appartient à chaque utilisateur de respecter les lois applicables, les conditions d’utilisation des sites consultés, les droits de propriété intellectuelle et la protection des données personnelles, et d’obtenir les autorisations nécessaires. Aucune disposition de cette clause n’exclut ni ne limite une responsabilité qui ne peut légalement l’être.
+
 ## Aperçu de l’interface
 
 Captures de démonstration avec données fictives et zones sensibles masquées. [Voir les huit captures](docs/SCREENSHOTS.md).

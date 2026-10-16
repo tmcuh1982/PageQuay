@@ -45,3 +45,7 @@ Audit has bounded admission queues, global/project quotas, logical byte/row caps
 See [test evidence](docs/testing/REPORT.en.md). Fixtures validate known layouts, not engine availability. Crash tests deliberately close a context and do not reproduce every OS failure. Validate Tailscale ACL, login-time LaunchAgent and full restore on the target machine.
 
 Report reproducible steps and nonsensitive correlation IDs. Never attach a browser profile, API key, raw authenticated page or secret-bearing screenshot to a public issue.
+
+## User responsibility
+
+Users are responsible for their use, modification and deployment of the source code, subject to applicable law. See [the disclaimer of liability](README.en.md#use-and-disclaimer-of-liability), including responsibilities concerning third-party content and services.

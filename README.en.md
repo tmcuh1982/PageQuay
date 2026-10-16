@@ -27,6 +27,12 @@ The [bilingual documentation index](docs/README.md) lists English and French gui
 
 [Release 1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), Python packages and SHA-256 checksums were published on October 16, 2026. Sources and documentation are public on [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branch `main`. Local data and captures are excluded.
 
+## Use and disclaimer of liability
+
+The PageQuay source code and software are provided “as is”, without any warranty of availability, accuracy or fitness for a particular purpose. You use, modify and deploy this code at your own risk.
+
+To the extent permitted by applicable law, the authors and contributors disclaim liability for uses of the source code or software and any resulting damage, including data loss, service interruption or use of content obtained from third parties. Each user is responsible for complying with applicable laws, the terms of the websites accessed, intellectual property rights and personal data protection requirements, and for obtaining necessary permissions. Nothing in this disclaimer excludes or limits liability that cannot lawfully be excluded or limited.
+
 ## Interface preview
 
 Demonstration screenshots use fictitious data and masked sensitive fields. [View all eight screenshots](docs/SCREENSHOTS.en.md).

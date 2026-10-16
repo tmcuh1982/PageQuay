@@ -45,3 +45,7 @@ Le journal possède des files d’admission bornées, des quotas globaux/par pro
 Consulter `docs/testing/REPORT.md`. Les fixtures vérifient des mises en page connues, pas la disponibilité des moteurs. Les tests de crash ferment volontairement un contexte ; ils ne reproduisent pas tous les cas de panne OS. Tailscale ACL, LaunchAgent au login et restauration d'une sauvegarde doivent être validés sur la machine cible.
 
 Pour signaler un défaut, conserver les étapes de reproduction et identifiants non sensibles. Ne pas joindre de profil navigateur, clé API, copie brute de page authentifiée ou capture contenant des secrets à un dépôt public.
+
+## Responsabilité des utilisateurs
+
+L’utilisation, la modification et le déploiement du code source relèvent de la responsabilité de l’utilisateur, dans les limites de la loi applicable. Consulter [la clause de non-responsabilité](README.md#utilisation-et-non-responsabilité), notamment pour les contenus et services tiers.
