@@ -42,7 +42,11 @@ async def extract_structured(
                 if frame != page.main_frame:
                     handle = await frame.frame_element()
                     try:
-                        if not await handle.is_visible():
+                        # Align child-frame reads with extraction.js DOM exclusions.
+                        if (
+                            not await handle.is_visible()
+                            or await handle.get_attribute("aria-hidden") == "true"
+                        ):
                             entry.update(status="omitted", reason="hidden_frame")
                             documents.append(entry)
                             continue

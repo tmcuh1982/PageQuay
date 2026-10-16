@@ -14,6 +14,7 @@ from .models import (
     Actions,
     ContentFormat,
     CookiePolicy,
+    DownloadImage,
     ErrorResponse,
     JobResponse,
     KeyInfo,
@@ -61,6 +62,62 @@ def validate_navigation(body):
         raise exact_error(body.url)
     if body.expected_url is not None or not body.allow_redirects:
         require_https(body.url)
+
+
+@router.post(
+    "/projects/{slug}/download_image",
+    status_code=202,
+    response_model=SearchAccepted,
+    responses=ACQUISITION_ERRORS,
+)
+async def download_image(slug: str, body: DownloadImage, request: Request):
+    """Acquire original JPEG/PNG/WebP through the guarded browser. No Base64 in the API.
+
+    Requires content:read and browser:interact; poll/cancel/resume the ordinary job.
+    expected_url is mandatory and exact. timeout includes queue, startup and human waiting;
+    cleanup has a separate maximum of five seconds.
+    """
+    from .image_download import download_image as acquire_image
+
+    try:
+        rt, project, key = access(request, slug, "content:read")
+        rt.auth.authorize(key, project, "browser:interact")
+        validate_navigation(body)
+        require_https(body.expected_url)
+        return rt.jobs.submit(
+            project,
+            key["id"],
+            "download_image",
+            "content:read",
+            lambda job: acquire_image(rt.browser, project, body, job),
+            tab_id=uid(),
+            request_id=getattr(request.state, "request_id", None),
+            payload=body.model_dump(),
+            total_timeout=min(body.timeout, rt.settings.job_timeout_seconds),
+        )
+    except PQError as exc:
+        from . import __version__
+        from .navigation import utc_now
+
+        details = dict(exc.details or {})
+        details.update(
+            stage="admission",
+            cause=details.get("cause", exc.code),
+            retryable=exc.status in {429, 503},
+            requested_url=body.url,
+            expected_url=body.expected_url,
+            final_url=None,
+            request_id=getattr(request.state, "request_id", None),
+            job_id=None,
+            tab_id=None,
+            version=__version__,
+            observed_at=utc_now(),
+            expected="accepted bounded image acquisition job",
+            observed=exc.code,
+            command={"method": "POST", "path": request.url.path, "body": body.model_dump()},
+            partial_artifact=False,
+        )
+        raise PQError(exc.code, exc.message, exc.status, details=details) from exc
 
 
 def submit(rt, project, key, kind, scope, operation, *, request=None, tab_id=None):
@@ -322,21 +379,52 @@ async def screenshot(slug: str, tab_id: str, request: Request):
             "description": "Bounded artifact. Structured JSON follows StructuredSnapshot; "
             "legacy JSON, text, HTML and PNG retain their formats.",
             "model": StructuredSnapshot | dict | list,
-            "content": {"text/plain": {}, "text/html": {}, "image/png": {}},
+            "content": {
+                "text/plain": {},
+                "text/html": {},
+                "image/png": {},
+                "image/jpeg": {"schema": {"type": "string", "format": "binary"}},
+                "image/webp": {"schema": {"type": "string", "format": "binary"}},
+            },
         },
     },
 )
 async def artifact(slug: str, artifact_id: str, request: Request):
-    rt, project, key = access(request, slug)
-    row, path = rt.artifacts.get(project, artifact_id)
-    rt.auth.authorize(key, project, row["scope"])
-    # Attachments never render remote HTML under the administration origin.
-    return FileResponse(
-        path,
-        media_type=row["media_type"],
-        filename=artifact_id,
-        headers={"Content-Security-Policy": "default-src 'none'; sandbox"},
-    )
+    try:
+        rt, project, key = access(request, slug)
+        row, path = rt.artifacts.get(project, artifact_id)
+        rt.auth.authorize(key, project, row["scope"])
+        # Attachments never render remote HTML under the administration origin.
+        return FileResponse(
+            path,
+            media_type=row["media_type"],
+            filename=artifact_id,
+            headers={"Content-Security-Policy": "default-src 'none'; sandbox"},
+        )
+    except PQError as exc:
+        from . import __version__
+        from .navigation import utc_now
+
+        raise PQError(
+            exc.code,
+            exc.message,
+            exc.status,
+            details={
+                **(exc.details or {}),
+                "stage": "artifact_download",
+                "cause": exc.code,
+                "retryable": exc.status == 429,
+                "artifact_id": artifact_id,
+                "request_id": getattr(request.state, "request_id", None),
+                "version": __version__,
+                "observed_at": utc_now(),
+                "command": {"method": "GET", "path": request.url.path},
+                "expected": "authorized complete binary artifact",
+                "observed": exc.code,
+                "source_url": None,
+                "source_url_reason": "unknown_or_not_authorized",
+            },
+        ) from exc
 
 
 @router.get("/projects/{slug}/jobs/{job_id}", response_model=JobResponse)

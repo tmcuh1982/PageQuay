@@ -25,7 +25,7 @@ def test_versioned_public_client_contract_on_api_listener(client):
     response = client.get("http://127.0.0.1:8766/openapi.json")
     assert response.status_code == 200
     schema = response.json()
-    assert schema["info"]["version"] == "1.0.1"
+    assert schema["info"]["version"] == "1.1.0"
     assert all(path.startswith(("/v1/", "/health/")) for path in schema["paths"])
     search = schema["paths"]["/v1/projects/{slug}/search"]["post"]
     assert any(p["name"] == "idempotency-key" and p["in"] == "header" for p in search["parameters"])

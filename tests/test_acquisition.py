@@ -479,7 +479,10 @@ async def test_child_failure_contains_correlated_bounded_diagnostic(
         return None
 
     async def element():
-        return SimpleNamespace(is_visible=visible, dispose=dispose)
+        async def attribute(name):
+            return None
+
+        return SimpleNamespace(is_visible=visible, get_attribute=attribute, dispose=dispose)
 
     child.frame_element = element
 

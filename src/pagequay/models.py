@@ -63,6 +63,20 @@ class KeyInfo(Strict):
     rate_limit: KeyInfoRateLimit
 
 
+class DownloadImage(Strict):
+    url: str = Field(min_length=1, max_length=4096)
+    expected_url: str = Field(min_length=1, max_length=4096)
+    allow_redirects: bool = True
+    max_bytes: int = Field(5_000_000, strict=True, ge=1, le=5_000_000)
+    timeout: float = Field(
+        120,
+        gt=0,
+        le=180,
+        allow_inf_nan=False,
+        description="Total seconds including startup and human waiting",
+    )
+
+
 class Navigate(Strict):
     url: str = Field(min_length=1, max_length=4096)
     wait_until: Literal["domcontentloaded", "load", "networkidle"] = "domcontentloaded"
@@ -263,6 +277,25 @@ class AcquisitionArtifact(Strict):
     navigation: NavigationMetadata
 
 
+class DownloadImageResult(Strict):
+    artifact_id: str
+    url: str = Field(description="Authenticated project-scoped binary artifact endpoint")
+    size: int = Field(ge=1, le=5_000_000)
+    media_type: Literal["image/jpeg", "image/png", "image/webp"]
+    sha256: str
+    expires_at: float
+    requested_url: str
+    final_url: str
+    redirect_chain: list[dict[str, Any]]
+    http_status: Literal[200]
+    request_id: str | None
+    job_id: str
+    tab_id: str
+    frame_id: str
+    network_request_id: str | None
+    original_bytes: Literal[True]
+
+
 class ContextSelectionDiagnostic(Strict):
     session_type: Literal["unattached", "page", "frame_target", "ancestor_frame_target"]
     path_source: Literal["isolated_frame_owners", "frame_target_root"]
@@ -337,7 +370,14 @@ class JobResponse(Strict):
     status: Literal["queued", "running", "waiting_for_human", "completed", "failed", "cancelled"]
     created_at: float
     updated_at: float
-    result: SearchResult | NavigationResult | AcquisitionArtifact | dict[str, Any] | None
+    result: (
+        DownloadImageResult
+        | SearchResult
+        | NavigationResult
+        | AcquisitionArtifact
+        | dict[str, Any]
+        | None
+    )
     error: dict[str, Any] | None
     tab_id: str | None
     project: str

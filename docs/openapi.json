@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PageQuay",
-    "version": "1.0.1"
+    "version": "1.1.0"
   },
   "paths": {
     "/health/live": {
@@ -35,6 +35,99 @@
             }
           }
         }
+      }
+    },
+    "/v1/projects/{slug}/download_image": {
+      "post": {
+        "summary": "Download Image",
+        "description": "Acquire original JPEG/PNG/WebP through the guarded browser. No Base64 in the API.\n\nRequires content:read and browser:interact; poll/cancel/resume the ordinary job.\nexpected_url is mandatory and exact. timeout includes queue, startup and human waiting;\ncleanup has a separate maximum of five seconds.",
+        "operationId": "download_image_v1_projects__slug__download_image_post",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DownloadImage"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchAccepted"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Project/scope or URL/network policy refusal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Exact URL or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Shared REST quota or job capacity",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds until known retry deadline"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/v1/projects/{slug}/key-info": {
@@ -921,7 +1014,19 @@
               },
               "text/plain": {},
               "text/html": {},
-              "image/png": {}
+              "image/png": {},
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
             }
           },
           "422": {
@@ -1413,6 +1518,166 @@
         "type": "object",
         "title": "CookiePolicy"
       },
+      "DownloadImage": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Url"
+          },
+          "expected_url": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Expected Url"
+          },
+          "allow_redirects": {
+            "type": "boolean",
+            "title": "Allow Redirects",
+            "default": true
+          },
+          "max_bytes": {
+            "type": "integer",
+            "maximum": 5000000.0,
+            "minimum": 1.0,
+            "title": "Max Bytes",
+            "default": 5000000
+          },
+          "timeout": {
+            "type": "number",
+            "maximum": 180.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Timeout",
+            "description": "Total seconds including startup and human waiting",
+            "default": 120
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url",
+          "expected_url"
+        ],
+        "title": "DownloadImage"
+      },
+      "DownloadImageResult": {
+        "properties": {
+          "artifact_id": {
+            "type": "string",
+            "title": "Artifact Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Authenticated project-scoped binary artifact endpoint"
+          },
+          "size": {
+            "type": "integer",
+            "maximum": 5000000.0,
+            "minimum": 1.0,
+            "title": "Size"
+          },
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
+            "title": "Media Type"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "expires_at": {
+            "type": "number",
+            "title": "Expires At"
+          },
+          "requested_url": {
+            "type": "string",
+            "title": "Requested Url"
+          },
+          "final_url": {
+            "type": "string",
+            "title": "Final Url"
+          },
+          "redirect_chain": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Redirect Chain"
+          },
+          "http_status": {
+            "type": "integer",
+            "const": 200,
+            "title": "Http Status"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "tab_id": {
+            "type": "string",
+            "title": "Tab Id"
+          },
+          "frame_id": {
+            "type": "string",
+            "title": "Frame Id"
+          },
+          "network_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Network Request Id"
+          },
+          "original_bytes": {
+            "type": "boolean",
+            "const": true,
+            "title": "Original Bytes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "url",
+          "size",
+          "media_type",
+          "sha256",
+          "expires_at",
+          "requested_url",
+          "final_url",
+          "redirect_chain",
+          "http_status",
+          "request_id",
+          "job_id",
+          "tab_id",
+          "frame_id",
+          "network_request_id",
+          "original_bytes"
+        ],
+        "title": "DownloadImageResult"
+      },
       "ErrorResponse": {
         "properties": {
           "error": {
@@ -1636,6 +1901,9 @@
           },
           "result": {
             "anyOf": [
+              {
+                "$ref": "#/components/schemas/DownloadImageResult"
+              },
               {
                 "$ref": "#/components/schemas/SearchResult"
               },

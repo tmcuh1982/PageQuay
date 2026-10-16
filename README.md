@@ -2,7 +2,7 @@
 
 Passerelle Web privée et auto-hébergée : un projet possède son propre profil Chromium persistant, ses onglets, ses clés API et ses contenus temporaires. API FastAPI REST + WebSocket et administration HTML/CSS/JavaScript locaux, sans build frontend, Docker ni abonnement.
 
-**Version 0.2 — recherche paginée, recette externe partielle.** Consulter [le rapport de tests](docs/testing/REPORT.md) pour distinguer les vérifications exécutées et les limites. Les sources initiales sont conservées dans `docs/definition/`. L'état de travail et les choix sont dans `memory.md` et `decisions.md`.
+**Version 1.1.0 — acquisition d’images binaires.** Consulter [le rapport de tests](docs/testing/REPORT.md) pour distinguer les vérifications exécutées et les limites. Les sources initiales sont conservées dans `docs/definition/`. L'état de travail et les choix sont dans `memory.md` et `decisions.md`.
 
 ## Documentation et état du projet
 
@@ -19,10 +19,11 @@ Passerelle Web privée et auto-hébergée : un projet possède son propre profil
 | [Recherche paginée](docs/SEARCH_API.md) | Continuations DuckDuckGo, quotas, idempotence et exemple ProjectX |
 | [Navigation et portée](docs/NAVIGATION_SCOPE.md) | Redirections, attente Cloudflare, reprise humaine et refus scope_changed (0.2.2) |
 | [Correctif iframe KUKA](docs/KUKA_FRAME_FIX.md) | Preuves réelles, régressions et version corrective 0.2.1 |
+| [Image originale](docs/DOWNLOAD_IMAGE.md) | `download_image`, original binaire borné et recette UBTECH |
 | [Acquisition exacte](docs/ACQUISITION.md) | Navigation attestée, URL stricte, robots, diagnostics iframe et client serveur |
-| [OpenAPI](docs/openapi.json) | Contrat API client 0.2.2, également disponible via `/openapi.json` |
+| [OpenAPI](docs/openapi.json) | Contrat API client 1.1.0, également disponible via `/openapi.json` |
 
-La [release 0.2.2](https://github.com/tmcuh1982/PageQuay/releases/tag/v0.2.2), ses paquets Python et leurs sommes SHA-256 sont publiés le 13 octobre 2026. Le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
+La [release 1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), ses paquets Python et leurs sommes SHA-256 sont publiés le 16 octobre 2026. Le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
 
 ## Installation macOS
 
@@ -59,6 +60,8 @@ Le navigateur utilise un port CDP explicite, non nul, lié à `127.0.0.1` et cho
 Les connexions WebSocket des pages sont refusées par une règle de proxy native de Chrome : HTTP/HTTPS passent par le proxy filtrant, et la catégorie `socks=` (« autres proxys », utilisée par Chrome pour `ws://` et `wss://`) pointe vers un second port local qui refuse toute connexion sans résoudre de destination. Aucun repli direct n’est configuré. Ce contrôle couvre aussi les frames, fenêtres secondaires et workers ; l’objet JavaScript `WebSocket` reste natif. Le WebSocket de commande de l’API PageQuay reste disponible. Voir les [règles de proxy WebSocket de Chromium](https://chromium.googlesource.com/chromium/src/+/HEAD/net/docs/proxy.md#mapping-websockets-urls-to-a-proxy).
 
 `PQ_BROWSER_CHANNEL=chrome` sélectionne Google Chrome installé sur macOS ; `chromium` (défaut) conserve le navigateur fourni par Playwright, dont le binaire peut se nommer « Google Chrome for Testing ».
+
+Version 1.1.0 : [notes de release](docs/releases/1.1.0.md), [download_image](docs/DOWNLOAD_IMAGE.md) et [preuves](docs/testing/DOWNLOAD_IMAGE_REPORT.md).
 
 Version 1.0.1 : [notes de release](docs/releases/1.0.1.md), [transport navigateur et recette Music Store](docs/BROWSER_TRANSPORT.md).
 

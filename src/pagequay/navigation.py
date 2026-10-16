@@ -191,6 +191,11 @@ async def redirect_guard(
             headers = {h["name"].lower(): h["value"] for h in event.get("responseHeaders", [])}
             url = event["request"]["url"]
             target = urljoin(url, headers["location"]) if headers.get("location") else None
+            handler = getattr(contract, "response_handler", None)
+            # The image collector records redirect headers but never consumes redirect bodies.
+            # Policy validation still runs before any redirect is followed.
+            if handler is not None and await handler(session, event):
+                return
             if target and 300 <= event.get("responseStatusCode", 0) < 400:
                 if (
                     event.get("resourceType") == "Document"

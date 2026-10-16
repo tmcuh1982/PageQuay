@@ -26,6 +26,11 @@ class Job:
         self.partial_result = None
         self.duration_ms = None
         self.request_id = None
+        self.uncommitted_artifact = None
+        self.deadline = None
+        self.image_request = None
+        self.cleanup_verified = False
+        self.cancel_reason = "unknown"
 
     def audit_details(self):
         return {
@@ -41,6 +46,8 @@ class Job:
             raise PQError("FORBIDDEN", "Project disabled", 403)
         if self.key_id:
             self.manager.auth.authorize({"id": self.key_id}, project, self.scope)
+            if self.kind == "download_image":
+                self.manager.auth.authorize({"id": self.key_id}, project, "browser:interact")
 
     def set_tab(self, tab_id):
         self.tab_id = tab_id
@@ -142,6 +149,7 @@ class Jobs:
         reserve=None,
         tab_id=None,
         request_id=None,
+        total_timeout=None,
     ):
         now = time.time()
         if kind == "search" and isinstance(payload, dict):
@@ -195,6 +203,10 @@ class Jobs:
         job = Job(self, project, key_id, kind, scope)
         job.tab_id = tab_id
         job.request_id = request_id
+        if total_timeout is not None:
+            job.deadline = asyncio.get_running_loop().time() + total_timeout
+        if kind == "download_image":
+            job.image_request = payload
         job.check_authorization()
         with self.db.conn:
             self.db.conn.execute(
@@ -244,7 +256,14 @@ class Jobs:
     def _cancelled_before_start(self, job, task):
         # A task cancelled before its first instruction never executes run()'s finally.
         if task.cancelled() and job.id in self.active:
-            job.update("cancelled", result=job.partial_result)
+            job.cleanup_verified = True
+            job.update(
+                "cancelled",
+                result=job.partial_result,
+                error=self.image_error(
+                    job, {"code": "IMAGE_CANCELLED", "message": "Cancelled before startup"}
+                ),
+            )
             self.db.execute(
                 "UPDATE search_cursors SET claimed_job_id=NULL WHERE claimed_job_id=?", (job.id,)
             )
@@ -263,6 +282,7 @@ class Jobs:
             try:
                 job.check_authorization()
             except PQError:
+                job.cancel_reason = "authorization_revoked"
                 job.task.cancel()
                 return
 
@@ -270,7 +290,7 @@ class Jobs:
         started = None
         monitor = asyncio.create_task(self.monitor(job))
         try:
-            async with self.semaphore:
+            async with asyncio.timeout_at(job.deadline), self.semaphore:
                 started = time.perf_counter()
                 job.check_authorization()
                 job.update("running")
@@ -284,7 +304,8 @@ class Jobs:
                 job.update("completed", result)
                 self.events.emit(job.project, "job.completed", job_id=job.id, scope=job.scope)
         except asyncio.CancelledError:
-            job.update("cancelled", result=job.partial_result)
+            error = self.image_error(job, {"code": "IMAGE_CANCELLED", "message": "Cancelled"})
+            job.update("cancelled", result=job.partial_result, error=error)
             self.events.emit(job.project, "job.failed", job_id=job.id, scope=job.scope)
         except (PQError, TimeoutError, PlaywrightError) as exc:
             if isinstance(exc, PQError):
@@ -298,16 +319,25 @@ class Jobs:
                     else "BROWSER_CRASHED",
                     "message": "Browser operation failed",
                 }
-            job.update("failed", result=job.partial_result, error=error)
+            job.update("failed", result=job.partial_result, error=self.image_error(job, error))
             self.events.emit(job.project, "job.failed", job_id=job.id, scope=job.scope)
         except Exception:
             job.update(
                 "failed",
                 result=job.partial_result,
-                error={"code": "INTERNAL_ERROR", "message": "Operation failed"},
+                error=self.image_error(
+                    job, {"code": "INTERNAL_ERROR", "message": "Operation failed"}
+                ),
             )
             self.events.emit(job.project, "job.failed", job_id=job.id, scope=job.scope)
         finally:
+            if job.status != "completed" and job.uncommitted_artifact:
+                artifact_id = job.uncommitted_artifact
+                (self.db.root / "artifacts" / artifact_id).unlink(missing_ok=True)
+                self.db.execute(
+                    "DELETE FROM artifacts WHERE id=? AND project_id=?",
+                    (artifact_id, job.project["id"]),
+                )
             if started is not None:
                 job.duration_ms = round((time.perf_counter() - started) * 1000, 3)
             if job.status == "completed":
@@ -331,6 +361,52 @@ class Jobs:
                 await monitor
             self.active.pop(job.id, None)
 
+    @staticmethod
+    def image_error(job, error):
+        if job.kind != "download_image":
+            return None if error["code"] == "IMAGE_CANCELLED" else error
+        from . import __version__
+        from .navigation import utc_now
+
+        details = {
+            "stage": "queue" if job.status == "queued" else "acquisition",
+            "cause": "total_deadline" if error["code"] == "TIMEOUT" else "unknown",
+            "retryable": error["code"] == "TIMEOUT",
+            "request_id": job.request_id,
+            "job_id": job.id,
+            "tab_id": job.tab_id,
+            "observed_at": utc_now(),
+            "version": __version__,
+            "command": {
+                "method": "POST",
+                "path": f"/v1/projects/{job.project['slug']}/download_image",
+                "body": job.image_request,
+            },
+            "requested_url": (job.image_request or {}).get("url"),
+            "expected_url": (job.image_request or {}).get("expected_url"),
+            "expected": "complete original binary image; exact approved final URL",
+            "observed": error["code"],
+            "partial_artifact": False,
+        }
+        details.update(error.get("details", {}))
+        if error["code"] == "IMAGE_CANCELLED":
+            details.update(cause=job.cancel_reason, retryable=False)
+            if job.status == "waiting_for_human":
+                details["stage"] = "human_verification"
+        details["cleanup_verified"] = job.cleanup_verified or job.status == "queued"
+        if error["code"] == "TIMEOUT":
+            if job.status == "waiting_for_human":
+                error["code"] = "HUMAN_REQUIRED_TIMEOUT"
+                details.update(
+                    stage="human_verification",
+                    cause="total_deadline_waiting_for_human",
+                    retryable=False,
+                )
+            else:
+                error["code"] = "IMAGE_TIMEOUT"
+            details["observed"] = error["code"]
+        return {**error, "details": details}
+
     def get(self, project, job_id):
         row = self.db.one("SELECT * FROM jobs WHERE id=? AND project_id=?", (job_id, project["id"]))
         if not row:
@@ -350,7 +426,9 @@ class Jobs:
     def cancel(self, project, job_id):
         self.get(project, job_id)
         if job_id in self.active:
-            self.active[job_id].task.cancel()
+            self.active[job_id].cancel_reason = "client_cancel"
+            if not self.active[job_id].task.cancelling():
+                self.active[job_id].task.cancel()
 
     def resume(self, project, job_id):
         self.get(project, job_id)
@@ -360,6 +438,8 @@ class Jobs:
         job.resume.set()
 
     async def shutdown(self):
+        for job in self.active.values():
+            job.cancel_reason = "service_shutdown"
         tasks = [job.task for job in self.active.values()]
         for task in tasks:
             task.cancel()

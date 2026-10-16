@@ -20,6 +20,7 @@ dist/
 docs/testing/*
 !docs/testing/REPORT.md
 !docs/testing/ACQUISITION_REPORT.md
+!docs/testing/DOWNLOAD_IMAGE_REPORT.md
 !docs/testing/structured-complex.json
 !docs/testing/structured-complex-compact.json
 pagequay-*-probe*

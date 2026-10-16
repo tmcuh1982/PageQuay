@@ -9,8 +9,11 @@ class Artifacts:
     def __init__(self, db, settings):
         self.db, self.settings = db, settings
 
-    def put(self, project, data, media_type, scope="content:read", *, artifact_id=None):
-        if len(data) > self.settings.max_content_bytes:
+    def put(
+        self, project, data, media_type, scope="content:read", *, artifact_id=None, image=False
+    ):
+        limit = 5_000_000 if image else self.settings.max_content_bytes
+        if len(data) > limit:
             raise PQError("INVALID_INPUT", "Content exceeds configured size limit", 413)
         self.purge(project)
         used = self.db.one(
@@ -38,13 +41,13 @@ class Artifacts:
             )
         artifact_id = artifact_id or uid()
         path = self.db.root / "artifacts" / artifact_id
-        path.write_bytes(data)
-        path.chmod(0o600)
         policy = self.db.policy(project)
         lifetime = min(
             policy.content_cache_ttl_minutes * 60, policy.artifact_retention_hours * 3600
         )
         try:
+            path.write_bytes(data)
+            path.chmod(0o600)
             self.db.execute(
                 "INSERT INTO artifacts VALUES (?,?,?,?,?,?,?)",
                 (
@@ -60,12 +63,17 @@ class Artifacts:
         except Exception:
             path.unlink(missing_ok=True)
             raise
-        return {
+        result = {
             "artifact_id": artifact_id,
             "size": len(data),
             "media_type": media_type,
             "url": f"/v1/projects/{project['slug']}/artifacts/{artifact_id}",
         }
+        if image:
+            result["expires_at"] = self.db.one(
+                "SELECT expires_at FROM artifacts WHERE id=?", (artifact_id,)
+            )["expires_at"]
+        return result
 
     def get(self, project, artifact_id):
         row = self.db.one(

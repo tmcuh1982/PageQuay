@@ -54,6 +54,7 @@ class Tab:
     network_denials: list = field(default_factory=list)
     network_denials_truncated: bool = False
     robots: dict = field(default_factory=lambda: {"status": "not_checked"})
+    response_handler: object = None
 
 
 @dataclass
