@@ -20,6 +20,7 @@ Version publiée / Published version: **1.1.0**, 16 octobre / October 16, 2026. 
 | ACQUISITION | [Français](ACQUISITION.md) | [English](ACQUISITION.en.md) |
 | AGXEED_EXPORT_FIX | [Français](AGXEED_EXPORT_FIX.md) | [English](AGXEED_EXPORT_FIX.en.md) |
 | AGXEED_READ_FIX | [Français](AGXEED_READ_FIX.md) | [English](AGXEED_READ_FIX.en.md) |
+| Captures / Screenshots | [Français](SCREENSHOTS.md) | [English](SCREENSHOTS.en.md) |
 | ARCHITECTURE | [Français](ARCHITECTURE.md) | [English](ARCHITECTURE.en.md) |
 | BROWSER_TRANSPORT | [Français](BROWSER_TRANSPORT.md) | [English](BROWSER_TRANSPORT.en.md) |
 | CAPTCHA_WIDGET_FIX | [Français](CAPTCHA_WIDGET_FIX.md) | [English](CAPTCHA_WIDGET_FIX.en.md) |

@@ -29,6 +29,12 @@ Consulter [l’index bilingue complet](docs/README.md) pour les guides, notes de
 
 La [release 1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), ses paquets Python et leurs sommes SHA-256 sont publiés le 16 octobre 2026. Le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
 
+## Aperçu de l’interface
+
+Captures de démonstration avec données fictives et zones sensibles masquées. [Voir les huit captures](docs/SCREENSHOTS.md).
+
+![Sessions et onglets PageQuay, données de démonstration masquées](docs/screenshots/sessions.png)
+
 ## Installation macOS
 
 Python 3.12–3.14 et [uv](https://docs.astral.sh/uv/) sont nécessaires pour la procédure verrouillée. Le développement initial utilise Python 3.14 sur Apple Silicon. Pour une nouvelle installation, dans un terminal :

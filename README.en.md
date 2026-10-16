@@ -27,6 +27,12 @@ The [bilingual documentation index](docs/README.md) lists English and French gui
 
 [Release 1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), Python packages and SHA-256 checksums were published on October 16, 2026. Sources and documentation are public on [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branch `main`. Local data and captures are excluded.
 
+## Interface preview
+
+Demonstration screenshots use fictitious data and masked sensitive fields. [View all eight screenshots](docs/SCREENSHOTS.en.md).
+
+![PageQuay sessions and tabs with masked demonstration data](docs/screenshots/sessions.png)
+
 ## macOS installation
 
 Python 3.12–3.14 and [uv](https://docs.astral.sh/uv/) are required for the locked installation. Initial development used Python 3.14 on Apple Silicon.
