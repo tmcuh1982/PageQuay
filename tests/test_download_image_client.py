@@ -194,3 +194,136 @@ def test_slow_artifact_blocks_observe_total_deadline(tmp_path, monkeypatch):
             )
     assert not (tmp_path / "image.png").exists()
     assert not list(tmp_path.glob(".pq-image-*"))
+
+
+@pytest.mark.parametrize(
+    "status,headers",
+    [
+        (206, {}),
+        (200, {"Content-Range": "bytes 0-1/20"}),
+        (200, {"Content-Encoding": "gzip"}),
+    ],
+)
+def test_artifact_refuses_partial_and_encoded(tmp_path, status, headers):
+    from test_gif_validator import gif
+
+    data = gif()
+    result = {
+        "size": len(data),
+        "media_type": "image/gif",
+        "sha256": hashlib.sha256(data).hexdigest(),
+    }
+    with httpx.Client(
+        base_url="https://pagequay.example",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                status,
+                stream=httpx.ByteStream(data),
+                headers={"Content-Type": "image/gif", **headers},
+            )
+        ),
+    ) as client:
+        with pytest.raises(ValueError):
+            client_module.artifact_to_file(
+                client, "/v1/projects/a/artifacts/1", result, tmp_path / "output.gif", project="a"
+            )
+    assert not list(tmp_path.glob(".pq-image-*"))
+
+
+def test_artifact_wrong_project_never_sends_bearer(tmp_path):
+    with httpx.Client(
+        base_url="https://pagequay.example",
+        transport=httpx.MockTransport(lambda request: pytest.fail("cross-project request sent")),
+    ) as client:
+        with pytest.raises(ValueError):
+            client_module.artifact_to_file(
+                client, "/v1/projects/b/artifacts/1", {}, tmp_path / "output.gif", project="a"
+            )
+
+
+@pytest.mark.parametrize(
+    "option", [{"max_bytes": 20_000_000}, {"allowed_media_types": ["image/gif"]}]
+)
+def test_extended_contract_checked_before_post(tmp_path, monkeypatch, option):
+    args = client_args(tmp_path, job_id=None, resume=False, **option)
+    calls = []
+
+    def handler(request):
+        calls.append(request.method)
+        return httpx.Response(
+            200,
+            json={
+                "info": {"version": "1.1.1"},
+                "paths": {
+                    "/v1/projects/{slug}/download_image": {
+                        "post": {"x-pagequay-image-transport": "chromium-byob-integers-v1"}
+                    }
+                },
+            },
+        )
+
+    factory = httpx.Client
+    monkeypatch.setattr(
+        client_module.httpx,
+        "Client",
+        lambda **kwargs: factory(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    report = {}
+    with pytest.raises(ValueError, match="GIF/20MB"):
+        client_module.execute(args, report)
+    assert calls == ["GET"]
+    assert report["submission"] == "not_attempted"
+
+
+@pytest.mark.parametrize("size", [5_000_000, 5_000_001, 20_000_000])
+def test_client_valid_gif_boundaries(tmp_path, size):
+    from test_gif_validator import sized_gif
+
+    data = sized_gif(size)
+    result = {
+        "size": len(data),
+        "media_type": "image/gif",
+        "sha256": hashlib.sha256(data).hexdigest(),
+    }
+    with httpx.Client(
+        base_url="https://pagequay.example",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200, stream=httpx.ByteStream(data), headers={"Content-Type": "image/gif"}
+            )
+        ),
+    ) as client:
+        output = tmp_path / "image.gif"
+        client_module.artifact_to_file(
+            client, "/v1/projects/a/artifacts/1", result, output, max_bytes=20_000_000, project="a"
+        )
+        assert output.read_bytes() == data
+        assert output.stat().st_mode & 0o777 == 0o600
+
+
+def test_client_stops_unbounded_artifact_early(tmp_path):
+    from test_gif_validator import gif
+
+    consumed = []
+
+    class Stream(httpx.SyncByteStream):
+        def __iter__(self):
+            for _ in range(100):
+                consumed.append(1)
+                yield b"x" * 65536
+
+    result = {"size": len(gif()), "media_type": "image/gif", "sha256": "0" * 64}
+    with httpx.Client(
+        base_url="https://pagequay.example",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200, stream=Stream(), headers={"Content-Type": "image/gif"}
+            )
+        ),
+    ) as client:
+        with pytest.raises(ValueError, match="size exceeded"):
+            client_module.artifact_to_file(
+                client, "/v1/projects/a/artifacts/1", result, tmp_path / "image.gif", project="a"
+            )
+    assert len(consumed) == 1
+    assert not list(tmp_path.glob(".pq-image-*"))

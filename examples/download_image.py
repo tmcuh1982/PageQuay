@@ -17,6 +17,8 @@ import httpx
 from PIL import Image
 
 LIMIT = 5_000_000
+MAX_BYTES = 20_000_000
+MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 
 
 def private_token(path):
@@ -28,25 +30,37 @@ def private_token(path):
     return token
 
 
-def artifact_to_file(client, path, result, output):
-    if not path.startswith("/v1/projects/") or urlsplit(path).netloc:
+def artifact_to_file(client, path, result, output, *, max_bytes=LIMIT, project=None):
+    if (
+        not re.fullmatch(r"/v1/projects/[a-z0-9-]+/artifacts/[a-zA-Z0-9]+", path)
+        or urlsplit(path).netloc
+        or (project is not None and not path.startswith(f"/v1/projects/{project}/artifacts/"))
+    ):
         raise ValueError("Unexpected artifact endpoint")
+    if type(result["size"]) is not int or not 0 < result["size"] <= max_bytes <= MAX_BYTES:
+        raise ValueError("Artifact size exceeded")
     fd, temporary = tempfile.mkstemp(dir=output.parent, prefix=".pq-image-")
     digest, size = hashlib.sha256(), 0
     deadline = time.monotonic() + 30
     try:
         with os.fdopen(fd, "wb") as handle, client.stream("GET", path) as response:
             response.raise_for_status()
+            if response.status_code != 200 or "content-range" in response.headers:
+                raise ValueError("Complete HTTP 200 artifact required")
             if response.headers.get("content-type", "").split(";")[0] != result["media_type"]:
                 raise ValueError("Artifact MIME mismatch")
             if response.headers.get("content-encoding", "identity").lower() != "identity":
                 raise ValueError("Encoded artifact refused")
+            if "content-length" in response.headers and (
+                int(response.headers["content-length"]) != result["size"]
+            ):
+                raise ValueError("Artifact Content-Length mismatch")
             # Do not wait indefinitely to fill a fixed-size output chunk.
-            for block in response.iter_bytes():
+            for block in response.iter_bytes(chunk_size=65536):
                 if time.monotonic() >= deadline:
                     raise TimeoutError("Artifact transfer deadline exceeded")
                 size += len(block)
-                if size > min(LIMIT, result["size"]):
+                if size > min(max_bytes, result["size"]):
                     raise ValueError("Artifact size exceeded")
                 digest.update(block)
                 handle.write(block)
@@ -68,6 +82,8 @@ def main():
     parser.add_argument("--bearer-file", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--timeout", type=float, default=120)
+    parser.add_argument("--max-bytes", type=int, default=LIMIT)
+    parser.add_argument("--allowed-media-types", nargs="+", choices=MEDIA_TYPES)
     parser.add_argument("--allow-redirects", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument(
         "--job-id", help="Follow an existing job without submitting another image POST"
@@ -76,6 +92,12 @@ def main():
     args = parser.parse_args()
     if not math.isfinite(args.timeout) or not 0 < args.timeout <= 180:
         parser.error("--timeout must be finite, positive and at most 180 seconds")
+    if not 0 < args.max_bytes <= MAX_BYTES:
+        parser.error("--max-bytes must be between 1 and 20000000")
+    if args.allowed_media_types and len(set(args.allowed_media_types)) != len(
+        args.allowed_media_types
+    ):
+        parser.error("--allowed-media-types must not contain duplicates")
     if args.resume and not args.job_id:
         parser.error("--resume requires --job-id")
     if args.job_id and not re.fullmatch(r"[a-f0-9]{32}", args.job_id):
@@ -111,13 +133,17 @@ def main():
 
 def execute(args, report):
     prefix = f"/v1/projects/{args.project}"
+    max_bytes = getattr(args, "max_bytes", LIMIT)
+    media_types = getattr(args, "allowed_media_types", None)
     body = {
         "url": args.url,
         "expected_url": args.expected_url,
         "allow_redirects": args.allow_redirects,
-        "max_bytes": LIMIT,
+        "max_bytes": max_bytes,
         "timeout": args.timeout,
     }
+    if media_types is not None:
+        body["allowed_media_types"] = media_types
     if args.job_id:
         report["command"] = {
             "method": "POST" if args.resume else "GET",
@@ -143,6 +169,9 @@ def execute(args, report):
         report["image_transport"] = operation.get("x-pagequay-image-transport", "unknown")
         if report["image_transport"] != "chromium-byob-integers-v1":
             raise ValueError("Service does not attest the required image transport without Base64")
+        if max_bytes > LIMIT or media_types is not None:
+            if operation.get("x-pagequay-image-contract") != "original-gif-20mb-v1":
+                raise ValueError("Service does not attest the GIF/20MB image contract")
         report["stage"] = "admission"
         if args.job_id:
             accepted = {"job_id": args.job_id, "url": prefix + "/jobs/" + args.job_id}
@@ -179,9 +208,22 @@ def execute(args, report):
                 result = job["result"]
                 if result["final_url"] != args.expected_url:
                     raise ValueError("Final URL mismatch")
+                if (
+                    result["media_type"] not in (media_types or MEDIA_TYPES[:3])
+                    or result.get("original_bytes") is not True
+                    or result.get("http_status") != 200
+                ):
+                    raise ValueError("Unexpected original image receipt")
                 report["stage"] = "artifact_download"
                 report["result"] = result
-                artifact_to_file(client, result["url"], result, args.output)
+                artifact_to_file(
+                    client,
+                    result["url"],
+                    result,
+                    args.output,
+                    max_bytes=max_bytes,
+                    project=args.project,
+                )
                 print(json.dumps(result, ensure_ascii=False))
                 return 0
             time.sleep(2)

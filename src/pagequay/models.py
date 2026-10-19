@@ -6,6 +6,7 @@ from .auth import SCOPES
 from .search_options import DDG_REGIONS
 
 ContentFormat = Literal["text", "html", "links", "metadata", "structured"]
+ImageMediaType = Literal["image/jpeg", "image/png", "image/webp", "image/gif"]
 
 
 class Strict(BaseModel):
@@ -67,7 +68,14 @@ class DownloadImage(Strict):
     url: str = Field(min_length=1, max_length=4096)
     expected_url: str = Field(min_length=1, max_length=4096)
     allow_redirects: bool = True
-    max_bytes: int = Field(5_000_000, strict=True, ge=1, le=5_000_000)
+    max_bytes: int = Field(5_000_000, strict=True, ge=1, le=20_000_000)
+    allowed_media_types: list[ImageMediaType] = Field(
+        default_factory=lambda: ["image/jpeg", "image/png", "image/webp"],
+        min_length=1,
+        max_length=4,
+        description="Opt-in formats; omission preserves JPEG/PNG/WebP only",
+        json_schema_extra={"uniqueItems": True},
+    )
     timeout: float = Field(
         120,
         gt=0,
@@ -75,6 +83,13 @@ class DownloadImage(Strict):
         allow_inf_nan=False,
         description="Total seconds including startup and human waiting",
     )
+
+    @field_validator("allowed_media_types")
+    @classmethod
+    def unique_media_types(cls, value):
+        if len(value) != len(set(value)):
+            raise ValueError("Duplicate media types")
+        return value
 
 
 class Navigate(Strict):
@@ -280,8 +295,8 @@ class AcquisitionArtifact(Strict):
 class DownloadImageResult(Strict):
     artifact_id: str
     url: str = Field(description="Authenticated project-scoped binary artifact endpoint")
-    size: int = Field(ge=1, le=5_000_000)
-    media_type: Literal["image/jpeg", "image/png", "image/webp"]
+    size: int = Field(ge=1, le=20_000_000)
+    media_type: ImageMediaType
     sha256: str
     expires_at: float
     requested_url: str

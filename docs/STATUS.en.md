@@ -1,8 +1,8 @@
-# PageQuay status — October 16, 2026
+# PageQuay status — October 19, 2026
 
 [Français](STATUS.md) | [English](STATUS.en.md)
 
-Prepared local version: **1.1.1**, image acquisition without internal Base64; [notes](releases/1.1.1.en.md). The October 16 UBTECH recipe passed. No new publication or installation.
+Local version: **1.2.0**, opt-in GIF and originals up to 20 MB; [notes](releases/1.2.0.en.md). Validation: 343 passed/123 skipped, targeted Chromium suite 164 passed. Dobot acceptance, publication and installation remain separate. Installed sources checked still report 1.1.1.
 
 Public version **1.1.0**, published as [v1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), source commit 11ce7dd. Wheel, sdist and SHA256SUMS were downloaded after publication and matched the built files. Publication did not deploy/restart the installed service. Deployment/other-device Google/Tailscale ACL/full restore validation remain separate from source release status.
 
@@ -15,7 +15,7 @@ Public version **1.1.0**, published as [v1.1.0](https://github.com/tmcuh1982/Pag
 - Google/DuckDuckGo/Brave adapters; manual challenge waiting/resume. DuckDuckGo native continuations, detailed quotas, POST idempotency, internal-tab cleanup and ProjectX client; persistent region/time filters.
 - Minimize/restore and start-minimized option; new tabs preserve minimization.
 - Rendered DOM text/HTML/links/metadata/structured JSON with optional filtered tree, open Shadow DOM and bounded iframe documents with partial indicators. Dimensioned aria-hidden frames are omitted without consuming content slots.
-- Guarded original JPEG/PNG/WebP acquisition, exact final URL, bounded bytes/deadline, SHA-256 and private binary artifact.
+- Guarded original JPEG/PNG/WebP and opt-in GIF acquisition up to 20 MB, exact final URL, bounded bytes/deadline, SHA-256 and private binary artifact.
 - DNS/IP-validating proxy, private-destination denial, native page-WebSocket denial, quotas/retention and explicitly confirmed manual reset.
 
 See [OpenAPI](openapi.json), [search](SEARCH_API.en.md), [extraction](EXTRACTION.en.md), [images](DOWNLOAD_IMAGE.en.md), [architecture](ARCHITECTURE.en.md).

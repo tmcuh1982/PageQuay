@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PageQuay",
-    "version": "1.1.1"
+    "version": "1.2.0"
   },
   "paths": {
     "/health/live": {
@@ -40,7 +40,7 @@
     "/v1/projects/{slug}/download_image": {
       "post": {
         "summary": "Download Image",
-        "description": "Acquire original JPEG/PNG/WebP through the guarded browser without Base64.\n\nRequires content:read and browser:interact; poll/cancel/resume the ordinary job.\nexpected_url is mandatory and exact. timeout includes queue, startup and human waiting;\ndecoder termination has one second, then tab/guard cleanup has five seconds.",
+        "description": "Acquire original JPEG/PNG/WebP, or opt-in GIF, through the guarded browser.\n\nRequires content:read and browser:interact; poll/cancel/resume the ordinary job.\nexpected_url is mandatory and exact. timeout includes queue, startup and human waiting;\nmax_bytes defaults to 5000000, maximum 20000000; GIF requires allowed_media_types.\nValidation has five CPU seconds and ten wall seconds within the total deadline;\ndecoder termination has one second, then tab/guard cleanup has five seconds.",
         "operationId": "download_image_v1_projects__slug__download_image_post",
         "parameters": [
           {
@@ -124,6 +124,7 @@
           }
         },
         "x-pagequay-image-transport": "chromium-byob-integers-v1",
+        "x-pagequay-image-contract": "original-gif-20mb-v1",
         "security": [
           {
             "BearerAuth": []
@@ -1027,6 +1028,12 @@
                   "type": "string",
                   "format": "binary"
                 }
+              },
+              "image/gif": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
           },
@@ -1540,10 +1547,27 @@
           },
           "max_bytes": {
             "type": "integer",
-            "maximum": 5000000.0,
+            "maximum": 20000000.0,
             "minimum": 1.0,
             "title": "Max Bytes",
             "default": 5000000
+          },
+          "allowed_media_types": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/gif"
+              ]
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "uniqueItems": true,
+            "title": "Allowed Media Types",
+            "description": "Opt-in formats; omission preserves JPEG/PNG/WebP only"
           },
           "timeout": {
             "type": "number",
@@ -1575,7 +1599,7 @@
           },
           "size": {
             "type": "integer",
-            "maximum": 5000000.0,
+            "maximum": 20000000.0,
             "minimum": 1.0,
             "title": "Size"
           },
@@ -1584,7 +1608,8 @@
             "enum": [
               "image/jpeg",
               "image/png",
-              "image/webp"
+              "image/webp",
+              "image/gif"
             ],
             "title": "Media Type"
           },

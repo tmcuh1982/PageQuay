@@ -6,8 +6,6 @@ from playwright.async_api import Error as PlaywrightError
 
 from .errors import PQError
 
-MIMES = {"image/jpeg", "image/png", "image/webp"}
-
 
 def metadata(request, url, status, headers):
     if url != request.expected_url:
@@ -24,8 +22,15 @@ def metadata(request, url, status, headers):
             502,
             details={"cause": "http_status", "http_status": status},
         )
+    if "content-range" in headers:
+        raise PQError(
+            "IMAGE_INCOMPLETE",
+            "Partial representation refused",
+            422,
+            details={"cause": "unexpected_content_range"},
+        )
     mime = headers.get("content-type", "").split(";", 1)[0].strip().lower()
-    if mime not in MIMES:
+    if mime not in request.allowed_media_types:
         code = (
             "IMAGE_HTML_RESPONSE"
             if mime in {"text/html", "application/xhtml+xml"}

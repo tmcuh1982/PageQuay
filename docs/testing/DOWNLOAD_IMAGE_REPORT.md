@@ -1,3 +1,183 @@
+# GIF et originaux jusqu’à 20 Mo — validation locale 1.2.0
+
+19 octobre 2026, Europe/Warsaw. Périmètre code/tests isolés validé par l’utilisateur
+après audit en lecture seule. **Audit et validation locaux, avant le commit de release demandé ensuite.
+Aucune publication ou installation.**
+Base : `42aa5d43763788c5ba5d6d27ad504cfdaf4d4562`, branche de travail `main`.
+Les quatre modifications documentaires présentes avant ce lot ont été conservées.
+Aucun fichier UniversRobot, projet réel, clé réelle, profil réel, quota global,
+LaunchAgent ou dépendance installée modifié ; aucune URL Dobot téléchargée.
+
+## Résultat
+
+- Même `download_image`, même suivi/reçu, pas de nouveau champ obligatoire de reçu.
+  Entier strict `max_bytes`, défaut 5 000 000, plafond 20 000 000. Formats facultatifs
+  via `allowed_media_types` : JPEG/PNG/WebP par défaut, GIF sur demande explicite.
+  Liste fermée, non vide, sans doublons ; null refusé. OpenAPI 1.2.0 qualifié par
+  `x-pagequay-image-contract=original-gif-20mb-v1` ; marqueur transport conservé.
+- GIF87a/89a : parcours complet des blocs, palettes, extensions, sous-blocs et
+  terminaison, puis décodage de la première image seulement. Écran et tous les
+  descripteurs ≤8 192 par axe et ≤16 000 000 pixels ; images contenues dans l’écran,
+  ≤1 000 images. Pas de `n_frames`, coalesçage, capture, réencodage ou aperçu.
+- Validateur jetable : entrée ≤20 Mo, cinq secondes CPU, dix secondes murales dans
+  le budget total ; arrêt confirmé sous une seconde après annulation/expiration.
+  Causes GIF connues conservées par codes de sortie fermés, aucun message brut du
+  décodeur. `stage=validation` ; erreurs existantes réutilisées.
+- Acquisition BYOB existante conservée : blocs ≤64 Kio et sentinelle, EOF et
+  comparaison de longueur. Refus supplémentaire d’un Content-Range même sur 200.
+  URL exacte, redirections, HTTPS/TLS, DNS/IP publiques et isolement inchangés.
+- Stockage image ≤20 Mo sans hausse de quota. Pour un original identifié par son
+  reçu de job, GET privé borné à la taille enregistrée et au fichier ouvert,
+  lecture ≤64 Kio, sentinelle, fermeture du fichier, budget 30 s. Range ignoré,
+  réponse complète 200. Les autres artefacts conservent leur comportement.
+  Échec journalisé avec code/cause et IDs sûrs ; avant en-têtes, diagnostic typé
+  avec état de fermeture. Après en-têtes, interruption du flux binaire.
+- Client : choix explicites de taille/formats et qualification avant POST,
+  projet attendu vérifié pour le GET, HTTP 200 sans Content-Range, refus d’encodage,
+  blocs bornés, vérification taille/SHA/MIME et sortie temporaire 0600 supprimée
+  en cas d’échec. Même job pour reprise ; POST incertain jamais rejoué.
+
+Fichiers runtime : `models.py`, `image_stream.py`, `image_download.py`,
+`image_validator.py`, nouveau `gif_validator.py`, `artifacts.py`, `api.py` sous
+`src/pagequay/`. Client : `examples/download_image.py`. Contrat/docs, tests et
+métadonnées `pyproject.toml`, `__init__.py`, `uv.lock` alignés sur 1.2.0.
+L’environnement installé n’a pas été réinstallé pour modifier ses métadonnées.
+
+## Preuves
+
+| Vérification | Résultat |
+| --- | --- |
+| Suite générale, sockets locales autorisées | 343 réussis, 123 ignorés, zéro échec, 14,37 s |
+| Suite ciblée avec Chromium réel, début 12:14:43 +02:00 | 164 réussis, zéro échec, 139,41 s |
+| Ruff check/format ciblés, diff --check, uv lock --check --offline | conformes |
+| Sources installées examinées, relues en fin de travail | identiques à la base initiale 1.1.1 |
+
+Les suites se recouvrent : leurs comptes ne s’additionnent pas. Dépréciation
+Starlette/httpx préexistante, sans ajout de dépendance pour la supprimer.
+Les derniers ajustements de causes/fermeture ont été revérifiés dans la suite
+générale ; ils ne changent pas le transport exercé par la suite Chromium.
+
+Couverture : défaut 5 Mo/trois formats ; PNG valides à 5 000 000 et 5 000 001 ;
+GIF valides aux tailles exactes 5 000 000, 5 000 001, 20 000 000, 20 000 001,
+avec acceptation/refus selon budget. Les grands GIF contiennent une véritable
+image décodable et une extension commentaire légale ; les PNG ont un chunk
+ancillaire privé avec CRC valide, jamais un remplissage arbitraire après EOF.
+Longueur absente, fausse courte/longue, HTML, MIME trompeur, encodage, corps
+partiel, troncature après première image, dimensions et compteur d’images,
+annulation/timeout du décodeur et du GET privé, taille de fichier modifiée avant
+ou pendant GET, isolement, expiration, redirections/SSRF, attente humaine/reprise,
+réponse POST perdue et nettoyages sont exercés. Régressions iframe/TIMEOUT
+conservées ; aucun lecteur iframe modifié.
+
+Commandes reproductibles depuis le dépôt, avec Chromium déjà disponible :
+
+```sh
+.venv/bin/pytest -q --tb=short -p no:cacheprovider --junitxml=/private/tmp/pagequay-gif-20mb-audit/regression.xml
+.venv/bin/pytest tests/test_download_image.py tests/test_download_image_client.py tests/test_gif_validator.py tests/test_openapi.py tests/test_jobs.py tests/test_acquisition_browser.py tests/test_challenges.py tests/test_shadow_frame.py tests/test_export_deadline.py tests/test_navigation_diagnostics.py --browser -q --tb=short -p no:cacheprovider --junitxml=/private/tmp/pagequay-gif-20mb-audit/isolated.xml
+```
+
+Les fixtures utilisent uniquement bases, projets, clés, profils et serveurs
+loopback jetables. Onglets/validateurs et sorties non validées sont nettoyés selon
+les cas testés. Les dossiers temporaires pytest restent sous leur rétention ;
+aucune purge globale ou suppression d’un autre projet n’est revendiquée.
+
+## Mesures et limites résiduelles
+
+| Acquisitions simultanées | Original par job | Acquisition + GET + vérifications | Pic RSS échantillonné de l’arbre de test | Stockage avant nettoyage |
+| --- | --- | --- | --- | --- |
+| 1 | 20 000 000 octets | 7,612 s | 1 769 392 Kio, soit 1,69 Gio | 20 000 000 octets |
+| 4 | 20 000 000 octets | 17,349 s | 2 599 152 Kio, soit 2,48 Gio | 80 000 000 octets |
+
+Mesures le 19 octobre vers 12:12–12:13 +02:00, échantillonnage ps toutes les
+250 ms de pytest et ses descendants, Chromium et serveur de fixture compris.
+Somme des RSS, pouvant compter plusieurs fois de la mémoire partagée ; ce n’est
+ni une mesure isolée du serveur ni un plafond garanti. La mesure à un job a
+chevauché une suite unitaire distincte : sa durée n’est pas un benchmark contrôlé.
+Ces données sont un point d’observation, pas une borne du pire cas ni une recette
+réseau distante. Les quatre jobs de 20 Mo ont conservé leurs empreintes et leurs
+80 Mo d’artefacts ont été supprimés du seul projet de fixture.
+
+Aucun plafond RSS OS n’est garanti sous macOS. Les tampons internes de Chromium,
+les copies d’octets, le protocole JSON et la mémoire des pixels s’ajoutent aux
+bornes applicatives. Les pixels compressés des trames suivantes ne sont pas
+décodés : leur décodabilité n’est pas garantie. GIF à texte seul, données après
+terminaison et extensions graphiques réservées incohérentes peuvent être refusés.
+La lecture structurelle ne constitue pas un contrôle antivirus.
+
+Un Content-Length trop court peut masquer des octets au-delà du cadrage HTTP ;
+seule la représentation exposée par Chromium est contrôlée. Une première
+navigation vérifie les en-têtes, puis un second GET acquiert l’original : les deux
+réponses peuvent différer. La navigation initiale et les vérifications HTML ne
+bénéficient pas d’un plafond mémoire navigateur global.
+
+Le délai de job reste 120 s par défaut, ≤180 s, file et attente humaine incluses,
+puis jusqu’à 1 s d’arrêt décodeur et 5 s de nettoyage onglet/gardes. GET privé :
+30 s distinctes ; client : contrôle entre blocs, avec timeout de lecture HTTP
+15 s. Après en-têtes, une erreur serveur ne peut devenir un nouveau JSON :
+conserver le reçu et refuser le transfert incomplet. Aucun retry POST automatique.
+
+Quota global observé, inchangé : quatre jobs concurrents, trente admis,
+100 000 000 octets d’artefacts/projet ; TTL global 60 min, rétention 24 h,
+expiration effective au minimum des deux. Surcharges du projet de recette à
+qualifier avant usage. Aucun constat de panne PageQuay pour les deux URL Dobot
+n’est établi ; le message « fournisseur error » n’a pas été reproduit.
+
+## Incidents intermédiaires
+
+- Les premiers mocks client étaient préchargés en mémoire : `iter_raw` levait
+  StreamConsumed. Lecture corrigée en `iter_bytes(chunk_size=65536)` après refus
+  de tout Content-Encoding non identity ; tests de vrai streaming ajoutés.
+- Un nouveau test de mutation de fichier réutilisait une liste capturée avant sa
+  réinitialisation. Test corrigé, sans changement du comportement runtime.
+- Une exécution générale dans le sandbox a refusé les sockets loopback, avec
+  PermissionError et timeout dérivé au démarrage simulé. Relance avec sockets
+  autorisées réussie. Cela ne décrit pas une panne du service installé.
+  Heures exactes de chaque premier échec non instrumentées, donc inconnues ;
+  aucun ID de job installé n’existe pour ces essais.
+
+Un passage général intermédiaire a aussi échoué dans le test existant
+`test_denied_request_storm_keeps_exact_counts_and_bounded_detail` : 60 lignes
+contre un maximum attendu de 30. La télémétrie emploie des fenêtres monotoniques
+d’une minute ; un chevauchement est une explication possible, non démontrée par
+cet essai. Aucun code de quota/télémétrie n’a été modifié. La relance générale
+finale réussit. Reproduction isolée :
+`.venv/bin/pytest tests/test_resource_budgets.py::test_denied_request_storm_keeps_exact_counts_and_bounded_detail -q`.
+Heure exacte du premier échec non conservée ; aucun ID de job installé.
+
+Références du contrôle structurel : [spécification GIF89a](https://www.w3.org/Graphics/GIF/spec-gif89a.txt)
+et [prise en charge GIF par Pillow](https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif).
+
+## Recette Dobot proposée, non exécutée — accord séparé requis
+
+Runtime 1.2.0 jetable, profil/base/projet dédiés, sans installation ou redémarrage
+du service partagé. Clé éphémère privée propre à ce runtime, scopes content:read
+et browser:interact ; aucune clé réelle demandée. Deux opérations séquentielles :
+
+1. `https://software-1256299428.cos.na-siliconvalley.myqcloud.com/2024/item41.gif`
+2. `https://software-1256299428.cos.na-siliconvalley.myqcloud.com/2024/item43.gif`
+
+Pour chacune : expected_url identique, max_bytes=20000000,
+allowed_media_types=["image/gif"], timeout=120, un seul POST. Enveloppe proposée
+six minutes pour le lot, incluant GET privés et nettoyage ; plafond de stockage
+40 Mo pour les deux originaux. Capturer heure avec fuseau, version, commande,
+HTTP demandé/final, SHA256, octets, dimensions de première image et IDs réellement
+obtenus. Aucun SHA ou ID n’est prérempli ici. CAPTCHA : intervention humaine dans
+le budget ou refus, jamais contournement. Échec/POST incertain : pas de repli HTTP
+ni de second POST automatique. Supprimer uniquement les ressources du runtime
+de recette et attester leur fermeture/suppression, sinon signaler l’incertitude.
+Aucun PNG consommateur ou raccordement UniversRobot dans cette recette PageQuay.
+
+Livraison Git puis installation : accords distincts encore nécessaires. Prévoir
+une branche codex/gif-20mb, revue du diff et des modifications documentaires
+préexistantes, puis plan de retour à la base. Une installation nécessitera un
+contrôle d’inactivité du service à cet instant, sauvegarde et prérequis qualifiés ;
+aucune inactivité actuelle n’est présumée. Aucune réinstallation n’est annoncée
+comme nécessaire par ce rapport.
+
+---
+
+# Historique antérieur — inchangé
+
 # Validation download_image — 15 octobre 2026
 
 [Français](DOWNLOAD_IMAGE_REPORT.md) | [English](DOWNLOAD_IMAGE_REPORT.en.md)

@@ -4,7 +4,7 @@
 
 Passerelle Web privée et auto-hébergée : un projet possède son propre profil Chromium persistant, ses onglets, ses clés API et ses contenus temporaires. API FastAPI REST + WebSocket et administration HTML/CSS/JavaScript locaux, sans build frontend, Docker ni abonnement.
 
-**Version 1.1.1 — acquisition d’images sans Base64 interne.** Consulter [le rapport de tests](docs/testing/REPORT.md) pour distinguer les vérifications exécutées et les limites. Les sources initiales sont conservées dans `docs/definition/`. L'état de travail et les choix sont dans `memory.md` et `decisions.md`.
+**Version 1.2.0 — GIF explicite et originaux jusqu’à 20 Mo, sans Base64 interne.** Consulter [le rapport de tests](docs/testing/REPORT.md) pour distinguer les vérifications exécutées et les limites. Les sources initiales sont conservées dans `docs/definition/`. L'état de travail et les choix sont dans `memory.md` et `decisions.md`.
 
 Consulter [l’index bilingue complet](docs/README.md) pour les guides, notes de version, rapports et références en français et en anglais. L’interface administrateur reste en français.
 
@@ -25,7 +25,7 @@ Consulter [l’index bilingue complet](docs/README.md) pour les guides, notes de
 | [Correctif iframe KUKA](docs/KUKA_FRAME_FIX.md) | Preuves réelles, régressions et version corrective 0.2.1 |
 | [Image originale](docs/DOWNLOAD_IMAGE.md) | `download_image`, original binaire borné et recette UBTECH |
 | [Acquisition exacte](docs/ACQUISITION.md) | Navigation attestée, URL stricte, robots, diagnostics iframe et client serveur |
-| [OpenAPI](docs/openapi.json) | Contrat API client 1.1.1, également disponible via `/openapi.json` |
+| [OpenAPI](docs/openapi.json) | Contrat API client 1.2.0, également disponible via `/openapi.json` |
 
 La [release 1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), ses paquets Python et leurs sommes SHA-256 sont publiés le 16 octobre 2026. Le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
 
@@ -40,6 +40,16 @@ Dans les limites permises par la loi applicable, les auteurs et contributeurs d�
 Captures de démonstration avec données fictives et zones sensibles masquées. [Voir les huit captures](docs/SCREENSHOTS.md).
 
 ![Sessions et onglets PageQuay, données de démonstration masquées](docs/screenshots/sessions.png)
+
+## Projet tiers : Pillow
+
+PageQuay utilise [Pillow](https://github.com/python-pillow/Pillow), le projet
+d’imagerie Python maintenu par ses contributeurs, pour vérifier la structure et
+la décodabilité des images JPEG, PNG, WebP et de la première image des GIF acquis. Cette validation locale
+préserve les octets originaux ; son fonctionnement et ses limites sont décrits
+dans le [guide des images originales](docs/DOWNLOAD_IMAGE.md#projet-tiers--pillow).
+Pillow n’est pas un antivirus : une image acceptée n’est pas garantie sans contenu
+malveillant ni risque d’exploitation d’un logiciel qui l’ouvre.
 
 ## Installation macOS
 
@@ -76,6 +86,8 @@ Le navigateur utilise un port CDP explicite, non nul, lié à `127.0.0.1` et cho
 Les connexions WebSocket des pages sont refusées par une règle de proxy native de Chrome : HTTP/HTTPS passent par le proxy filtrant, et la catégorie `socks=` (« autres proxys », utilisée par Chrome pour `ws://` et `wss://`) pointe vers un second port local qui refuse toute connexion sans résoudre de destination. Aucun repli direct n’est configuré. Ce contrôle couvre aussi les frames, fenêtres secondaires et workers ; l’objet JavaScript `WebSocket` reste natif. Le WebSocket de commande de l’API PageQuay reste disponible. Voir les [règles de proxy WebSocket de Chromium](https://chromium.googlesource.com/chromium/src/+/HEAD/net/docs/proxy.md#mapping-websockets-urls-to-a-proxy).
 
 `PQ_BROWSER_CHANNEL=chrome` sélectionne Google Chrome installé sur macOS ; `chromium` (défaut) conserve le navigateur fourni par Playwright, dont le binaire peut se nommer « Google Chrome for Testing ».
+
+Version 1.2.0 : [notes de release](docs/releases/1.2.0.md), commit local ; publication, recette Dobot et installation distinctes.
 
 Version 1.1.1 : [notes de release](docs/releases/1.1.1.md), correctif local testé, publication et installation distinctes.
 

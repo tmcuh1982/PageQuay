@@ -365,3 +365,29 @@ Utilisateur demande « fait un commit release github en l'état ». Publication 
 Ajout du port administrateur dans Paramètres → Accès local, sauvegarde atomique avec le port API dans local-api.json, compatibilité des anciens fichiers et adaptation des origines loopback au démarrage. Déployé : console 8767, API 8787. Tailscale Serve corrigé sur autorisation explicite : HTTPS 8443 conservé, destination 8787. Tests HTTP et Bearer via loopback et HTTPS depuis le Mac réussis ; clés temporaires révoquées. Aucun test depuis un autre appareil revendiqué.
 
 Demande : commit release local. Métadonnées paquet/module/OpenAPI/lock alignées sur 1.0.1 et notes docs/releases/1.0.1.md. Suite générale 276 passed/74 skipped, warning Starlette préexistant ; Ruff ciblé, uv lock --check --offline et diff-check conformes. Aucune publication GitHub demandée pour cette tâche.
+
+### 19 octobre 2026 — GIF/20 Mo validés, release locale 1.2.0
+
+Audit de départ : module/paquet et OpenAPI installé 1.1.1, route existante et
+schéma identique au dépôt, base 42aa5d4. Validation explicite du périmètre, puis
+implémentation locale du contrat original-gif-20mb-v1 : max_bytes strict ≤20 Mo,
+défaut 5 Mo ; allowed_media_types facultatif, GIF sur demande, trois formats
+historiques conservés. Nouveau validateur structurel GIF, première image décodée
+seulement, 8192/axe, 16 Mpx, 1000 images, 5 s CPU/10 s murales. GET privé borné,
+client qualifié, causes/IDs sûrs, pas de rejeu POST incertain. Aucun service ou
+fichier UniversRobot modifié, aucune URL Dobot téléchargée, aucun quota accru.
+
+Validation : générale 343 passed/123 skipped (14,37 s), Chromium ciblé 164 passed
+(139,41 s), suites recouvrantes ; Ruff/format ciblés, OpenAPI, lock offline et diff
+conformes. Pics RSS échantillonnés pytest+descendants : 1,69 Gio pour un original
+20 Mo, 2,48 Gio pour quatre (80 Mo supprimés du projet de fixture). Pas de plafond
+RSS OS macOS ; trames suivantes vérifiées structurellement sans décodage pixels.
+Rapports bilingues détaillent limites et incidents intermédiaires, dont un test
+existant de quota audit intermittent passé à la relance sans changer la télémétrie.
+
+Demande suivante : « fait un commit release ». Préparer le commit local main
+1.2.0, notes bilingues, README/index/statut actualisés et documentation Pillow
+préexistante incluse. Métadonnées module/pyproject/OpenAPI/lock alignées ; pas de
+nouvelle installation pour changer les métadonnées des environnements. Sources
+installées examinées toujours 1.1.1. Push, tag, release GitHub, recette Dobot et
+installation restent distincts ; aucun redémarrage ni secret réel utilisé.

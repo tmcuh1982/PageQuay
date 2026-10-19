@@ -1,8 +1,12 @@
-# Acquisition d’une image originale — PageQuay 1.1.1
+# Acquisition d’une image originale — PageQuay 1.2.0
+
+**Release locale du 19 octobre 2026 : non publiée et non installée.**
+GIF et le plafond de 20 Mo exigent le nouveau contrat décrit ci-dessous.
+Le service observé pendant l’audit déclarait encore 1.1.1.
 
 [Français](DOWNLOAD_IMAGE.md) | [English](DOWNLOAD_IMAGE.en.md)
 
-**Release locale 1.1.1 du 16 octobre 2026 : non publiée et non installée.** Les garanties
+**Transport disponible à partir de PageQuay 1.1.1, du 16 octobre 2026.** Les garanties
 sans Base64 interne décrites ci-dessous exigent ce correctif ; la release 1.1.0
 antérieure utilisait encore le transport binaire CDP. Le client exige maintenant
 le marqueur OpenAPI `x-pagequay-image-transport=chromium-byob-integers-v1` avant
@@ -39,8 +43,15 @@ avec URL demandée, attendue, finale et cause. `allow_redirects=false` conserve 
 refus préalable des redirections du navigateur. HTTPS/443 seulement, politique
 projet/DNS/SSRF et proxy à IP validée inchangés, aucun client HTTP vers la source.
 
-`max_bytes` est compris entre 1 et **5 000 000 octets** (5 Mo décimaux), défaut
-5 Mo. `timeout` est un délai total explicite, défaut 120 s, maximum 180 s et
+`max_bytes` reste un entier strict, compris entre 1 et **20 000 000 octets**,
+avec un défaut inchangé à **5 000 000**. `allowed_media_types` est facultatif :
+absent, seuls JPEG/PNG/WebP sont acceptés. Une liste explicite non vide et sans
+doublons peut sélectionner `image/jpeg`, `image/png`, `image/webp`, `image/gif`.
+`null`, une liste vide et les autres types sont refusés. Avant un POST utilisant
+ces options, le client exige le marqueur OpenAPI
+`x-pagequay-image-contract=original-gif-20mb-v1`, en plus du marqueur de transport.
+
+`timeout` est un délai total explicite, défaut 120 s, maximum 180 s et
 plafonné par `job_timeout_seconds`. Il couvre file d’attente, démarrage,
 navigation, challenge automatique, attente humaine, acquisition et validation.
 La terminaison du décodeur dispose d’au plus une seconde supplémentaire,
@@ -91,16 +102,46 @@ téléchargements ordinaires du navigateur restent actifs.
 HTTP 200 complet requis ; réponses partielles, HTML, format non autorisé,
 MIME/signature incompatibles, troncature et longueur incohérente sont refusés.
 Les représentations avec `Content-Encoding` autre qu’identity sont refusées
-explicitement, pour éviter une ambiguïté de longueur. Formats : JPEG, PNG et
-WebP statiques. Pillow vérifie la structure et décode pour valider, sans
-réencoder, dans un processus enfant jetable ; plafond de validation 25 millions
-de pixels, animation refusée et cinq secondes CPU. L’annulation tue cet enfant
+explicitement, pour éviter une ambiguïté de longueur. JPEG/PNG/WebP restent statiques, avec leur plafond historique de 25 millions
+de pixels. GIF87a/GIF89a est accepté sur demande explicite : le parcours
+structurel contrôle toutes les tables, extensions, descripteurs et sous-blocs
+jusqu’à la terminaison, sans accepter de données après celle-ci. Pillow décode
+uniquement la première image ; aucun `n_frames`, parcours ou coalesçage de
+l’animation. Écran logique et tous les descripteurs : au plus 8 192 par axe et
+16 000 000 pixels, images contenues dans l’écran, au plus 1 000 images. Les pixels
+compressés des images suivantes ne sont pas décodés et leur décodabilité n’est
+pas garantie. Le validateur enfant conserve cinq secondes CPU et dispose de
+dix secondes murales, incluses dans le budget total. Aucun aperçu n’est produit. L’annulation tue cet enfant
 et vérifie sa sortie dans une seconde au maximum. Sous macOS, les bornes mémoire
 reposent sur les octets, les blocs et les pixels ; aucun plafond OS de mémoire
 résidente du navigateur ou du décodeur n’est revendiqué. Les limites RLIMIT_AS/DATA
 essayées sur cet hôte sont refusées ; aucun réglage système n’a été modifié.
 La lecture atteint EOF ; les terminaisons JPEG/PNG et longueur RIFF WebP sont
 également contrôlées. Aucun fichier image partiel n’est publié.
+
+Les blocs BYOB bornent la lecture remise à PageQuay, pas les tampons internes de
+Chromium ni les octets qui ont déjà transité sur le réseau. Une longueur HTTP
+trop courte peut masquer une suite au-delà du cadrage HTTP ; une image tronquée
+visible est refusée, sans revendication sur ces octets invisibles. Le navigateur
+effectue toujours une première navigation contrôlée aux en-têtes, puis un second
+GET pour les octets originaux. Aucune identité des deux réponses n’est garantie.
+
+### Projet tiers : Pillow
+
+La validation d’image s’appuie sur [Pillow](https://github.com/python-pillow/Pillow),
+bibliothèque d’imagerie Python développée par le projet Pillow et ses contributeurs.
+Consulter sa [documentation officielle](https://pillow.readthedocs.io/).
+Pillow est une dépendance tierce exécutée localement : PageQuay l’utilise pour
+vérifier la structure, les dimensions et la décodabilité des images, sans
+réencoder les octets qui composent l’artefact.
+
+**Cette validation n’est pas une analyse antivirus.** Le rejet de fichiers
+malformés et les limites d’octets ou de pixels réduisent certains risques ;
+ils ne prouvent pas l’absence de contenu malveillant. Une image valide peut
+encore exploiter une vulnérabilité d’un décodeur ou du logiciel qui l’affiche.
+Le processus jetable et les limites ne constituent pas une garantie d’innocuité.
+
+### Artefact et intégrité
 
 Le résultat contient `artifact_id`, `url` de téléchargement, `media_type`
 vérifié, `size`, `sha256`, `expires_at`, `requested_url`, `final_url`,
@@ -110,6 +151,16 @@ les octets binaires originaux en pièce jointe, sans Base64. L’artifact est pr
 isolé par projet, fichier 0600, soumis au quota et à la durée minimale entre
 TTL contenu et rétention d’artifacts. Le mécanisme de rétention existant le
 supprime à échéance ; il n’est déjà plus accessible après expiration.
+Pour un original identifié par son reçu de job, le GET privé impose une taille
+enregistrée ≤20 Mo et la concordance avec le fichier ouvert. Lecture par blocs
+≤64 Kio et sentinelle ; aucune lecture jusqu’à EOF non bornée ni `pathsend`.
+`Range` est ignoré : réponse complète 200, `Accept-Ranges: none`, budget serveur
+30 s et fermeture du fichier sur erreur/annulation. Les autres artefacts gardent
+leur chemin historique. Une erreur avant en-têtes peut rendre un JSON typé ;
+après en-têtes, le flux est interrompu : le client doit conserver le reçu et
+refuser toute taille/empreinte incorrecte, aucun JSON ne peut remplacer le corps
+binaire déjà commencé.
+
 Si le job échoue après création mais avant validation terminale, son artifact
 non validé est supprimé. Une annulation ferme aussi le flux et l’onglet.
 
@@ -163,7 +214,10 @@ et chemin du fichier privé :
 
 Cette commande appelle uniquement le service PageQuay. Elle affiche les
 identifiants du job, attend, télécharge l’artifact en streaming dans un fichier
-temporaire privé, vérifie taille/empreinte/signature puis renomme le fichier.
+temporaire privé, exige HTTP 200 complet, vérifie le chemin du projet,
+la taille/empreinte/signature puis renomme le fichier.
+`--max-bytes 20000000 --allowed-media-types image/gif` active explicitement
+le nouveau contrat, sans téléchargement réel implicite.
 Un échec ne laisse pas de sortie partielle. Une attente humaine est explicite
 (code de sortie 2). Relancer le client avec les mêmes arguments et `--job-id ID`
 consulte le job existant ; ajouter `--resume` demande explicitement sa reprise.
@@ -175,14 +229,12 @@ Le résultat attendu est l’original complet ou une erreur typée reproductible
 
 ## Portée UniversRobot
 
-Aucun fichier UniversRobot n’est modifié dans ce lot, conformément à la précision
-de l’utilisateur. L’aperçu de la fiche Walker S1 n’a donc pas été testé ici.
-Le futur raccordement doit appeler uniquement cette commande PageQuay, conserver
-asynchronisme/cache privé et revérifier les autorisations à chaque étape ; aucun
-repli HTTPS direct. ImageMagick local produit l’aperçu. Les règles de publication
-existantes restent : original conservé, WebP qualité 80, grand côté <=1200 px,
-miniature <=400 px sans agrandissement, signalement sous 600 px. Un aperçu
-n’accorde ni approbation ni publication. Aucune pause ni aucun horaire modifié.
+Aucun fichier UniversRobot n’est modifié. Le raccordement consommateur reste
+séparé : aucun repli HTTP direct. UniversRobot devra produire localement le PNG
+fixe de la première image GIF, ≤320×240 et ≤400 000 octets. PageQuay livre
+uniquement l’original privé. Originaux durables, galerie, publication, pauses et
+horaires restent hors périmètre. Les deux URL Dobot ne sont pas téléchargées
+par cette implémentation ; leur recette exige un accord séparé.
 
 Les résultats des tests simulés et de la recette réseau jetable sont séparés
 dans [le rapport](testing/DOWNLOAD_IMAGE_REPORT.md). Ils ne prouvent pas le

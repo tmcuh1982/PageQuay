@@ -1,3 +1,151 @@
+# GIF and originals up to 20 MB — local 1.2.0 validation
+
+19 October 2026, Europe/Warsaw. The user approved implementation and isolated
+validation after the read-only audit. **Local validation, before the subsequently requested release commit; no publication,
+installation or dependency installation.** Base commit:
+`42aa5d43763788c5ba5d6d27ad504cfdaf4d4562`, working branch `main`.
+The four documentation edits already present were preserved. No UniversRobot
+files, real projects/keys/profiles, shared quotas or LaunchAgent were changed.
+Neither Dobot URL was fetched. Installed sources checked at the end still match
+the initial 1.1.1 sources; a complete installed Git commit is not attested.
+
+## Delivered behavior
+
+The existing download_image endpoint, job lifecycle and receipt remain. No new
+required receipt field. Strict integer max_bytes defaults to 5000000 and accepts
+up to 20000000. Optional allowed_media_types is a closed, nonempty, duplicate-free
+JPEG/PNG/WebP/GIF list; omission retains JPEG/PNG/WebP, null is refused. OpenAPI
+1.2.0 adds x-pagequay-image-contract=original-gif-20mb-v1; the transport marker
+is retained. Extended client requests qualify this marker before their single POST.
+
+GIF87a/89a: complete structural walk through palettes, extensions, descriptors,
+sub-blocks and trailer, then first-image decode only. No n_frames, animation
+iteration, coalescing, screenshot, reencoding or preview. Logical screen and all
+descriptors: ≤8192 per axis, ≤16000000 pixels, contained images, ≤1000 images.
+The disposable validator has a 20 MB input cap, five CPU seconds and ten wall
+seconds within the job deadline; cancellation/timeout kills it and confirms exit
+within one second. Known GIF causes use fixed exit codes, without decoder output.
+
+Existing guarded BYOB acquisition retains ≤64 KiB blocks and a sentinel, EOF,
+length comparison, exact URL, HTTPS/TLS, redirects, public DNS/IP policy and
+project isolation. Content-Range is also refused on HTTP 200. Artifact storage
+accepts ≤20 MB images within existing quotas. Originals linked to their job
+receipt use a bounded private GET: opened-file size check, recorded byte count,
+≤64 KiB reads and sentinel, 30-second deadline, file closure, full HTTP 200 with
+Range ignored. Other artifacts keep their existing path. Failures record safe
+IDs/code/cause; pre-header JSON includes correlation and file cleanup status.
+After headers, the binary stream aborts rather than becoming JSON.
+
+The example client checks its expected project path, HTTP 200 without partial or
+encoded representation, bounded blocks, size/SHA/MIME and a private temporary
+output removed on failure. Existing-job resume and uncertain POST handling remain;
+no automatic POST replay. Metadata files, module and OpenAPI declare work version
+1.2.0; installed environments were not reinstalled to update package metadata.
+
+## Validation and resource observations
+
+| Check | Result |
+| --- | --- |
+| General suite, temporary loopback sockets allowed | 343 passed, 123 skipped, zero failures, 14.37 s |
+| Targeted real Chromium suite, start 12:14:43 +02:00 | 164 passed, zero failures, 139.41 s |
+| Targeted Ruff check/format, diff --check, offline lock validation | passed |
+
+Suites overlap and must not be added. Final diagnostic/file-closure adjustments
+were rechecked in the general suite; they do not change the Chromium transport.
+The existing Starlette/httpx deprecation remains, without installing a new library.
+Coverage includes exact valid GIF byte sizes 5000000/5000001/20000000/20000001,
+valid PNG legacy size boundaries, missing/false lengths, misleading MIME/HTML,
+encoding/partial responses, truncation after the first image, dimensions/frame
+cost, decoder/private-GET timeout and cancellation, file mutation, isolation,
+expiry, redirects/SSRF, explicit human resume and uncertain POST. Existing iframe
+and TIMEOUT regressions remain; no iframe reader changed. Boundary fixtures are
+real decodable images with legal GIF comments or PNG ancillary chunks and valid
+CRCs, not arbitrary bytes appended after the image.
+
+| Concurrent jobs | Bytes each | Acquisition + GET + checks | Sampled test-tree RSS peak | Stored before cleanup |
+| --- | --- | --- | --- | --- |
+| 1 | 20000000 | 7.612 s | 1769392 KiB / 1.69 GiB | 20000000 bytes |
+| 4 | 20000000 | 17.349 s | 2599152 KiB / 2.48 GiB | 80000000 bytes |
+
+Observed around 12:12–12:13 +02:00, ps sampling every 250 ms of pytest and its
+descendants, including Chromium and the fixture server. Summed RSS can double
+count shared pages. This is neither server-only memory nor a guaranteed ceiling.
+The single-job timing overlapped a separate unit suite and is not a controlled
+benchmark. Four successful 20 MB jobs retained their hashes and the fixture
+project's 80 MB artifacts were removed. Temporary pytest directories may remain
+under their ordinary retention; no global purge or other-project cleanup occurred.
+
+Current shared limits were not raised: four concurrent jobs, thirty admitted,
+100 MB artifacts/project, global content TTL 60 min and retention 24 h (minimum
+used for expiration). Project overrides must be qualified before live acceptance.
+
+## Residual limits
+
+No OS RSS ceiling for Chromium or the decoder on macOS. Application byte/block/
+pixel bounds do not cap Chromium internal buffers, JSON overhead or total memory.
+Later frames are checked structurally, without decoding their compressed pixels;
+their decodability is not guaranteed. Text-only GIFs, trailing data and inconsistent
+reserved graphical fields may be refused. This is not an antivirus check.
+HTTP framing can hide bytes behind a falsely short Content-Length; only the
+representation exposed by Chromium can be validated. Initial navigation checks
+headers and a second GET acquires bytes; responses can differ, and initial HTML
+navigation has no global browser memory ceiling.
+
+Job timeout remains 120 s default, ≤180 s, including queue and human waiting,
+plus up to 1 s decoder termination and 5 s tab/guard cleanup. Private GET has a
+separate 30 s budget; the client checks between blocks with a 15 s HTTP read
+timeout. After response headers, retain the job receipt and reject incomplete
+size/hash; no replacement error JSON or automatic POST replay is possible.
+
+Intermediate issues: preloaded HTTP mocks made iter_raw raise StreamConsumed;
+identity-only iter_bytes(chunk_size=65536) and true-stream tests resolved it.
+A new file-mutation test captured a list before resetting it; the test was fixed.
+Sandbox socket denials caused PermissionError and a derived startup timeout;
+rerunning with temporary loopback sockets allowed passed. Exact times of first
+intermediate failures were not instrumented and remain unknown. No installed job
+IDs exist for those tests, and no installed service outage is inferred.
+
+Exact commands and the complete French report are in
+[DOWNLOAD_IMAGE_REPORT.md](DOWNLOAD_IMAGE_REPORT.md). Private evidence is under
+/private/tmp/pagequay-gif-20mb-audit/: JUnit, sampled measurements, installed-source
+hash comparison, implementation.patch and its manifest. The patch excludes the
+four documentation changes already present before this work.
+
+An intermediate general run also failed the existing audit-rate test
+`test_denied_request_storm_keeps_exact_counts_and_bounded_detail` with 60 rows
+instead of ≤30. The limiter uses one-minute monotonic windows; a boundary crossing
+is possible, not proven by that run. No telemetry/quota code changed. The final
+general rerun passed; the exact first-failure time was not retained and no
+installed job ID exists. See the French report for the isolated reproduction.
+
+Structure references: [GIF89a specification](https://www.w3.org/Graphics/GIF/spec-gif89a.txt)
+and [Pillow GIF support](https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html#gif).
+
+## Proposed Dobot acceptance — separate approval, not executed
+
+Use a disposable 1.2.0 runtime, isolated profile/database/project and a private
+short-lived key for that runtime only, content:read + browser:interact. No shared
+service installation or restart. Sequentially acquire the supplied public
+item41.gif and item43.gif URLs, exact expected_url, max_bytes=20000000,
+allowed_media_types=["image/gif"], timeout=120, one POST each. Proposed batch
+budget: six minutes including private GET and cleanup; ≤40 MB original storage.
+Record actual timestamps/timezone, version/commands, source/final HTTP, SHA256,
+bytes, first-image dimensions and available IDs; none are invented in advance.
+Human CAPTCHA stays within the budget or fails, without bypass. An uncertain
+POST is never replayed; no direct HTTP fallback. Clean only the disposable
+runtime's resources and report any unconfirmed cleanup. No consumer PNG or
+UniversRobot integration is part of this PageQuay acceptance.
+
+Git delivery and installation require distinct approvals. Proposed branch:
+codex/gif-20mb, with review of the exact patch and pre-existing documentation
+edits. A later installation needs fresh service inactivity evidence, backup,
+qualified prerequisites and rollback. Inactivity is not assumed now, and this
+report does not establish that reinstallation is necessary.
+
+---
+
+# Previous history — unchanged
+
 # download_image validation — October 15, 2026
 
 [Français](DOWNLOAD_IMAGE_REPORT.md) | [English](DOWNLOAD_IMAGE_REPORT.en.md)

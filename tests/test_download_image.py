@@ -60,6 +60,20 @@ async def image_site(tmp_path, monkeypatch):
                 self.end_headers()
                 return
             body, mime = data, "image/png"
+            if self.path.startswith("/png-sized-"):
+                from test_gif_validator import sized_png
+
+                body = sized_png(int(self.path.rsplit("-", 1)[-1]))
+            if self.path.startswith("/gif"):
+                from test_gif_validator import gif, sized_gif
+
+                body, mime = gif(self.path == "/gif-animated"), "image/gif"
+                if self.path.rsplit("-", 1)[-1].isdigit():
+                    body = sized_gif(int(self.path.rsplit("-", 1)[-1]))
+                if self.path == "/gif-truncated":
+                    body = gif(True)[:-4] + b";"
+                if self.path == "/gif-wrong-mime":
+                    mime = "image/png"
             if self.path in {"/jpeg", "/webp"}:
                 format = "JPEG" if self.path == "/jpeg" else "WEBP"
                 body, mime = original(format), "image/" + format.lower()
@@ -93,13 +107,24 @@ async def image_site(tmp_path, monkeypatch):
                 body = data[:20]
             self.send_response(503 if self.path == "/503" else 200)
             self.send_header("Content-Type", mime)
+            if self.path == "/gif-encoded":
+                self.send_header("Content-Encoding", "gzip")
+            if self.path == "/gif-partial":
+                self.send_header("Content-Range", "bytes 0-1/999")
+            if self.path == "/gif-short-length":
+                self.send_header("Content-Length", str(len(body) - 2))
+                self.end_headers()
+                self.wfile.write(body)
+                return
             if self.path == "/second-oversize" and hits.count(self.path) >= 2:
                 self.send_header("Content-Length", "5000001")
                 self.end_headers()
                 return
             if self.path == "/attachment":
                 self.send_header("Content-Disposition", 'attachment; filename="image.png"')
-            if self.path not in {"/no-length", "/oversize", "/slow"}:
+            if self.path not in {"/no-length", "/oversize", "/slow"} and not self.path.startswith(
+                "/gif-no-length-"
+            ):
                 self.send_header(
                     "Content-Length",
                     str(
@@ -195,7 +220,7 @@ async def finish(site, accepted):
     rt, _, _, client, *_ = site
     job = rt.jobs.active.get(accepted["job_id"])
     if job:
-        await asyncio.wait_for(job.task, 20)
+        await asyncio.wait_for(job.task, 130)
     return (await client.get(accepted["url"])).json()
 
 
@@ -419,7 +444,7 @@ def test_contract_and_auth(client, projects):
     )
     assert response.status_code == 403
     with pytest.raises(ValueError):
-        DownloadImage(url=url, expected_url=url, max_bytes=5_000_001)
+        DownloadImage(url=url, expected_url=url, max_bytes=20_000_001)
 
 
 @browser_test
@@ -598,3 +623,238 @@ async def test_concurrent_navigation_cannot_publish_previous_image(image_site):
     }, row
     assert not rt.db.all("SELECT * FROM artifacts WHERE scope='content:read'")
     assert not rt.browser.list_tabs(p)
+
+
+@browser_test
+@pytest.mark.parametrize(
+    "path,budget,allowed,code",
+    [
+        ("/gif", 5_000_000, None, "IMAGE_FORMAT_FORBIDDEN"),
+        ("/gif", 5_000_000, ["image/gif"], None),
+        ("/gif-animated", 5_000_000, ["image/gif"], None),
+        ("/gif-5000000", 5_000_000, ["image/gif"], None),
+        ("/gif-no-length-5000001", 5_000_000, ["image/gif"], "IMAGE_TOO_LARGE"),
+        ("/gif-5000001", 20_000_000, ["image/gif"], None),
+        ("/gif-no-length-20000000", 20_000_000, ["image/gif"], None),
+        ("/gif-no-length-20000001", 20_000_000, ["image/gif"], "IMAGE_TOO_LARGE"),
+        ("/gif-20000001", 20_000_000, ["image/gif"], "IMAGE_TOO_LARGE"),
+        ("/gif-truncated", 20_000_000, ["image/gif"], "IMAGE_INCOMPLETE"),
+        ("/gif-wrong-mime", 20_000_000, ["image/png", "image/gif"], "IMAGE_INVALID"),
+        ("/gif-short-length", 20_000_000, ["image/gif"], "IMAGE_INCOMPLETE"),
+        ("/gif-encoded", 20_000_000, ["image/gif"], "IMAGE_ENCODING_UNSUPPORTED"),
+        ("/gif-partial", 20_000_000, ["image/gif"], "IMAGE_INCOMPLETE"),
+    ],
+)
+async def test_browser_gif_contract(image_site, path, budget, allowed, code):
+    from test_gif_validator import gif, sized_gif
+
+    rt, project, _, client, *_ = image_site
+    kwargs = {"max_bytes": budget, "timeout": 120}
+    if allowed is not None:
+        kwargs["allowed_media_types"] = allowed
+    row = await finish(image_site, await start(image_site, path, **kwargs))
+    if code:
+        assert row["status"] == "failed", row
+        assert row["error"]["code"] == code, row
+        assert row["error"]["details"]["cleanup_verified"] is True
+        assert not rt.db.all("SELECT * FROM artifacts")
+    else:
+        assert row["status"] == "completed", row
+        result = row["result"]
+        expected = (
+            sized_gif(int(path.rsplit("-", 1)[-1]))
+            if path.rsplit("-", 1)[-1].isdigit()
+            else gif(path == "/gif-animated")
+        )
+        response = await client.get(result["url"], headers={"Range": "bytes=0-1"})
+        assert response.status_code == 200
+        assert response.content == expected
+        assert result["size"] == len(expected)
+        assert result["sha256"] == hashlib.sha256(expected).hexdigest()
+        assert result["media_type"] == "image/gif"
+        assert result["original_bytes"] is True
+        assert response.headers["accept-ranges"] == "none"
+        assert response.headers["content-length"] == str(len(expected))
+        rt.artifacts.purge(project, all_content=True)
+    assert not rt.browser.list_tabs(project)
+
+
+async def test_bounded_artifact_file_mutations(tmp_path):
+    from pagequay.artifacts import OriginalImageResponse
+
+    path = tmp_path / "image"
+    data = original()
+    path.write_bytes(data)
+    row = {"id": "fixture", "size": len(data), "media_type": "image/png"}
+    for content in [data[:-1], data + b"extra"]:
+        path.write_bytes(content)
+        messages = []
+
+        async def send(message, messages=messages):
+            messages.append(message)
+
+        with pytest.raises(PQError) as caught:
+            await OriginalImageResponse(row, path)({}, None, send)
+        assert caught.value.code == "IMAGE_INCOMPLETE"
+        assert not messages  # Refuse before committing HTTP 200.
+    path.write_bytes(data)
+    messages = []
+
+    async def success_send(message):
+        messages.append(message)
+
+    await OriginalImageResponse(row, path)({}, None, success_send)
+    assert b"".join(m.get("body", b"") for m in messages) == data
+
+
+async def test_bounded_artifact_stops_growth_after_headers(tmp_path):
+    from pagequay.artifacts import OriginalImageResponse
+
+    data = b"x" * 100_000
+    path = tmp_path / "image"
+    path.write_bytes(data)
+    sent = []
+
+    async def send(message):
+        sent.append(message)
+        if message["type"] == "http.response.start":
+            with path.open("ab") as handle:
+                handle.write(b"unexpected")
+
+    with pytest.raises(PQError):
+        await OriginalImageResponse(
+            {"id": "fixture", "size": len(data), "media_type": "image/gif"}, path
+        )({}, None, send)
+    assert sum(len(m.get("body", b"")) for m in sent) < len(data)
+
+
+@browser_test
+@pytest.mark.parametrize("concurrency", [1, 4])
+async def test_gif_20mb_concurrency_and_storage(image_site, concurrency):
+    import json
+
+    from test_gif_validator import sized_gif
+
+    rt, project, _, client, *_ = image_site
+    started = time.perf_counter()
+    accepted = await asyncio.gather(
+        *(
+            start(
+                image_site,
+                "/gif-no-length-20000000",
+                max_bytes=20_000_000,
+                allowed_media_types=["image/gif"],
+                timeout=120,
+            )
+            for _ in range(concurrency)
+        )
+    )
+    rows = await asyncio.gather(*(finish(image_site, job) for job in accepted))
+    assert all(row["status"] == "completed" for row in rows), rows
+    digest = hashlib.sha256(sized_gif(20_000_000)).hexdigest()
+    for row in rows:
+        result = row["result"]
+        response = await client.get(result["url"])
+        assert len(response.content) == 20_000_000
+        assert hashlib.sha256(response.content).hexdigest() == digest == result["sha256"]
+    used = rt.db.one("SELECT SUM(size) AS size FROM artifacts")["size"]
+    assert used == concurrency * 20_000_000
+    assert not rt.browser.list_tabs(project)
+    rt.artifacts.purge(project, all_content=True)
+    assert not list((rt.db.root / "artifacts").iterdir())
+    print(
+        json.dumps(
+            {
+                "concurrency": concurrency,
+                "bytes_each": 20_000_000,
+                "elapsed_seconds": round(time.perf_counter() - started, 3),
+                "stored_bytes_before_cleanup": used,
+                "artifact_cleanup_verified": True,
+            }
+        )
+    )
+
+
+@browser_test
+@pytest.mark.parametrize(
+    "size,explicit_budget,success",
+    [
+        (5_000_000, None, True),
+        (5_000_001, None, False),
+        (5_000_001, 20_000_000, True),
+    ],
+)
+async def test_legacy_png_byte_boundaries(image_site, size, explicit_budget, success):
+    from test_gif_validator import sized_png
+
+    rt, project, _, client, *_ = image_site
+    kwargs = {"timeout": 120}
+    if explicit_budget:
+        kwargs["max_bytes"] = explicit_budget
+    row = await finish(image_site, await start(image_site, f"/png-sized-{size}", **kwargs))
+    if success:
+        assert row["status"] == "completed", row
+        response = await client.get(row["result"]["url"])
+        assert response.content == sized_png(size)
+        rt.artifacts.purge(project, all_content=True)
+    else:
+        assert row["status"] == "failed", row
+        assert row["error"]["code"] == "IMAGE_TOO_LARGE"
+        assert row["error"]["details"]["cleanup_verified"] is True
+    assert not rt.browser.list_tabs(project)
+
+
+@pytest.mark.parametrize("action", ["cancel", "timeout"])
+async def test_artifact_transfer_closes_file_on_abandon(tmp_path, monkeypatch, action):
+    from pathlib import Path
+
+    import pagequay.artifacts as module
+
+    path = tmp_path / "image"
+    path.write_bytes(original())
+    handles, failures = [], []
+    opened = Path.open
+
+    def record_open(self, *args, **kwargs):
+        handle = opened(self, *args, **kwargs)
+        if self == path:
+            handles.append(handle)
+        return handle
+
+    monkeypatch.setattr(Path, "open", record_open)
+    reached = asyncio.Event()
+
+    async def send(message):
+        reached.set()
+        await asyncio.sleep(60)
+
+    # Replace only this module's timeout context, preserving asyncio globally.
+    timeout = asyncio.timeout
+    if action == "timeout":
+        from types import SimpleNamespace
+
+        monkeypatch.setattr(
+            module,
+            "asyncio",
+            SimpleNamespace(
+                timeout=lambda seconds: timeout(0.01), CancelledError=asyncio.CancelledError
+            ),
+        )
+    response = module.OriginalImageResponse(
+        {"id": "fixture", "size": len(original()), "media_type": "image/png"},
+        path,
+        audit_failure=lambda code, cause: failures.append((code, cause)),
+    )
+    task = asyncio.create_task(response({}, None, send))
+    await asyncio.wait_for(reached.wait(), 2)
+    if action == "cancel":
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert failures == [("IMAGE_CANCELLED", "artifact_transfer_cancelled")]
+    else:
+        with pytest.raises(PQError) as caught:
+            await task
+        assert caught.value.code == "IMAGE_TIMEOUT"
+        assert failures == [("IMAGE_TIMEOUT", "artifact_transfer_deadline")]
+    assert handles and all(handle.closed for handle in handles)

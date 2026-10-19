@@ -202,3 +202,15 @@ La consigne « fais une v1 en release » remplace la publication prévue de 0.2.
 ## 16 octobre 2026 — Transport image et release locale 1.1.1
 
 Le refus de Base64 couvre aussi les octets internes du protocole image. Les corps binaires CDP sont donc remplacés par un lecteur BYOB dans un monde isolé Chromium, sans accès universel. Le second GET est déclaré explicitement, ses en-têtes et sa destination sont revérifiés ; une réponse HTML nouvelle échoue. Le projet conserve son proxy et ses interdictions de téléchargements natifs. Les limites d’octets et de pixels sont maintenues ; pas de plafond RSS OS revendiqué sur macOS. Le marqueur OpenAPI est requis par le client pour éviter un ancien service 1.1.0. La demande « fait le commit release » autorise le commit local 1.1.1 ; push, tag distant, publication et installation restent distincts.
+
+## 19 octobre 2026 — GIF/20 Mo et commit local 1.2.0
+
+Après audit en lecture seule, l’utilisateur valide l’extension compatible de
+`download_image` : défaut 5 Mo/trois formats, GIF explicite et maximum 20 Mo,
+validation structurelle GIF complète et décodage de première image seulement,
+GET privé borné. Pas de plafond RSS OS revendiqué sous macOS, pas de nouvelle
+dépendance, quota global ou modification UniversRobot. Les recettes réseau Dobot,
+livraison distante et installation restent soumises à leurs accords distincts.
+La demande « fait un commit release » autorise le commit local 1.2.0 sur main,
+avec notes bilingues et documentation Pillow préexistante conservée ; pas de
+push, tag ou publication GitHub implicite.

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Header, Query, Request, Response, WebSocket, WebS
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
 
+from .artifacts import OriginalImageResponse
 from .bounds import short_url
 from .errors import PQError, error_body
 from .models import (
@@ -69,13 +70,18 @@ def validate_navigation(body):
     status_code=202,
     response_model=SearchAccepted,
     responses=ACQUISITION_ERRORS,
-    openapi_extra={"x-pagequay-image-transport": "chromium-byob-integers-v1"},
+    openapi_extra={
+        "x-pagequay-image-transport": "chromium-byob-integers-v1",
+        "x-pagequay-image-contract": "original-gif-20mb-v1",
+    },
 )
 async def download_image(slug: str, body: DownloadImage, request: Request):
-    """Acquire original JPEG/PNG/WebP through the guarded browser without Base64.
+    """Acquire original JPEG/PNG/WebP, or opt-in GIF, through the guarded browser.
 
     Requires content:read and browser:interact; poll/cancel/resume the ordinary job.
     expected_url is mandatory and exact. timeout includes queue, startup and human waiting;
+    max_bytes defaults to 5000000, maximum 20000000; GIF requires allowed_media_types.
+    Validation has five CPU seconds and ten wall seconds within the total deadline;
     decoder termination has one second, then tab/guard cleanup has five seconds.
     """
     from .image_download import download_image as acquire_image
@@ -386,6 +392,7 @@ async def screenshot(slug: str, tab_id: str, request: Request):
                 "image/png": {},
                 "image/jpeg": {"schema": {"type": "string", "format": "binary"}},
                 "image/webp": {"schema": {"type": "string", "format": "binary"}},
+                "image/gif": {"schema": {"type": "string", "format": "binary"}},
             },
         },
     },
@@ -395,6 +402,52 @@ async def artifact(slug: str, artifact_id: str, request: Request):
         rt, project, key = access(request, slug)
         row, path = rt.artifacts.get(project, artifact_id)
         rt.auth.authorize(key, project, row["scope"])
+        original = rt.db.one(
+            "SELECT id,result FROM jobs WHERE project_id=? AND kind='download_image' "
+            "AND json_extract(result,'$.artifact_id')=? "
+            "AND json_extract(result,'$.original_bytes')=1 LIMIT 1",
+            (project["id"], artifact_id),
+        )
+        if original:
+            receipt = json.loads(original["result"])
+            request_id = getattr(request.state, "request_id", None)
+
+            def audit_failure(code, cause):
+                rt.db.audit(
+                    "artifact.download_failed",
+                    project["id"],
+                    key["id"],
+                    "error",
+                    details={
+                        "artifact_id": artifact_id,
+                        "job_id": original["id"],
+                        "request_id": request_id,
+                        "error_code": code,
+                        "cause": cause,
+                    },
+                )
+
+            return OriginalImageResponse(
+                row,
+                path,
+                diagnostics={
+                    **{
+                        name: receipt.get(name)
+                        for name in (
+                            "requested_url",
+                            "final_url",
+                            "job_id",
+                            "tab_id",
+                            "frame_id",
+                            "network_request_id",
+                        )
+                    },
+                    "source_request_id": receipt.get("request_id"),
+                    "request_id": request_id,
+                    "command": {"method": "GET", "path": request.url.path},
+                },
+                audit_failure=audit_failure,
+            )
         # Attachments never render remote HTML under the administration origin.
         return FileResponse(
             path,

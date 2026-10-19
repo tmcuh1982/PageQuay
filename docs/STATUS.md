@@ -1,8 +1,8 @@
-# État de PageQuay — 16 octobre 2026
+# État de PageQuay — 19 octobre 2026
 
 [Français](STATUS.md) | [English](STATUS.en.md)
 
-Version locale préparée : **1.1.1**, acquisition sans Base64 interne ; [notes](releases/1.1.1.md). Recette UBTECH du 16 octobre réussie. Aucune nouvelle publication ni installation.
+Version locale : **1.2.0**, GIF explicite et originaux jusqu’à 20 Mo ; [notes](releases/1.2.0.md). Validation : 343 réussis/123 ignorés, suite Chromium ciblée 164 réussis. Recette Dobot, publication et installation distinctes. Sources installées examinées toujours en 1.1.1.
 
 Version publique **1.1.0**, publiée sous [v1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), commit source 11ce7dd. Le wheel, l’archive source et SHA256SUMS ont été retéléchargés et comparés aux fichiers construits. La publication n’a ni déployé ni redémarré le service installé. Le déploiement et les recettes Google depuis un autre appareil, ACL Tailscale et restauration complète restent distincts de la publication des sources.
 
@@ -15,7 +15,7 @@ Version publique **1.1.0**, publiée sous [v1.1.0](https://github.com/tmcuh1982/
 - Adaptateurs Google/DuckDuckGo/Brave et reprise humaine ; continuations natives DuckDuckGo, quotas, idempotence, nettoyage des onglets et client ProjectX ; filtres région/période persistants.
 - Minimisation/restauration et démarrage minimisé ; nouveaux onglets conservant cet état.
 - Extraction du DOM rendu texte/HTML/liens/métadonnées/JSON structuré, arbre filtré optionnel, Shadow DOM ouvert et documents iframe bornés avec indication des partiels. Les iframes dimensionnées aria-hidden sont omises sans consommer une lecture.
-- Images originales JPEG/PNG/WebP acquises par le navigateur, URL finale exacte, taille/délai bornés, SHA-256 et artifact binaire privé.
+- Images originales JPEG/PNG/WebP et GIF sur demande explicite, jusqu’à 20 Mo, acquises par le navigateur, URL finale exacte, taille/délai bornés, SHA-256 et artifact binaire privé.
 - Proxy DNS/IP validée, refus des destinations privées et des WebSockets de pages, quotas/rétention et reset manuel confirmé.
 
 Contrats : [OpenAPI](openapi.json), [recherche](SEARCH_API.md), [extraction](EXTRACTION.md), [images](DOWNLOAD_IMAGE.md), [architecture](ARCHITECTURE.md).

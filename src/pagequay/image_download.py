@@ -21,6 +21,11 @@ MIMES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 
 def verify_image(data, mime):
     """Decode only for validation; return the untouched representation bytes."""
+    if mime == "image/gif":
+        from .gif_validator import verify_gif
+
+        verify_gif(data)
+        return
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -303,6 +308,7 @@ async def download_image(browser, project, request, job):
                 tab.audit.operation("download_image", job, url=request.expected_url),
             ):
                 data, mime, status = await read_image(tab, collector)
+                stage = "validation"
                 await validate_image(data, mime)
             collector.authorize()
             collector.verify_scope()
