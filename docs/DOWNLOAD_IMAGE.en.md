@@ -6,7 +6,7 @@
 
 # Original image acquisition — PageQuay 1.2.0
 
-**Local release, 19 October 2026: not published or installed.** GIF/20 MB
+**1.2.0 contract, 19 October 2026: installed on 19 October, included in the 20 October 1.2.1 release.** GIF/20 MB
 requires the extended contract below. The service observed during the audit
 still reported 1.1.1.
 

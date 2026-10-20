@@ -1,7 +1,7 @@
 /* Fixed, read-only snapshot. No caller-supplied code, clicks, scrolling or network calls. */
 ({ include_dom, text_budget }) => {
   const reasons = new Set();
-  const limits = { nodes: 8000, depth: 32, blocks: 400, links: 300, images: 100,
+  const limits = { nodes: 8000, depth: 32, wrapper_credit: 3, physical_depth: 35, blocks: 400, links: 300, images: 100,
     tables: 20, rows: 50, cells: 30, controls: 100, forms: 30, options: 300, json_ld: 10 };
   let characters = 0, nodes = 0, visited = 0, shadowRoots = 0;
   const seen = new WeakSet();
@@ -70,10 +70,22 @@
     return current ? { xpath: '/' + parts.reverse().join('/'), xpath_reason: null } :
       { xpath: null, xpath_reason: 'not_in_document' };
   };
-  const build = (node, depth = 0) => {
+  // Discount at most three layout envelopes per path, never semantic nodes or
+  // shadow/projection boundaries. Keep the envelopes in the returned tree.
+  const neutralEnvelope = (node) => {
+    if (node.nodeType !== Node.ELEMENT_NODE || !['div', 'span', 'picture'].includes(node.localName) ||
+      node.shadowRoot || node.assignedSlot || node.isContentEditable || node.attributes.length > 32) return false;
+    for (const attr of node.attributes) {
+      if (!['id', 'class', 'style'].includes(attr.name) && !attr.name.startsWith('data-')) return false;
+    }
+    return true;
+  };
+  const build = (node, depth = 0, wrapperCredit = 0) => {
     if (visited >= limits.nodes) { cut('nodes'); return null; }
     visited++;
-    if (depth > limits.depth) { cut('depth'); return null; }
+    if (depth > limits.physical_depth) { cut('depth'); return null; }
+    if (wrapperCredit < limits.wrapper_credit && neutralEnvelope(node)) wrapperCredit++;
+    if (depth - wrapperCredit > limits.depth) { cut('depth'); return null; }
     if (seen.has(node)) return null;
     seen.add(node);
     if (node.nodeType === Node.TEXT_NODE) {
@@ -107,7 +119,7 @@
     }
     for (const child of children) {
       if (visited >= limits.nodes) { cut('nodes'); break; }
-      const value = build(child, depth + 1);
+      const value = build(child, depth + 1, wrapperCredit);
       if (value) result.children.push(value);
     }
     return result;

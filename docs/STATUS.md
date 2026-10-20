@@ -1,10 +1,12 @@
-# État de PageQuay — 19 octobre 2026
+# État de PageQuay — 20 octobre 2026
 
 [Français](STATUS.md) | [English](STATUS.en.md)
 
-Version locale : **1.2.0**, GIF explicite et originaux jusqu’à 20 Mo ; [notes](releases/1.2.0.md). Validation : 343 réussis/123 ignorés, suite Chromium ciblée 164 réussis. Recette Dobot, publication et installation distinctes. Sources installées examinées toujours en 1.1.1.
+Version courante : **1.2.1**, récupération bornée des enveloppes DOM ; [notes](releases/1.2.1.md). Suite générale 347 réussis ; Chromium ciblé 29 réussis. Service installé et redémarré : OpenAPI exact, empreinte du script chargé, readiness et frontières admin/API vérifiés ; réglages persistants et versions des autres distributions conservés. Release [v1.2.1](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.2.1), avec wheel, archive source et SHA256SUMS.
 
-Version publique **1.1.0**, publiée sous [v1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), commit source 11ce7dd. Le wheel, l’archive source et SHA256SUMS ont été retéléchargés et comparés aux fichiers construits. La publication n’a ni déployé ni redémarré le service installé. Le déploiement et les recettes Google depuis un autre appareil, ACL Tailscale et restauration complète restent distincts de la publication des sources.
+Historique 1.2.0 : **1.2.0**, GIF explicite et originaux jusqu’à 20 Mo ; [notes](releases/1.2.0.md). Validation : 343 réussis/123 ignorés, suite Chromium ciblée 164 réussis. Recette Dobot et publication encore distinctes. Service 1.2.0 déployé et relancé sur accord explicite ; OpenAPI 20 Mo/GIF vérifié en local et via HTTPS privé 8443, données et dépendances conservées.
+
+Release publique précédente **1.1.0**, publiée sous [v1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), commit source 11ce7dd. Le wheel, l’archive source et SHA256SUMS ont été retéléchargés et comparés aux fichiers construits. La publication n’a ni déployé ni redémarré le service installé. Le déploiement et les recettes Google depuis un autre appareil, ACL Tailscale et restauration complète restent distincts de la publication des sources.
 
 ## Fonctionnalités livrées
 

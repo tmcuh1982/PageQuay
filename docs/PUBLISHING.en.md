@@ -59,3 +59,5 @@ git status --short --branch
 Full pushes should leave identical commits and a clean checkout. If only documents were published by API, compare those explicitly; it does not prove code publication. Update status/memory only from confirmed results. Repository publication installs neither LaunchAgent nor Serve and does not start the service.
 
 The stable 1.1.0 release was published on October 16, 2026 from 11ce7dd with wheel, sdist and verified SHA256SUMS. Subsequent documentation updates on main do not alter immutable release packages/tagged sources. GitHub release descriptions can link current bilingual documentation.
+
+Release [1.2.1](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.2.1), dated 20 October 2026, includes the DOM depth correction and local 1.1.1/1.2.0 commits. Wheel, source archive, and SHA256SUMS are built from the release commit. The local 1.2.1 service was installed and restarted on explicit request; its health, contract, and loaded-fingerprint checks are separate from GitHub publication.

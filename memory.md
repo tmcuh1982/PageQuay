@@ -391,3 +391,35 @@ préexistante incluse. Métadonnées module/pyproject/OpenAPI/lock alignées ; p
 nouvelle installation pour changer les métadonnées des environnements. Sources
 installées examinées toujours 1.1.1. Push, tag, release GitHub, recette Dobot et
 installation restent distincts ; aucun redémarrage ni secret réel utilisé.
+
+
+### 19 octobre 2026 — Déploiement 1.2.0 autorisé et vérifié
+
+Après le commit local ebea8c520608a57184f7d10c34df735668dfadb0, l’utilisateur
+demande explicitement « déploye et relance le service ». Aucun job actif avant
+arrêt et après redémarrage. Sources du commit et métadonnées synchronisées dans
+PageQuayService ; installation éditable hors ligne avec --no-deps, seul PageQuay
+passe de 1.1.1 à 1.2.0. LaunchAgent rechargé, terminé à 2026-10-19T13:27:22.434176+02:00.
+
+Sauvegarde privée réversible : /private/tmp/pq-120-backup-utxfbl6u (sources
+remplacées, métadonnées, base SQLite cohérente, configuration privée et manifeste
+deployment.json). Empreintes api_keys/projects/settings/admins/cookie_policies
+identiques avant/après ; versions de toutes les autres distributions identiques.
+Aucun changement de ports, Tailscale, droits, profils ou quotas.
+
+Ready 200 et OpenAPI exact du commit sur API 8787 ; login 8767 200, admin sur
+API 404, key-info anonyme 401. HTTPS privé existant 8443 : ready/OpenAPI 200,
+version 1.2.0, maximum 20 000 000 et GIF explicite ; défaut 5 000 000 conservé.
+Aucune clé réelle utilisée, aucune recette d’image authentifiée ou URL Dobot
+exécutée, aucun raccordement UniversRobot ni push/tag/release GitHub.
+
+
+### 20 octobre 2026 — Correction DOM 1.2.1, installation et publication autorisées
+
+Deux artefacts LahakX relus : schema 1.0, URL exacte, partial/truncated et depth seuls, 1 199 nœuds visités et 750 inclus. Reproduction protégée identique ; branche galerie coupée à 33, picture à 34 et image agri.png à 35. Aucun texte éditorial supplémentaire retrouvé.
+
+Correction : profondeur comptée 32, trois crédits d’enveloppes neutres maximum par chemin, borne physique 35. DOM conservé ; rôles/ARIA/labels/langue/interaction, hôtes Shadow ouverts et éléments projetés exclus. Quotas et diagnostics préservés ; empreinte du script chargé journalisée. Lecture réelle temporaire corrigée : 1 202 visités, 754 inclus, 16 images contre 15, blocs/liens/contrôles/formulaires/tables inchangés et partial=false.
+
+Installation et redémarrage explicitement demandés avant commit/release. Deux essais hors ligne échoués faute d’outils de build en cache (hatchling puis editables) ; sources anciennes restaurées et service relancé. Installation éditable ensuite vérifiée dans un environnement temporaire, cache complet, puis déploiement 1.2.1 réussi. Sauvegarde privée et SQLite cohérente conservées hors dépôt ; aucun job actif avant/après. Readiness, OpenAPI exact, limites admin/API et empreinte chargée 257af2f714d4d38ed0d6d613536b473393ae74cade9278c884c20b2a9d377a85 vérifiés. Empreintes de configuration persistante et versions des autres distributions inchangées. Aucune clé réelle utilisée ni modification UniversRobot.
+
+Validation : suite générale 347 réussis, Chromium ciblé 29 réussis ; OpenAPI, Ruff/format et lockfile hors ligne conformes. Release 1.2.1 avec notes bilingues et paquets construits depuis le commit, comprenant aussi les commits locaux 1.1.1/1.2.0. La validation UniversRobot reste distincte.

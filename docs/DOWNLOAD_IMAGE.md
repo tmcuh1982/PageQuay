@@ -1,6 +1,6 @@
 # Acquisition d’une image originale — PageQuay 1.2.0
 
-**Release locale du 19 octobre 2026 : non publiée et non installée.**
+**Contrat 1.2.0 du 19 octobre 2026 : installé le 19 octobre, inclus dans la release 1.2.1 du 20 octobre.**
 GIF et le plafond de 20 Mo exigent le nouveau contrat décrit ci-dessous.
 Le service observé pendant l’audit déclarait encore 1.1.1.
 

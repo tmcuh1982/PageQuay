@@ -1,17 +1,25 @@
 """Bounded extraction of the live DOM, including open shadows and child frames."""
 
 import asyncio
+import hashlib
 import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from playwright.async_api import Error as PlaywrightError
 
-from .diagnostics import ReadTrace
+from . import __version__
+from .diagnostics import ReadTrace, logger
 from .errors import PQError
 from .page_reader import isolated_read
 
 SCRIPT = Path(__file__).with_name("extraction.js").read_text()
+SCRIPT_SHA256 = hashlib.sha256(SCRIPT.encode("utf-8")).hexdigest()
+logger.info(
+    "structured_reader_loaded version=%s schema_version=1.0 script_sha256=%s",
+    __version__,
+    SCRIPT_SHA256,
+)
 MAX_FRAMES = 4  # Visible reads, including the main document.
 MAX_FRAME_INVENTORY = 32  # Hidden frames are reported without consuming a read slot.
 

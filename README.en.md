@@ -4,11 +4,13 @@
 
 Private, self-hosted web gateway: each project has its own persistent Chromium profile, tabs, API keys and temporary content. FastAPI REST + WebSocket API and local HTML/CSS/JavaScript administration, with no frontend build, Docker or subscription.
 
-**Version 1.2.0 — opt-in GIF and originals up to 20 MB, without internal Base64.** See the [test report](docs/testing/REPORT.en.md) for executed checks and limitations. Original specifications are in `docs/definition/`; development history is in `memory.md` and `decisions.md`.
+**Version 1.2.1 — bounded DOM recovery; opt-in GIF and originals up to 20 MB.** See the [test report](docs/testing/REPORT.en.md) for executed checks and limitations. Original specifications are in `docs/definition/`; development history is in `memory.md` and `decisions.md`.
+
+Version 1.2.1: [release notes](docs/releases/1.2.1.en.md), bounded DOM envelope recovery; local service installed and restarted on 20 October 2026.
 
 ## Documentation
 
-Local 1.2.0 release: [notes](docs/releases/1.2.0.en.md). Publication, Dobot acceptance and installation are separate.
+Historical 1.2.0 release: [notes](docs/releases/1.2.0.en.md). Changes are included in 1.2.1; Dobot acceptance remains separate.
 
 The [bilingual documentation index](docs/README.md) lists English and French guides, release notes and validation reports.
 
@@ -25,9 +27,9 @@ The [bilingual documentation index](docs/README.md) lists English and French gui
 | [Exact acquisition](docs/ACQUISITION.en.md) | URL contracts, robots, evidence, frame diagnostics and server client |
 | [Original images](docs/DOWNLOAD_IMAGE.en.md) | download_image and UBTECH validation |
 | [KUKA frame fix](docs/KUKA_FRAME_FIX.en.md) | Real-site evidence and regression coverage |
-| [OpenAPI](docs/openapi.json) | Shared machine-readable 1.2.0 contract, also served at /openapi.json |
+| [OpenAPI](docs/openapi.json) | Shared machine-readable 1.2.1 contract, also served at /openapi.json |
 
-[Release 1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), Python packages and SHA-256 checksums were published on October 16, 2026. Sources and documentation are public on [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branch `main`. Local data and captures are excluded.
+[Release 1.2.1](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.2.1) provides Python packages and SHA-256 checksums, including the local 1.1.1 and 1.2.0 changes. Sources and documentation are public on [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branch `main`. Local data and captures are excluded.
 
 ## Use and disclaimer of liability
 

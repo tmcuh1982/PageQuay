@@ -1,10 +1,12 @@
-# PageQuay status — October 19, 2026
+# PageQuay status — October 20, 2026
 
 [Français](STATUS.md) | [English](STATUS.en.md)
 
-Local version: **1.2.0**, opt-in GIF and originals up to 20 MB; [notes](releases/1.2.0.en.md). Validation: 343 passed/123 skipped, targeted Chromium suite 164 passed. Dobot acceptance, publication and installation remain separate. Installed sources checked still report 1.1.1.
+Current version: **1.2.1**, bounded DOM envelope recovery; [notes](releases/1.2.1.en.md). General suite 347 passed; targeted Chromium 29 passed. Installed service restarted and verified: exact OpenAPI, loaded-script fingerprint, readiness and admin/API boundaries; persistent settings and other distribution versions unchanged. Release [v1.2.1](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.2.1) includes a wheel, source archive, and SHA256SUMS.
 
-Public version **1.1.0**, published as [v1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), source commit 11ce7dd. Wheel, sdist and SHA256SUMS were downloaded after publication and matched the built files. Publication did not deploy/restart the installed service. Deployment/other-device Google/Tailscale ACL/full restore validation remain separate from source release status.
+Historical 1.2.0: **1.2.0**, opt-in GIF and originals up to 20 MB; [notes](releases/1.2.0.en.md). Validation: 343 passed/123 skipped, targeted Chromium suite 164 passed. Dobot acceptance and publication remain separate. Service 1.2.0 deployed and restarted with explicit approval; 20 MB/GIF OpenAPI verified locally and over private HTTPS 8443, data and dependency versions preserved.
+
+Previous public release **1.1.0**, published as [v1.1.0](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.1.0), source commit 11ce7dd. Wheel, sdist and SHA256SUMS were downloaded after publication and matched the built files. Publication did not deploy/restart the installed service. Deployment/other-device Google/Tailscale ACL/full restore validation remain separate from source release status.
 
 ## Delivered features
 

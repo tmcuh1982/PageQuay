@@ -214,3 +214,10 @@ livraison distante et installation restent soumises à leurs accords distincts.
 La demande « fait un commit release » autorise le commit local 1.2.0 sur main,
 avec notes bilingues et documentation Pillow préexistante conservée ; pas de
 push, tag ou publication GitHub implicite.
+
+
+## 20 octobre 2026 — Profondeur DOM et release 1.2.1
+
+Le diagnostic LahakX montre une image utile à profondeur 35 derrière des enveloppes Wix ; le texte éditorial est déjà présent. Conserver la profondeur comptée de 32 et accorder au plus trois crédits par chemin aux seuls div/span/picture sans sémantique déclarée, avec borne physique 35. Préserver enveloppes, budgets, contrôles réseau, URL exacte et toute indication d’omission réelle. Les frontières Shadow/slot ne reçoivent pas de crédit. Le journal local atteste l’empreinte du script chargé à l’import.
+
+L’utilisateur autorise explicitement l’implémentation puis l’installation, le redémarrage, le commit et la release GitHub. Le patch devient 1.2.1 ; les commits locaux 1.1.1 et 1.2.0 sont inclus dans cette publication après la dernière release publique 1.1.0. Les paquets sont construits depuis le commit publié ; aucun changement UniversRobot.
