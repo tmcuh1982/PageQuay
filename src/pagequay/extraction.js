@@ -16,7 +16,7 @@
     return result;
   };
   // Reserve identity before metadata and DOM consume the shared budget.
-  const identity = { url: clip(location.href, 2048), title: clip(document.title, 500) };
+  const identity = { url: clip(location.href, 4096), title: clip(document.title, 500) };
   const safeUrl = (value, image = false) => {
     if (!value) return null;
     try {

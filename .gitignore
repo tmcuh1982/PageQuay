@@ -24,6 +24,8 @@ docs/testing/*
 !docs/testing/REPORT.en.md
 !docs/testing/ACQUISITION_REPORT.en.md
 !docs/testing/DOWNLOAD_IMAGE_REPORT.en.md
+!docs/testing/UNITREE_URL_SCOPE.md
+!docs/testing/UNITREE_URL_SCOPE_TRACE.json
 !docs/testing/structured-complex.json
 !docs/testing/structured-complex-compact.json
 pagequay-*-probe*

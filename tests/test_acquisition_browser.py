@@ -28,6 +28,11 @@ async def acquisition_site(tmp_path):
 
         def do_GET(self):
             hits.append((self.path, self.headers.get("User-Agent")))
+            if self.path == "/slash":
+                self.send_response(302)
+                self.send_header("Location", "/slash/")
+                self.end_headers()
+                return
             if self.path == "/private-redirect":
                 self.send_response(302)
                 self.send_header("Location", "http://10.0.0.1/private")
@@ -51,6 +56,14 @@ async def acquisition_site(tmp_path):
                 self.send_header("cf-mitigated", "challenge")
             self.end_headers()
             html = {
+                "/rewrite/": (
+                    "<title>History rewrite</title><main>Content</main>"
+                    "<script>history.replaceState({}, '', '/rewrite')</script>"
+                ),
+                "/same-history": (
+                    "<title>Same URL history</title><main>Content</main>"
+                    "<script>history.replaceState({}, '', location.href)</script>"
+                ),
                 "/robots.txt": (
                     "User-agent: PageQuay\nDisallow: /allowed\n\n"
                     "User-agent: Mozilla\nDisallow: /denied\nAllow: /allowed\n"
@@ -106,7 +119,7 @@ async def acquisition_site(tmp_path):
             rt = app.state.rt
             project = rt.db.create_project("acquisition", "Acquisition")
             key_id, token = rt.auth.create_key(
-                project, "Fixture", ["browser:interact", "content:read"]
+                project, "Fixture", ["browser:read", "browser:interact", "content:read"]
             )
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),
@@ -687,3 +700,162 @@ async def test_custom_cloudflare_header_prevents_business_capture(acquisition_si
     await client.post(accepted["url"] + "/resume")
     row = await finish(rt, client, response)
     assert row["status"] == "completed", row
+
+
+@pytest.mark.parametrize("path,destination", [("/slash", "/slash/"), ("/rewrite/", "/rewrite")])
+async def test_exact_slash_mismatch_has_stage_and_preserved_response(
+    acquisition_site, monkeypatch, path, destination
+):
+    rt, project, client, base, _, _ = acquisition_site
+    permit_fixture_https(monkeypatch)
+    prefix = "/v1/projects/acquisition"
+    row = await finish(
+        rt,
+        client,
+        await client.post(prefix + "/tabs", json={"url": base + path, "expected_url": base + path}),
+    )
+    assert row["error"]["code"] == "scope_changed", row
+    details = row["error"]["details"]
+    assert details["expected_url"] == base + path
+    assert details["observed_url"] == base + destination
+    assert details["stage"] == "navigation.after_wait"
+    assert details["job_id"] == row["id"]
+    assert details["tab_id"] == row["tab_id"]
+    assert details["request_id"] == row["request_id"]
+    assert details["observed_at"].endswith("+00:00")
+    assert details["artifact_id"] is None and not details["artifact_published"]
+    proof = details["navigation"]
+    response_url = base + (destination if path == "/slash" else path)
+    assert proof["main_document_response"]["url"] == response_url
+    assert proof["main_document_response"]["http_status"] == 200
+    if path == "/slash":
+        assert proof["redirect_chain"][0]["http_status"] == 302
+    else:
+        assert not proof["redirect_chain"]
+        assert proof["url_changes"][-1]["to_url"] == base + destination
+        assert proof["same_document_navigations"][-1] == {
+            "url": base + destination,
+            "navigation_type": "historyApi",
+            "observed_at": proof["same_document_navigations"][-1]["observed_at"],
+        }
+    for fmt in ("structured", "html"):
+        export = await finish(
+            rt,
+            client,
+            await client.get(prefix + f"/tabs/{row['tab_id']}/content", params={"format": fmt}),
+        )
+        assert export["error"]["code"] == "scope_changed"
+        d = export["error"]["details"]
+        assert d["stage"] == f"export.{fmt}.before_capture"
+        assert d["expected_url"] == base + path
+        assert d["observed_url"] == base + destination
+    assert not rt.db.all("SELECT * FROM artifacts")
+
+
+@pytest.mark.parametrize("path", ["/slash/", "/same-history", "/long?" + "x" * 2200])
+async def test_tab_structured_html_metadata_use_same_exact_url(acquisition_site, path):
+    rt, _, client, base, _, _ = acquisition_site
+    prefix = "/v1/projects/acquisition"
+    row = await finish(rt, client, await client.post(prefix + "/tabs", json={"url": base + path}))
+    assert row["status"] == "completed", row
+    endpoint = prefix + f"/tabs/{row['tab_id']}"
+    info = (await client.get(endpoint)).json()
+    assert info["url"] == base + path
+    for fmt in ("structured", "html"):
+        exported = await finish(
+            rt,
+            client,
+            await client.get(
+                endpoint + "/content", params={"format": fmt, "expected_url": base + path}
+            ),
+        )
+        assert exported["status"] == "completed", exported
+        assert exported["result"]["navigation"] == info["navigation"]
+        assert exported["result"]["navigation"]["main_document_response"]["http_status"] == 200
+        artifact = await client.get(exported["result"]["url"])
+        if fmt == "structured":
+            value = artifact.json()
+            assert value["url"] == base + path
+            assert value["navigation"] == info["navigation"]
+            assert value["schema_version"] == "1.0"
+            assert not any(value[k] for k in ("partial", "truncated", "frame_limit_reached"))
+        else:
+            assert artifact.headers["content-type"].startswith("text/html")
+    assert (await client.get(endpoint)).json()["url"] == base + path
+
+
+@pytest.mark.parametrize("fmt", ["structured", "html"])
+@pytest.mark.parametrize("target", ["/allowed/", "/allowed?changed=1", "cross_domain"])
+async def test_actual_destination_change_during_export_never_publishes(
+    acquisition_site, monkeypatch, fmt, target
+):
+    rt, _, client, base, _, _ = acquisition_site
+    prefix = "/v1/projects/acquisition"
+    row = await finish(
+        rt, client, await client.post(prefix + "/tabs", json={"url": base + "/allowed"})
+    )
+    from pagequay import browser
+
+    original = browser.extract_structured if fmt == "structured" else browser.read_page
+    destination = (
+        base + target
+        if target != "cross_domain"
+        else base.replace("localhost", "127.0.0.1") + "/allowed"
+    )
+
+    async def racing(page, *args, **kwargs):
+        value = await original(page, *args, **kwargs)
+        if fmt == "html" and args[0] != "html":
+            return value
+        await page.goto(destination)
+        return value
+
+    monkeypatch.setattr(
+        browser, "extract_structured" if fmt == "structured" else "read_page", racing
+    )
+    row = await finish(
+        rt,
+        client,
+        await client.get(
+            prefix + f"/tabs/{row['tab_id']}/content",
+            params={"format": fmt, "expected_url": base + "/allowed"},
+        ),
+    )
+    assert row["error"]["code"] == "scope_changed", row
+    details = row["error"]["details"]
+    assert details["observed_url"] == destination
+    assert details["expected_url"] == base + "/allowed"
+    assert details["stage"] == (
+        "export.structured.metadata" if fmt == "structured" else "export.html.before_publish"
+    )
+    assert details["artifact_id"] and not details["artifact_published"]
+    assert not rt.db.all("SELECT * FROM artifacts")
+
+
+async def test_inconsistent_structured_identity_is_rejected(acquisition_site, monkeypatch):
+    rt, _, client, base, _, _ = acquisition_site
+    prefix = "/v1/projects/acquisition"
+    row = await finish(
+        rt, client, await client.post(prefix + "/tabs", json={"url": base + "/allowed"})
+    )
+    from pagequay import browser
+
+    original = browser.extract_structured
+
+    async def inconsistent(page, **kwargs):
+        value = await original(page, **kwargs)
+        value["url"] = base + "/other"
+        return value
+
+    monkeypatch.setattr(browser, "extract_structured", inconsistent)
+    row = await finish(
+        rt,
+        client,
+        await client.get(
+            prefix + f"/tabs/{row['tab_id']}/content",
+            params={"format": "structured", "expected_url": base + "/allowed"},
+        ),
+    )
+    assert row["error"]["code"] == "URL_METADATA_MISMATCH", row
+    assert row["error"]["details"]["stage"] == "export.structured.metadata"
+    assert not rt.db.all("SELECT * FROM artifacts")

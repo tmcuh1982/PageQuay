@@ -1,0 +1,2160 @@
+{
+  "service_version": "1.2.1",
+  "isolated": true,
+  "started_at": "2026-10-22T22:05:31.363445+00:00",
+  "channel": "chromium",
+  "headless": true,
+  "cases": [
+    {
+      "expected_url": "https://www.unitree.com/operate/g1/",
+      "started_at": "2026-10-22T22:05:31.393970+00:00",
+      "events": [
+        {
+          "at": "2026-10-22T22:05:36.120235+00:00",
+          "frameId": "8A3F0B3C52C7FA0EDA893B23CC8A2B78",
+          "url": "https://www.unitree.com/operate/g1/",
+          "navigationType": "historyApi"
+        },
+        {
+          "at": "2026-10-22T22:05:36.151147+00:00",
+          "frameId": "8A3F0B3C52C7FA0EDA893B23CC8A2B78",
+          "url": "https://www.unitree.com/operate/g1/",
+          "navigationType": "historyApi"
+        },
+        {
+          "at": "2026-10-22T22:05:41.295799+00:00",
+          "frameId": "8A3F0B3C52C7FA0EDA893B23CC8A2B78",
+          "url": "https://www.unitree.com/operate/g1",
+          "navigationType": "historyApi"
+        }
+      ],
+      "direct_http": [
+        {
+          "url": "https://www.unitree.com/operate/g1/",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "navigate": {
+        "id": "db73a7dc703423bab22e74a1602a736c",
+        "kind": "navigate",
+        "status": "completed",
+        "created_at": 1792706733.575455,
+        "updated_at": 1792706736.136033,
+        "result": {
+          "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+          "url": "https://www.unitree.com/operate/g1/",
+          "title": "Unitree G1 宇树人形机器人",
+          "title_truncated": false,
+          "navigation": {
+            "requested_url": "https://www.unitree.com/operate/g1/",
+            "final_url": "https://www.unitree.com/operate/g1/",
+            "http_status": null,
+            "http_status_reason": "no_main_document_response_observed",
+            "content_type": null,
+            "redirect_chain": [],
+            "redirect_chain_truncated": false,
+            "observed_at": "2026-10-22T22:05:36.119923+00:00",
+            "navigation_id": "8d05e9d989d7d9a69a664a7907c6b07c",
+            "source": "browser_main_document_response",
+            "main_document_response": {
+              "url": "https://www.unitree.com/operate/g1/",
+              "http_status": 200,
+              "content_type": "text/html",
+              "observed_at": "2026-10-22T22:05:34.692683+00:00"
+            },
+            "url_changes": [
+              {
+                "from_url": "about:blank",
+                "to_url": "https://www.unitree.com/operate/g1/",
+                "kind": "response_commit",
+                "observed_at": "2026-10-22T22:05:34.692683+00:00"
+              },
+              {
+                "from_url": "https://www.unitree.com/operate/g1/",
+                "to_url": "https://www.unitree.com/operate/g1/",
+                "kind": "same_document_or_unattested_commit",
+                "observed_at": "2026-10-22T22:05:36.119923+00:00"
+              }
+            ],
+            "url_changes_truncated": false,
+            "same_document_navigations": [
+              {
+                "url": "https://www.unitree.com/operate/g1/",
+                "observed_at": "2026-10-22T22:05:36.120744+00:00",
+                "navigation_type": "historyApi"
+              }
+            ],
+            "same_document_navigations_truncated": false
+          },
+          "robots": {
+            "status": "not_checked"
+          },
+          "network_policy": {
+            "schemes": [
+              "http",
+              "https"
+            ],
+            "ports": [
+              80,
+              443
+            ],
+            "url_credentials": "denied",
+            "dns": "all_addresses_public",
+            "connect": "validated_literal_ip",
+            "private_ipv4_ipv6": "denied",
+            "service_workers": "blocked",
+            "websockets": "blocked",
+            "subframe_network": "legacy_public_proxy",
+            "refusals": [],
+            "refusals_truncated": false,
+            "limitations": [
+              "DNS checked at routes, page-target redirects and new proxy connections; existing tunnels remain IP-pinned.",
+              "OOPIF redirects are not attested; strict mode denies all subframe network requests.",
+              "Ports reflect production policy; tests may inject local endpoints."
+            ]
+          },
+          "cookie_consent": null
+        },
+        "error": null,
+        "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+        "project": "probe",
+        "client_id": "71f873d559093eb839f744fe47aa3d85",
+        "request_id": "317b0d52d9665e907189641d"
+      },
+      "tab_before": {
+        "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+        "url": "https://www.unitree.com/operate/g1/",
+        "title": "Unitree G1 宇树人形机器人",
+        "title_truncated": false,
+        "navigation": {
+          "requested_url": "https://www.unitree.com/operate/g1/",
+          "final_url": "https://www.unitree.com/operate/g1/",
+          "http_status": null,
+          "http_status_reason": "no_main_document_response_observed",
+          "content_type": null,
+          "redirect_chain": [],
+          "redirect_chain_truncated": false,
+          "observed_at": "2026-10-22T22:05:36.119923+00:00",
+          "navigation_id": "8d05e9d989d7d9a69a664a7907c6b07c",
+          "source": "browser_main_document_response",
+          "main_document_response": {
+            "url": "https://www.unitree.com/operate/g1/",
+            "http_status": 200,
+            "content_type": "text/html",
+            "observed_at": "2026-10-22T22:05:34.692683+00:00"
+          },
+          "url_changes": [
+            {
+              "from_url": "about:blank",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "response_commit",
+              "observed_at": "2026-10-22T22:05:34.692683+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:36.119923+00:00"
+            }
+          ],
+          "url_changes_truncated": false,
+          "same_document_navigations": [
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:36.120744+00:00",
+              "navigation_type": "historyApi"
+            }
+          ],
+          "same_document_navigations_truncated": false
+        }
+      },
+      "preflight_equal": true,
+      "exports": [
+        {
+          "format": "structured",
+          "at": "2026-10-22T22:05:36.161420+00:00",
+          "job": {
+            "id": "d1d7e432e1119d18b338ada4ab9b017d",
+            "kind": "extract",
+            "status": "failed",
+            "created_at": 1792706736.143967,
+            "updated_at": 1792706736.160365,
+            "result": null,
+            "error": {
+              "code": "NAVIGATION_CHANGED",
+              "message": "Document or frame changed during capture",
+              "details": {
+                "expected_url": "https://www.unitree.com/operate/g1/",
+                "observed_url": "https://www.unitree.com/operate/g1/",
+                "observed_url_truncated": false,
+                "observed_at": "2026-10-22T22:05:36.160226+00:00",
+                "stage": "export.structured.metadata",
+                "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+                "job_id": "d1d7e432e1119d18b338ada4ab9b017d",
+                "request_id": "5fc9f7199a3cf20c98260d4d",
+                "artifact_id": "ba1ad077d93fd4abb379904ab41296d3",
+                "artifact_published": false,
+                "service_version": "1.2.1",
+                "navigation": {
+                  "requested_url": "https://www.unitree.com/operate/g1/",
+                  "final_url": "https://www.unitree.com/operate/g1/",
+                  "http_status": null,
+                  "http_status_reason": "no_main_document_response_observed",
+                  "content_type": null,
+                  "redirect_chain": [],
+                  "redirect_chain_truncated": false,
+                  "observed_at": "2026-10-22T22:05:36.150998+00:00",
+                  "navigation_id": "3d090f59af72cc3125b66beb6e2c2a8a",
+                  "source": "browser_main_document_response",
+                  "main_document_response": {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "http_status": 200,
+                    "content_type": "text/html",
+                    "observed_at": "2026-10-22T22:05:34.692683+00:00"
+                  },
+                  "url_changes": [
+                    {
+                      "from_url": "about:blank",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "response_commit",
+                      "observed_at": "2026-10-22T22:05:34.692683+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:36.119923+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:36.150998+00:00"
+                    }
+                  ],
+                  "url_changes_truncated": false,
+                  "same_document_navigations": [
+                    {
+                      "url": "https://www.unitree.com/operate/g1/",
+                      "observed_at": "2026-10-22T22:05:36.120744+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/operate/g1/",
+                      "observed_at": "2026-10-22T22:05:36.151241+00:00",
+                      "navigation_type": "historyApi"
+                    }
+                  ],
+                  "same_document_navigations_truncated": false
+                }
+              }
+            },
+            "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "5fc9f7199a3cf20c98260d4d"
+          }
+        },
+        {
+          "format": "html",
+          "at": "2026-10-22T22:05:36.173251+00:00",
+          "job": {
+            "id": "e3fb64c4bf2898e9510784fcf70caf22",
+            "kind": "extract",
+            "status": "completed",
+            "created_at": 1792706736.161906,
+            "updated_at": 1792706736.1724958,
+            "result": {
+              "artifact_id": "aed83188d458c7a3b24e1195c55aaaeb",
+              "size": 16272,
+              "media_type": "text/html",
+              "url": "/v1/projects/probe/artifacts/aed83188d458c7a3b24e1195c55aaaeb",
+              "navigation": {
+                "requested_url": "https://www.unitree.com/operate/g1/",
+                "final_url": "https://www.unitree.com/operate/g1/",
+                "http_status": null,
+                "http_status_reason": "no_main_document_response_observed",
+                "content_type": null,
+                "redirect_chain": [],
+                "redirect_chain_truncated": false,
+                "observed_at": "2026-10-22T22:05:36.150998+00:00",
+                "navigation_id": "3d090f59af72cc3125b66beb6e2c2a8a",
+                "source": "browser_main_document_response",
+                "main_document_response": {
+                  "url": "https://www.unitree.com/operate/g1/",
+                  "http_status": 200,
+                  "content_type": "text/html",
+                  "observed_at": "2026-10-22T22:05:34.692683+00:00"
+                },
+                "url_changes": [
+                  {
+                    "from_url": "about:blank",
+                    "to_url": "https://www.unitree.com/operate/g1/",
+                    "kind": "response_commit",
+                    "observed_at": "2026-10-22T22:05:34.692683+00:00"
+                  },
+                  {
+                    "from_url": "https://www.unitree.com/operate/g1/",
+                    "to_url": "https://www.unitree.com/operate/g1/",
+                    "kind": "same_document_or_unattested_commit",
+                    "observed_at": "2026-10-22T22:05:36.119923+00:00"
+                  },
+                  {
+                    "from_url": "https://www.unitree.com/operate/g1/",
+                    "to_url": "https://www.unitree.com/operate/g1/",
+                    "kind": "same_document_or_unattested_commit",
+                    "observed_at": "2026-10-22T22:05:36.150998+00:00"
+                  }
+                ],
+                "url_changes_truncated": false,
+                "same_document_navigations": [
+                  {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "observed_at": "2026-10-22T22:05:36.120744+00:00",
+                    "navigation_type": "historyApi"
+                  },
+                  {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "observed_at": "2026-10-22T22:05:36.151241+00:00",
+                    "navigation_type": "historyApi"
+                  }
+                ],
+                "same_document_navigations_truncated": false
+              }
+            },
+            "error": null,
+            "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "91206e4a4353bcaa7c35640e"
+          },
+          "bytes": 16272
+        }
+      ],
+      "tab_after": {
+        "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+        "url": "https://www.unitree.com/operate/g1",
+        "title": "Unitree G1 宇树人形机器人",
+        "title_truncated": false,
+        "navigation": {
+          "requested_url": "https://www.unitree.com/operate/g1/",
+          "final_url": "https://www.unitree.com/operate/g1",
+          "http_status": null,
+          "http_status_reason": "no_main_document_response_observed",
+          "content_type": null,
+          "redirect_chain": [],
+          "redirect_chain_truncated": false,
+          "observed_at": "2026-10-22T22:05:41.295677+00:00",
+          "navigation_id": "75b9ddff587e23ded497b874ee2ce2f8",
+          "source": "browser_main_document_response",
+          "main_document_response": {
+            "url": "https://www.unitree.com/operate/g1/",
+            "http_status": 200,
+            "content_type": "text/html",
+            "observed_at": "2026-10-22T22:05:34.692683+00:00"
+          },
+          "url_changes": [
+            {
+              "from_url": "about:blank",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "response_commit",
+              "observed_at": "2026-10-22T22:05:34.692683+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:36.119923+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:36.150998+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:41.295677+00:00"
+            }
+          ],
+          "url_changes_truncated": false,
+          "same_document_navigations": [
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:36.120744+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:36.151241+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/operate/g1",
+              "observed_at": "2026-10-22T22:05:41.295844+00:00",
+              "navigation_type": "historyApi"
+            }
+          ],
+          "same_document_navigations_truncated": false
+        }
+      },
+      "late_exports": [
+        {
+          "format": "structured",
+          "at": "2026-10-22T22:05:46.195944+00:00",
+          "job": {
+            "id": "43f568de99adf29833d2c4087e257aca",
+            "kind": "extract",
+            "status": "failed",
+            "created_at": 1792706746.189091,
+            "updated_at": 1792706746.194984,
+            "result": null,
+            "error": {
+              "code": "scope_changed",
+              "message": "Final destination requires explicit scope review",
+              "details": {
+                "target_url": "https://www.unitree.com/operate/g1",
+                "target_sha256": "b4c92cde2eb75571ecdbd4ddcbb5339bbc4bf13adfb5f94351d724e31c73eba5",
+                "navigation": {
+                  "requested_url": "https://www.unitree.com/operate/g1/",
+                  "final_url": "https://www.unitree.com/operate/g1",
+                  "http_status": null,
+                  "http_status_reason": "no_main_document_response_observed",
+                  "content_type": null,
+                  "redirect_chain": [],
+                  "redirect_chain_truncated": false,
+                  "observed_at": "2026-10-22T22:05:41.295677+00:00",
+                  "navigation_id": "75b9ddff587e23ded497b874ee2ce2f8",
+                  "source": "browser_main_document_response",
+                  "main_document_response": {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "http_status": 200,
+                    "content_type": "text/html",
+                    "observed_at": "2026-10-22T22:05:34.692683+00:00"
+                  },
+                  "url_changes": [
+                    {
+                      "from_url": "about:blank",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "response_commit",
+                      "observed_at": "2026-10-22T22:05:34.692683+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:36.119923+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:36.150998+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:41.295677+00:00"
+                    }
+                  ],
+                  "url_changes_truncated": false,
+                  "same_document_navigations": [
+                    {
+                      "url": "https://www.unitree.com/operate/g1/",
+                      "observed_at": "2026-10-22T22:05:36.120744+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/operate/g1/",
+                      "observed_at": "2026-10-22T22:05:36.151241+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/operate/g1",
+                      "observed_at": "2026-10-22T22:05:41.295844+00:00",
+                      "navigation_type": "historyApi"
+                    }
+                  ],
+                  "same_document_navigations_truncated": false
+                },
+                "expected_url": "https://www.unitree.com/operate/g1/",
+                "observed_url": "https://www.unitree.com/operate/g1",
+                "observed_url_truncated": false,
+                "observed_at": "2026-10-22T22:05:46.194288+00:00",
+                "stage": "export.structured.before_capture",
+                "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+                "job_id": "43f568de99adf29833d2c4087e257aca",
+                "request_id": "8741c120077bd2d2412ce476",
+                "artifact_id": null,
+                "artifact_published": false,
+                "service_version": "1.2.1"
+              }
+            },
+            "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "8741c120077bd2d2412ce476"
+          }
+        },
+        {
+          "format": "html",
+          "at": "2026-10-22T22:05:46.201804+00:00",
+          "job": {
+            "id": "79f9ede6df7dba06e926801b53bcf234",
+            "kind": "extract",
+            "status": "failed",
+            "created_at": 1792706746.19649,
+            "updated_at": 1792706746.200892,
+            "result": null,
+            "error": {
+              "code": "scope_changed",
+              "message": "Final destination requires explicit scope review",
+              "details": {
+                "target_url": "https://www.unitree.com/operate/g1",
+                "target_sha256": "b4c92cde2eb75571ecdbd4ddcbb5339bbc4bf13adfb5f94351d724e31c73eba5",
+                "navigation": {
+                  "requested_url": "https://www.unitree.com/operate/g1/",
+                  "final_url": "https://www.unitree.com/operate/g1",
+                  "http_status": null,
+                  "http_status_reason": "no_main_document_response_observed",
+                  "content_type": null,
+                  "redirect_chain": [],
+                  "redirect_chain_truncated": false,
+                  "observed_at": "2026-10-22T22:05:41.295677+00:00",
+                  "navigation_id": "75b9ddff587e23ded497b874ee2ce2f8",
+                  "source": "browser_main_document_response",
+                  "main_document_response": {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "http_status": 200,
+                    "content_type": "text/html",
+                    "observed_at": "2026-10-22T22:05:34.692683+00:00"
+                  },
+                  "url_changes": [
+                    {
+                      "from_url": "about:blank",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "response_commit",
+                      "observed_at": "2026-10-22T22:05:34.692683+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:36.119923+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:36.150998+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:41.295677+00:00"
+                    }
+                  ],
+                  "url_changes_truncated": false,
+                  "same_document_navigations": [
+                    {
+                      "url": "https://www.unitree.com/operate/g1/",
+                      "observed_at": "2026-10-22T22:05:36.120744+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/operate/g1/",
+                      "observed_at": "2026-10-22T22:05:36.151241+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/operate/g1",
+                      "observed_at": "2026-10-22T22:05:41.295844+00:00",
+                      "navigation_type": "historyApi"
+                    }
+                  ],
+                  "same_document_navigations_truncated": false
+                },
+                "expected_url": "https://www.unitree.com/operate/g1/",
+                "observed_url": "https://www.unitree.com/operate/g1",
+                "observed_url_truncated": false,
+                "observed_at": "2026-10-22T22:05:46.200753+00:00",
+                "stage": "export.html.before_capture",
+                "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+                "job_id": "79f9ede6df7dba06e926801b53bcf234",
+                "request_id": "7beeb16e7d6de496036f79e3",
+                "artifact_id": null,
+                "artifact_published": false,
+                "service_version": "1.2.1"
+              }
+            },
+            "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "7beeb16e7d6de496036f79e3"
+          }
+        }
+      ],
+      "tab_after_late_exports": {
+        "tab_id": "dcd2b76982722eb158e481ba8d7c22b0",
+        "url": "https://www.unitree.com/operate/g1",
+        "title": "Unitree G1 宇树人形机器人",
+        "title_truncated": false,
+        "navigation": {
+          "requested_url": "https://www.unitree.com/operate/g1/",
+          "final_url": "https://www.unitree.com/operate/g1",
+          "http_status": null,
+          "http_status_reason": "no_main_document_response_observed",
+          "content_type": null,
+          "redirect_chain": [],
+          "redirect_chain_truncated": false,
+          "observed_at": "2026-10-22T22:05:41.295677+00:00",
+          "navigation_id": "75b9ddff587e23ded497b874ee2ce2f8",
+          "source": "browser_main_document_response",
+          "main_document_response": {
+            "url": "https://www.unitree.com/operate/g1/",
+            "http_status": 200,
+            "content_type": "text/html",
+            "observed_at": "2026-10-22T22:05:34.692683+00:00"
+          },
+          "url_changes": [
+            {
+              "from_url": "about:blank",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "response_commit",
+              "observed_at": "2026-10-22T22:05:34.692683+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:36.119923+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:36.150998+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:41.295677+00:00"
+            }
+          ],
+          "url_changes_truncated": false,
+          "same_document_navigations": [
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:36.120744+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:36.151241+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/operate/g1",
+              "observed_at": "2026-10-22T22:05:41.295844+00:00",
+              "navigation_type": "historyApi"
+            }
+          ],
+          "same_document_navigations_truncated": false
+        }
+      }
+    },
+    {
+      "expected_url": "https://www.unitree.com/operate/g1",
+      "started_at": "2026-10-22T22:05:46.210324+00:00",
+      "events": [
+        {
+          "at": "2026-10-22T22:05:48.622473+00:00",
+          "frameId": "DEC1E94E2281C42F2CEF31F34EA03983",
+          "url": "https://www.unitree.com/operate/g1/",
+          "navigationType": "historyApi"
+        },
+        {
+          "at": "2026-10-22T22:05:48.623880+00:00",
+          "frameId": "DEC1E94E2281C42F2CEF31F34EA03983",
+          "url": "https://www.unitree.com/operate/g1/",
+          "navigationType": "historyApi"
+        },
+        {
+          "at": "2026-10-22T22:05:53.777382+00:00",
+          "frameId": "DEC1E94E2281C42F2CEF31F34EA03983",
+          "url": "https://www.unitree.com/operate/g1",
+          "navigationType": "historyApi"
+        }
+      ],
+      "direct_http": [
+        {
+          "url": "https://www.unitree.com/operate/g1",
+          "status": 302,
+          "location": "/operate/g1/"
+        },
+        {
+          "url": "https://www.unitree.com/operate/g1/",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "navigate": {
+        "id": "e54c3ba33fe8d9fdd266bae4f0e87f12",
+        "kind": "navigate",
+        "status": "completed",
+        "created_at": 1792706747.403126,
+        "updated_at": 1792706748.641124,
+        "result": {
+          "tab_id": "680dcc00a9b836412db83917eade24c4",
+          "url": "https://www.unitree.com/operate/g1/",
+          "title": "Unitree G1 宇树人形机器人",
+          "title_truncated": false,
+          "navigation": {
+            "requested_url": "https://www.unitree.com/operate/g1",
+            "final_url": "https://www.unitree.com/operate/g1/",
+            "http_status": null,
+            "http_status_reason": "no_main_document_response_observed",
+            "content_type": null,
+            "redirect_chain": [
+              {
+                "url": "https://www.unitree.com/operate/g1",
+                "http_status": 302,
+                "target_url": "https://www.unitree.com/operate/g1/"
+              }
+            ],
+            "redirect_chain_truncated": false,
+            "observed_at": "2026-10-22T22:05:48.623532+00:00",
+            "navigation_id": "bc751083ebfd983bff890263c2db20c5",
+            "source": "browser_main_document_response",
+            "main_document_response": {
+              "url": "https://www.unitree.com/operate/g1/",
+              "http_status": 200,
+              "content_type": "text/html",
+              "observed_at": "2026-10-22T22:05:47.880019+00:00"
+            },
+            "url_changes": [
+              {
+                "from_url": "about:blank",
+                "to_url": "https://www.unitree.com/operate/g1/",
+                "kind": "response_commit",
+                "observed_at": "2026-10-22T22:05:47.880019+00:00"
+              },
+              {
+                "from_url": "https://www.unitree.com/operate/g1/",
+                "to_url": "https://www.unitree.com/operate/g1/",
+                "kind": "same_document_or_unattested_commit",
+                "observed_at": "2026-10-22T22:05:48.621679+00:00"
+              },
+              {
+                "from_url": "https://www.unitree.com/operate/g1/",
+                "to_url": "https://www.unitree.com/operate/g1/",
+                "kind": "same_document_or_unattested_commit",
+                "observed_at": "2026-10-22T22:05:48.623532+00:00"
+              }
+            ],
+            "url_changes_truncated": false,
+            "same_document_navigations": [
+              {
+                "url": "https://www.unitree.com/operate/g1/",
+                "observed_at": "2026-10-22T22:05:48.622113+00:00",
+                "navigation_type": "historyApi"
+              },
+              {
+                "url": "https://www.unitree.com/operate/g1/",
+                "observed_at": "2026-10-22T22:05:48.623819+00:00",
+                "navigation_type": "historyApi"
+              }
+            ],
+            "same_document_navigations_truncated": false
+          },
+          "robots": {
+            "status": "not_checked"
+          },
+          "network_policy": {
+            "schemes": [
+              "http",
+              "https"
+            ],
+            "ports": [
+              80,
+              443
+            ],
+            "url_credentials": "denied",
+            "dns": "all_addresses_public",
+            "connect": "validated_literal_ip",
+            "private_ipv4_ipv6": "denied",
+            "service_workers": "blocked",
+            "websockets": "blocked",
+            "subframe_network": "legacy_public_proxy",
+            "refusals": [],
+            "refusals_truncated": false,
+            "limitations": [
+              "DNS checked at routes, page-target redirects and new proxy connections; existing tunnels remain IP-pinned.",
+              "OOPIF redirects are not attested; strict mode denies all subframe network requests.",
+              "Ports reflect production policy; tests may inject local endpoints."
+            ]
+          },
+          "cookie_consent": null
+        },
+        "error": null,
+        "tab_id": "680dcc00a9b836412db83917eade24c4",
+        "project": "probe",
+        "client_id": "71f873d559093eb839f744fe47aa3d85",
+        "request_id": "3694f4c98dc563c81213530e"
+      },
+      "tab_before": {
+        "tab_id": "680dcc00a9b836412db83917eade24c4",
+        "url": "https://www.unitree.com/operate/g1/",
+        "title": "Unitree G1 宇树人形机器人",
+        "title_truncated": false,
+        "navigation": {
+          "requested_url": "https://www.unitree.com/operate/g1",
+          "final_url": "https://www.unitree.com/operate/g1/",
+          "http_status": null,
+          "http_status_reason": "no_main_document_response_observed",
+          "content_type": null,
+          "redirect_chain": [
+            {
+              "url": "https://www.unitree.com/operate/g1",
+              "http_status": 302,
+              "target_url": "https://www.unitree.com/operate/g1/"
+            }
+          ],
+          "redirect_chain_truncated": false,
+          "observed_at": "2026-10-22T22:05:48.623532+00:00",
+          "navigation_id": "bc751083ebfd983bff890263c2db20c5",
+          "source": "browser_main_document_response",
+          "main_document_response": {
+            "url": "https://www.unitree.com/operate/g1/",
+            "http_status": 200,
+            "content_type": "text/html",
+            "observed_at": "2026-10-22T22:05:47.880019+00:00"
+          },
+          "url_changes": [
+            {
+              "from_url": "about:blank",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "response_commit",
+              "observed_at": "2026-10-22T22:05:47.880019+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:48.621679+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:48.623532+00:00"
+            }
+          ],
+          "url_changes_truncated": false,
+          "same_document_navigations": [
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:48.622113+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:48.623819+00:00",
+              "navigation_type": "historyApi"
+            }
+          ],
+          "same_document_navigations_truncated": false
+        }
+      },
+      "preflight_equal": false,
+      "exports": [
+        {
+          "format": "structured",
+          "at": "2026-10-22T22:05:48.653578+00:00",
+          "job": {
+            "id": "30e3952b80555e087221e1622c36ad31",
+            "kind": "extract",
+            "status": "failed",
+            "created_at": 1792706748.6489012,
+            "updated_at": 1792706748.652729,
+            "result": null,
+            "error": {
+              "code": "scope_changed",
+              "message": "Final destination requires explicit scope review",
+              "details": {
+                "target_url": "https://www.unitree.com/operate/g1/",
+                "target_sha256": "8b67f9b9b1c766f97c9a8ae46d34c73f1e60606f0247e7a05999db119092c36d",
+                "navigation": {
+                  "requested_url": "https://www.unitree.com/operate/g1",
+                  "final_url": "https://www.unitree.com/operate/g1/",
+                  "http_status": null,
+                  "http_status_reason": "no_main_document_response_observed",
+                  "content_type": null,
+                  "redirect_chain": [
+                    {
+                      "url": "https://www.unitree.com/operate/g1",
+                      "http_status": 302,
+                      "target_url": "https://www.unitree.com/operate/g1/"
+                    }
+                  ],
+                  "redirect_chain_truncated": false,
+                  "observed_at": "2026-10-22T22:05:48.623532+00:00",
+                  "navigation_id": "bc751083ebfd983bff890263c2db20c5",
+                  "source": "browser_main_document_response",
+                  "main_document_response": {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "http_status": 200,
+                    "content_type": "text/html",
+                    "observed_at": "2026-10-22T22:05:47.880019+00:00"
+                  },
+                  "url_changes": [
+                    {
+                      "from_url": "about:blank",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "response_commit",
+                      "observed_at": "2026-10-22T22:05:47.880019+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:48.621679+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:48.623532+00:00"
+                    }
+                  ],
+                  "url_changes_truncated": false,
+                  "same_document_navigations": [
+                    {
+                      "url": "https://www.unitree.com/operate/g1/",
+                      "observed_at": "2026-10-22T22:05:48.622113+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/operate/g1/",
+                      "observed_at": "2026-10-22T22:05:48.623819+00:00",
+                      "navigation_type": "historyApi"
+                    }
+                  ],
+                  "same_document_navigations_truncated": false
+                },
+                "expected_url": "https://www.unitree.com/operate/g1",
+                "observed_url": "https://www.unitree.com/operate/g1/",
+                "observed_url_truncated": false,
+                "observed_at": "2026-10-22T22:05:48.652612+00:00",
+                "stage": "export.structured.before_capture",
+                "tab_id": "680dcc00a9b836412db83917eade24c4",
+                "job_id": "30e3952b80555e087221e1622c36ad31",
+                "request_id": "6d340309e188ecf9ef3b33d8",
+                "artifact_id": null,
+                "artifact_published": false,
+                "service_version": "1.2.1"
+              }
+            },
+            "tab_id": "680dcc00a9b836412db83917eade24c4",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "6d340309e188ecf9ef3b33d8"
+          }
+        },
+        {
+          "format": "html",
+          "at": "2026-10-22T22:05:48.658493+00:00",
+          "job": {
+            "id": "0c223755a111de5ed44ddac3ba23e447",
+            "kind": "extract",
+            "status": "failed",
+            "created_at": 1792706748.654024,
+            "updated_at": 1792706748.657831,
+            "result": null,
+            "error": {
+              "code": "scope_changed",
+              "message": "Final destination requires explicit scope review",
+              "details": {
+                "target_url": "https://www.unitree.com/operate/g1/",
+                "target_sha256": "8b67f9b9b1c766f97c9a8ae46d34c73f1e60606f0247e7a05999db119092c36d",
+                "navigation": {
+                  "requested_url": "https://www.unitree.com/operate/g1",
+                  "final_url": "https://www.unitree.com/operate/g1/",
+                  "http_status": null,
+                  "http_status_reason": "no_main_document_response_observed",
+                  "content_type": null,
+                  "redirect_chain": [
+                    {
+                      "url": "https://www.unitree.com/operate/g1",
+                      "http_status": 302,
+                      "target_url": "https://www.unitree.com/operate/g1/"
+                    }
+                  ],
+                  "redirect_chain_truncated": false,
+                  "observed_at": "2026-10-22T22:05:48.623532+00:00",
+                  "navigation_id": "bc751083ebfd983bff890263c2db20c5",
+                  "source": "browser_main_document_response",
+                  "main_document_response": {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "http_status": 200,
+                    "content_type": "text/html",
+                    "observed_at": "2026-10-22T22:05:47.880019+00:00"
+                  },
+                  "url_changes": [
+                    {
+                      "from_url": "about:blank",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "response_commit",
+                      "observed_at": "2026-10-22T22:05:47.880019+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:48.621679+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/operate/g1/",
+                      "to_url": "https://www.unitree.com/operate/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:05:48.623532+00:00"
+                    }
+                  ],
+                  "url_changes_truncated": false,
+                  "same_document_navigations": [
+                    {
+                      "url": "https://www.unitree.com/operate/g1/",
+                      "observed_at": "2026-10-22T22:05:48.622113+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/operate/g1/",
+                      "observed_at": "2026-10-22T22:05:48.623819+00:00",
+                      "navigation_type": "historyApi"
+                    }
+                  ],
+                  "same_document_navigations_truncated": false
+                },
+                "expected_url": "https://www.unitree.com/operate/g1",
+                "observed_url": "https://www.unitree.com/operate/g1/",
+                "observed_url_truncated": false,
+                "observed_at": "2026-10-22T22:05:48.657726+00:00",
+                "stage": "export.html.before_capture",
+                "tab_id": "680dcc00a9b836412db83917eade24c4",
+                "job_id": "0c223755a111de5ed44ddac3ba23e447",
+                "request_id": "749c95587e10d33bc87890cc",
+                "artifact_id": null,
+                "artifact_published": false,
+                "service_version": "1.2.1"
+              }
+            },
+            "tab_id": "680dcc00a9b836412db83917eade24c4",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "749c95587e10d33bc87890cc"
+          }
+        }
+      ],
+      "tab_after": {
+        "tab_id": "680dcc00a9b836412db83917eade24c4",
+        "url": "https://www.unitree.com/operate/g1",
+        "title": "Unitree G1 宇树人形机器人",
+        "title_truncated": false,
+        "navigation": {
+          "requested_url": "https://www.unitree.com/operate/g1",
+          "final_url": "https://www.unitree.com/operate/g1",
+          "http_status": null,
+          "http_status_reason": "no_main_document_response_observed",
+          "content_type": null,
+          "redirect_chain": [
+            {
+              "url": "https://www.unitree.com/operate/g1",
+              "http_status": 302,
+              "target_url": "https://www.unitree.com/operate/g1/"
+            }
+          ],
+          "redirect_chain_truncated": false,
+          "observed_at": "2026-10-22T22:05:53.777533+00:00",
+          "navigation_id": "6af845efe55f87368ed0ef33a7e514a1",
+          "source": "browser_main_document_response",
+          "main_document_response": {
+            "url": "https://www.unitree.com/operate/g1/",
+            "http_status": 200,
+            "content_type": "text/html",
+            "observed_at": "2026-10-22T22:05:47.880019+00:00"
+          },
+          "url_changes": [
+            {
+              "from_url": "about:blank",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "response_commit",
+              "observed_at": "2026-10-22T22:05:47.880019+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:48.621679+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:48.623532+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:53.777533+00:00"
+            }
+          ],
+          "url_changes_truncated": false,
+          "same_document_navigations": [
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:48.622113+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:48.623819+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/operate/g1",
+              "observed_at": "2026-10-22T22:05:53.777690+00:00",
+              "navigation_type": "historyApi"
+            }
+          ],
+          "same_document_navigations_truncated": false
+        }
+      },
+      "late_exports": [
+        {
+          "format": "structured",
+          "at": "2026-10-22T22:05:58.679552+00:00",
+          "job": {
+            "id": "3ec4d585bb4059217f847ca87fb767a4",
+            "kind": "extract",
+            "status": "completed",
+            "created_at": 1792706758.6659179,
+            "updated_at": 1792706758.678868,
+            "result": {
+              "artifact_id": "de64206d53fffb018b42ef9b1f7c280e",
+              "size": 14717,
+              "media_type": "application/json",
+              "url": "/v1/projects/probe/artifacts/de64206d53fffb018b42ef9b1f7c280e",
+              "navigation": {
+                "requested_url": "https://www.unitree.com/operate/g1",
+                "final_url": "https://www.unitree.com/operate/g1",
+                "http_status": null,
+                "http_status_reason": "no_main_document_response_observed",
+                "content_type": null,
+                "redirect_chain": [
+                  {
+                    "url": "https://www.unitree.com/operate/g1",
+                    "http_status": 302,
+                    "target_url": "https://www.unitree.com/operate/g1/"
+                  }
+                ],
+                "redirect_chain_truncated": false,
+                "observed_at": "2026-10-22T22:05:53.777533+00:00",
+                "navigation_id": "6af845efe55f87368ed0ef33a7e514a1",
+                "source": "browser_main_document_response",
+                "main_document_response": {
+                  "url": "https://www.unitree.com/operate/g1/",
+                  "http_status": 200,
+                  "content_type": "text/html",
+                  "observed_at": "2026-10-22T22:05:47.880019+00:00"
+                },
+                "url_changes": [
+                  {
+                    "from_url": "about:blank",
+                    "to_url": "https://www.unitree.com/operate/g1/",
+                    "kind": "response_commit",
+                    "observed_at": "2026-10-22T22:05:47.880019+00:00"
+                  },
+                  {
+                    "from_url": "https://www.unitree.com/operate/g1/",
+                    "to_url": "https://www.unitree.com/operate/g1/",
+                    "kind": "same_document_or_unattested_commit",
+                    "observed_at": "2026-10-22T22:05:48.621679+00:00"
+                  },
+                  {
+                    "from_url": "https://www.unitree.com/operate/g1/",
+                    "to_url": "https://www.unitree.com/operate/g1/",
+                    "kind": "same_document_or_unattested_commit",
+                    "observed_at": "2026-10-22T22:05:48.623532+00:00"
+                  },
+                  {
+                    "from_url": "https://www.unitree.com/operate/g1/",
+                    "to_url": "https://www.unitree.com/operate/g1",
+                    "kind": "same_document_or_unattested_commit",
+                    "observed_at": "2026-10-22T22:05:53.777533+00:00"
+                  }
+                ],
+                "url_changes_truncated": false,
+                "same_document_navigations": [
+                  {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "observed_at": "2026-10-22T22:05:48.622113+00:00",
+                    "navigation_type": "historyApi"
+                  },
+                  {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "observed_at": "2026-10-22T22:05:48.623819+00:00",
+                    "navigation_type": "historyApi"
+                  },
+                  {
+                    "url": "https://www.unitree.com/operate/g1",
+                    "observed_at": "2026-10-22T22:05:53.777690+00:00",
+                    "navigation_type": "historyApi"
+                  }
+                ],
+                "same_document_navigations_truncated": false
+              }
+            },
+            "error": null,
+            "tab_id": "680dcc00a9b836412db83917eade24c4",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "7e8cde077171232b1c409054"
+          },
+          "bytes": 14717,
+          "artifact_metadata": {
+            "url": "https://www.unitree.com/operate/g1",
+            "schema_version": "1.0",
+            "partial": false,
+            "truncated": false,
+            "frame_limit_reached": false,
+            "navigation": {
+              "requested_url": "https://www.unitree.com/operate/g1",
+              "final_url": "https://www.unitree.com/operate/g1",
+              "http_status": null,
+              "http_status_reason": "no_main_document_response_observed",
+              "content_type": null,
+              "redirect_chain": [
+                {
+                  "url": "https://www.unitree.com/operate/g1",
+                  "http_status": 302,
+                  "target_url": "https://www.unitree.com/operate/g1/"
+                }
+              ],
+              "redirect_chain_truncated": false,
+              "observed_at": "2026-10-22T22:05:53.777533+00:00",
+              "navigation_id": "6af845efe55f87368ed0ef33a7e514a1",
+              "source": "browser_main_document_response",
+              "main_document_response": {
+                "url": "https://www.unitree.com/operate/g1/",
+                "http_status": 200,
+                "content_type": "text/html",
+                "observed_at": "2026-10-22T22:05:47.880019+00:00"
+              },
+              "url_changes": [
+                {
+                  "from_url": "about:blank",
+                  "to_url": "https://www.unitree.com/operate/g1/",
+                  "kind": "response_commit",
+                  "observed_at": "2026-10-22T22:05:47.880019+00:00"
+                },
+                {
+                  "from_url": "https://www.unitree.com/operate/g1/",
+                  "to_url": "https://www.unitree.com/operate/g1/",
+                  "kind": "same_document_or_unattested_commit",
+                  "observed_at": "2026-10-22T22:05:48.621679+00:00"
+                },
+                {
+                  "from_url": "https://www.unitree.com/operate/g1/",
+                  "to_url": "https://www.unitree.com/operate/g1/",
+                  "kind": "same_document_or_unattested_commit",
+                  "observed_at": "2026-10-22T22:05:48.623532+00:00"
+                },
+                {
+                  "from_url": "https://www.unitree.com/operate/g1/",
+                  "to_url": "https://www.unitree.com/operate/g1",
+                  "kind": "same_document_or_unattested_commit",
+                  "observed_at": "2026-10-22T22:05:53.777533+00:00"
+                }
+              ],
+              "url_changes_truncated": false,
+              "same_document_navigations": [
+                {
+                  "url": "https://www.unitree.com/operate/g1/",
+                  "observed_at": "2026-10-22T22:05:48.622113+00:00",
+                  "navigation_type": "historyApi"
+                },
+                {
+                  "url": "https://www.unitree.com/operate/g1/",
+                  "observed_at": "2026-10-22T22:05:48.623819+00:00",
+                  "navigation_type": "historyApi"
+                },
+                {
+                  "url": "https://www.unitree.com/operate/g1",
+                  "observed_at": "2026-10-22T22:05:53.777690+00:00",
+                  "navigation_type": "historyApi"
+                }
+              ],
+              "same_document_navigations_truncated": false
+            },
+            "artifact_id": "de64206d53fffb018b42ef9b1f7c280e"
+          }
+        },
+        {
+          "format": "html",
+          "at": "2026-10-22T22:05:58.690910+00:00",
+          "job": {
+            "id": "13a16a4d3a9e8ab7bbfebe4502ac2480",
+            "kind": "extract",
+            "status": "completed",
+            "created_at": 1792706758.680765,
+            "updated_at": 1792706758.690288,
+            "result": {
+              "artifact_id": "62fba45d2103c07d82d77b868df3c70b",
+              "size": 16390,
+              "media_type": "text/html",
+              "url": "/v1/projects/probe/artifacts/62fba45d2103c07d82d77b868df3c70b",
+              "navigation": {
+                "requested_url": "https://www.unitree.com/operate/g1",
+                "final_url": "https://www.unitree.com/operate/g1",
+                "http_status": null,
+                "http_status_reason": "no_main_document_response_observed",
+                "content_type": null,
+                "redirect_chain": [
+                  {
+                    "url": "https://www.unitree.com/operate/g1",
+                    "http_status": 302,
+                    "target_url": "https://www.unitree.com/operate/g1/"
+                  }
+                ],
+                "redirect_chain_truncated": false,
+                "observed_at": "2026-10-22T22:05:53.777533+00:00",
+                "navigation_id": "6af845efe55f87368ed0ef33a7e514a1",
+                "source": "browser_main_document_response",
+                "main_document_response": {
+                  "url": "https://www.unitree.com/operate/g1/",
+                  "http_status": 200,
+                  "content_type": "text/html",
+                  "observed_at": "2026-10-22T22:05:47.880019+00:00"
+                },
+                "url_changes": [
+                  {
+                    "from_url": "about:blank",
+                    "to_url": "https://www.unitree.com/operate/g1/",
+                    "kind": "response_commit",
+                    "observed_at": "2026-10-22T22:05:47.880019+00:00"
+                  },
+                  {
+                    "from_url": "https://www.unitree.com/operate/g1/",
+                    "to_url": "https://www.unitree.com/operate/g1/",
+                    "kind": "same_document_or_unattested_commit",
+                    "observed_at": "2026-10-22T22:05:48.621679+00:00"
+                  },
+                  {
+                    "from_url": "https://www.unitree.com/operate/g1/",
+                    "to_url": "https://www.unitree.com/operate/g1/",
+                    "kind": "same_document_or_unattested_commit",
+                    "observed_at": "2026-10-22T22:05:48.623532+00:00"
+                  },
+                  {
+                    "from_url": "https://www.unitree.com/operate/g1/",
+                    "to_url": "https://www.unitree.com/operate/g1",
+                    "kind": "same_document_or_unattested_commit",
+                    "observed_at": "2026-10-22T22:05:53.777533+00:00"
+                  }
+                ],
+                "url_changes_truncated": false,
+                "same_document_navigations": [
+                  {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "observed_at": "2026-10-22T22:05:48.622113+00:00",
+                    "navigation_type": "historyApi"
+                  },
+                  {
+                    "url": "https://www.unitree.com/operate/g1/",
+                    "observed_at": "2026-10-22T22:05:48.623819+00:00",
+                    "navigation_type": "historyApi"
+                  },
+                  {
+                    "url": "https://www.unitree.com/operate/g1",
+                    "observed_at": "2026-10-22T22:05:53.777690+00:00",
+                    "navigation_type": "historyApi"
+                  }
+                ],
+                "same_document_navigations_truncated": false
+              }
+            },
+            "error": null,
+            "tab_id": "680dcc00a9b836412db83917eade24c4",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "f58caaa7aa92960ff7d64148"
+          },
+          "bytes": 16390
+        }
+      ],
+      "tab_after_late_exports": {
+        "tab_id": "680dcc00a9b836412db83917eade24c4",
+        "url": "https://www.unitree.com/operate/g1",
+        "title": "Unitree G1 宇树人形机器人",
+        "title_truncated": false,
+        "navigation": {
+          "requested_url": "https://www.unitree.com/operate/g1",
+          "final_url": "https://www.unitree.com/operate/g1",
+          "http_status": null,
+          "http_status_reason": "no_main_document_response_observed",
+          "content_type": null,
+          "redirect_chain": [
+            {
+              "url": "https://www.unitree.com/operate/g1",
+              "http_status": 302,
+              "target_url": "https://www.unitree.com/operate/g1/"
+            }
+          ],
+          "redirect_chain_truncated": false,
+          "observed_at": "2026-10-22T22:05:53.777533+00:00",
+          "navigation_id": "6af845efe55f87368ed0ef33a7e514a1",
+          "source": "browser_main_document_response",
+          "main_document_response": {
+            "url": "https://www.unitree.com/operate/g1/",
+            "http_status": 200,
+            "content_type": "text/html",
+            "observed_at": "2026-10-22T22:05:47.880019+00:00"
+          },
+          "url_changes": [
+            {
+              "from_url": "about:blank",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "response_commit",
+              "observed_at": "2026-10-22T22:05:47.880019+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:48.621679+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:48.623532+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/operate/g1/",
+              "to_url": "https://www.unitree.com/operate/g1",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:05:53.777533+00:00"
+            }
+          ],
+          "url_changes_truncated": false,
+          "same_document_navigations": [
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:48.622113+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/operate/g1/",
+              "observed_at": "2026-10-22T22:05:48.623819+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/operate/g1",
+              "observed_at": "2026-10-22T22:05:53.777690+00:00",
+              "navigation_type": "historyApi"
+            }
+          ],
+          "same_document_navigations_truncated": false
+        }
+      }
+    },
+    {
+      "expected_url": "https://www.unitree.com/g1/",
+      "started_at": "2026-10-22T22:05:58.698878+00:00",
+      "events": [
+        {
+          "at": "2026-10-22T22:06:04.148238+00:00",
+          "frameId": "F24B6C943F7182022BBB77DF00152482",
+          "url": "https://www.unitree.com/g1/",
+          "navigationType": "historyApi"
+        },
+        {
+          "at": "2026-10-22T22:06:04.755094+00:00",
+          "frameId": "F24B6C943F7182022BBB77DF00152482",
+          "url": "https://www.unitree.com/g1/",
+          "navigationType": "historyApi"
+        },
+        {
+          "at": "2026-10-22T22:06:11.298755+00:00",
+          "frameId": "F24B6C943F7182022BBB77DF00152482",
+          "url": "https://www.unitree.com/g1",
+          "navigationType": "historyApi"
+        }
+      ],
+      "direct_http": [
+        {
+          "url": "https://www.unitree.com/g1/",
+          "status": 200,
+          "location": null
+        }
+      ],
+      "navigate": {
+        "id": "5262f453994c788d781c712675e96a0d",
+        "kind": "navigate",
+        "status": "completed",
+        "created_at": 1792706763.149583,
+        "updated_at": 1792706764.16248,
+        "result": {
+          "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+          "url": "https://www.unitree.com/g1/",
+          "title": "Humanoid robot G1_Humanoid Robot Functions_Humanoid Robot Price | Unitree Robotics",
+          "title_truncated": false,
+          "navigation": {
+            "requested_url": "https://www.unitree.com/g1/",
+            "final_url": "https://www.unitree.com/g1/",
+            "http_status": null,
+            "http_status_reason": "no_main_document_response_observed",
+            "content_type": null,
+            "redirect_chain": [],
+            "redirect_chain_truncated": false,
+            "observed_at": "2026-10-22T22:06:04.147967+00:00",
+            "navigation_id": "9d0c7dbcad0dcfb906b379d32efd78a9",
+            "source": "browser_main_document_response",
+            "main_document_response": {
+              "url": "https://www.unitree.com/g1/",
+              "http_status": 200,
+              "content_type": "text/html",
+              "observed_at": "2026-10-22T22:06:03.242502+00:00"
+            },
+            "url_changes": [
+              {
+                "from_url": "about:blank",
+                "to_url": "https://www.unitree.com/g1/",
+                "kind": "response_commit",
+                "observed_at": "2026-10-22T22:06:03.242502+00:00"
+              },
+              {
+                "from_url": "https://www.unitree.com/g1/",
+                "to_url": "https://www.unitree.com/g1/",
+                "kind": "same_document_or_unattested_commit",
+                "observed_at": "2026-10-22T22:06:04.147967+00:00"
+              }
+            ],
+            "url_changes_truncated": false,
+            "same_document_navigations": [
+              {
+                "url": "https://www.unitree.com/g1/",
+                "observed_at": "2026-10-22T22:06:04.148494+00:00",
+                "navigation_type": "historyApi"
+              }
+            ],
+            "same_document_navigations_truncated": false
+          },
+          "robots": {
+            "status": "not_checked"
+          },
+          "network_policy": {
+            "schemes": [
+              "http",
+              "https"
+            ],
+            "ports": [
+              80,
+              443
+            ],
+            "url_credentials": "denied",
+            "dns": "all_addresses_public",
+            "connect": "validated_literal_ip",
+            "private_ipv4_ipv6": "denied",
+            "service_workers": "blocked",
+            "websockets": "blocked",
+            "subframe_network": "legacy_public_proxy",
+            "refusals": [],
+            "refusals_truncated": false,
+            "limitations": [
+              "DNS checked at routes, page-target redirects and new proxy connections; existing tunnels remain IP-pinned.",
+              "OOPIF redirects are not attested; strict mode denies all subframe network requests.",
+              "Ports reflect production policy; tests may inject local endpoints."
+            ]
+          },
+          "cookie_consent": null
+        },
+        "error": null,
+        "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+        "project": "probe",
+        "client_id": "71f873d559093eb839f744fe47aa3d85",
+        "request_id": "c33318f2561eead486fe1e09"
+      },
+      "tab_before": {
+        "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+        "url": "https://www.unitree.com/g1/",
+        "title": "Humanoid robot G1_Humanoid Robot Functions_Humanoid Robot Price | Unitree Robotics",
+        "title_truncated": false,
+        "navigation": {
+          "requested_url": "https://www.unitree.com/g1/",
+          "final_url": "https://www.unitree.com/g1/",
+          "http_status": null,
+          "http_status_reason": "no_main_document_response_observed",
+          "content_type": null,
+          "redirect_chain": [],
+          "redirect_chain_truncated": false,
+          "observed_at": "2026-10-22T22:06:04.147967+00:00",
+          "navigation_id": "9d0c7dbcad0dcfb906b379d32efd78a9",
+          "source": "browser_main_document_response",
+          "main_document_response": {
+            "url": "https://www.unitree.com/g1/",
+            "http_status": 200,
+            "content_type": "text/html",
+            "observed_at": "2026-10-22T22:06:03.242502+00:00"
+          },
+          "url_changes": [
+            {
+              "from_url": "about:blank",
+              "to_url": "https://www.unitree.com/g1/",
+              "kind": "response_commit",
+              "observed_at": "2026-10-22T22:06:03.242502+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/g1/",
+              "to_url": "https://www.unitree.com/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:06:04.147967+00:00"
+            }
+          ],
+          "url_changes_truncated": false,
+          "same_document_navigations": [
+            {
+              "url": "https://www.unitree.com/g1/",
+              "observed_at": "2026-10-22T22:06:04.148494+00:00",
+              "navigation_type": "historyApi"
+            }
+          ],
+          "same_document_navigations_truncated": false
+        }
+      },
+      "preflight_equal": true,
+      "exports": [
+        {
+          "format": "structured",
+          "at": "2026-10-22T22:06:04.193247+00:00",
+          "job": {
+            "id": "e7f385bb2d2581df895ef1409f19c6fa",
+            "kind": "extract",
+            "status": "completed",
+            "created_at": 1792706764.168289,
+            "updated_at": 1792706764.192192,
+            "result": {
+              "artifact_id": "23092bcb58053c0b03beebbd6a262541",
+              "size": 37782,
+              "media_type": "application/json",
+              "url": "/v1/projects/probe/artifacts/23092bcb58053c0b03beebbd6a262541",
+              "navigation": {
+                "requested_url": "https://www.unitree.com/g1/",
+                "final_url": "https://www.unitree.com/g1/",
+                "http_status": null,
+                "http_status_reason": "no_main_document_response_observed",
+                "content_type": null,
+                "redirect_chain": [],
+                "redirect_chain_truncated": false,
+                "observed_at": "2026-10-22T22:06:04.147967+00:00",
+                "navigation_id": "9d0c7dbcad0dcfb906b379d32efd78a9",
+                "source": "browser_main_document_response",
+                "main_document_response": {
+                  "url": "https://www.unitree.com/g1/",
+                  "http_status": 200,
+                  "content_type": "text/html",
+                  "observed_at": "2026-10-22T22:06:03.242502+00:00"
+                },
+                "url_changes": [
+                  {
+                    "from_url": "about:blank",
+                    "to_url": "https://www.unitree.com/g1/",
+                    "kind": "response_commit",
+                    "observed_at": "2026-10-22T22:06:03.242502+00:00"
+                  },
+                  {
+                    "from_url": "https://www.unitree.com/g1/",
+                    "to_url": "https://www.unitree.com/g1/",
+                    "kind": "same_document_or_unattested_commit",
+                    "observed_at": "2026-10-22T22:06:04.147967+00:00"
+                  }
+                ],
+                "url_changes_truncated": false,
+                "same_document_navigations": [
+                  {
+                    "url": "https://www.unitree.com/g1/",
+                    "observed_at": "2026-10-22T22:06:04.148494+00:00",
+                    "navigation_type": "historyApi"
+                  }
+                ],
+                "same_document_navigations_truncated": false
+              }
+            },
+            "error": null,
+            "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "6904f73a8457f4eb8b2a5318"
+          },
+          "bytes": 37782,
+          "artifact_metadata": {
+            "url": "https://www.unitree.com/g1/",
+            "schema_version": "1.0",
+            "partial": false,
+            "truncated": false,
+            "frame_limit_reached": false,
+            "navigation": {
+              "requested_url": "https://www.unitree.com/g1/",
+              "final_url": "https://www.unitree.com/g1/",
+              "http_status": null,
+              "http_status_reason": "no_main_document_response_observed",
+              "content_type": null,
+              "redirect_chain": [],
+              "redirect_chain_truncated": false,
+              "observed_at": "2026-10-22T22:06:04.147967+00:00",
+              "navigation_id": "9d0c7dbcad0dcfb906b379d32efd78a9",
+              "source": "browser_main_document_response",
+              "main_document_response": {
+                "url": "https://www.unitree.com/g1/",
+                "http_status": 200,
+                "content_type": "text/html",
+                "observed_at": "2026-10-22T22:06:03.242502+00:00"
+              },
+              "url_changes": [
+                {
+                  "from_url": "about:blank",
+                  "to_url": "https://www.unitree.com/g1/",
+                  "kind": "response_commit",
+                  "observed_at": "2026-10-22T22:06:03.242502+00:00"
+                },
+                {
+                  "from_url": "https://www.unitree.com/g1/",
+                  "to_url": "https://www.unitree.com/g1/",
+                  "kind": "same_document_or_unattested_commit",
+                  "observed_at": "2026-10-22T22:06:04.147967+00:00"
+                }
+              ],
+              "url_changes_truncated": false,
+              "same_document_navigations": [
+                {
+                  "url": "https://www.unitree.com/g1/",
+                  "observed_at": "2026-10-22T22:06:04.148494+00:00",
+                  "navigation_type": "historyApi"
+                }
+              ],
+              "same_document_navigations_truncated": false
+            },
+            "artifact_id": "23092bcb58053c0b03beebbd6a262541"
+          }
+        },
+        {
+          "format": "html",
+          "at": "2026-10-22T22:06:04.214740+00:00",
+          "job": {
+            "id": "f9a8137947a8d9306550728a75de755b",
+            "kind": "extract",
+            "status": "completed",
+            "created_at": 1792706764.1948001,
+            "updated_at": 1792706764.213939,
+            "result": {
+              "artifact_id": "d6363064c87c2618f2484eb30e7cc627",
+              "size": 70511,
+              "media_type": "text/html",
+              "url": "/v1/projects/probe/artifacts/d6363064c87c2618f2484eb30e7cc627",
+              "navigation": {
+                "requested_url": "https://www.unitree.com/g1/",
+                "final_url": "https://www.unitree.com/g1/",
+                "http_status": null,
+                "http_status_reason": "no_main_document_response_observed",
+                "content_type": null,
+                "redirect_chain": [],
+                "redirect_chain_truncated": false,
+                "observed_at": "2026-10-22T22:06:04.147967+00:00",
+                "navigation_id": "9d0c7dbcad0dcfb906b379d32efd78a9",
+                "source": "browser_main_document_response",
+                "main_document_response": {
+                  "url": "https://www.unitree.com/g1/",
+                  "http_status": 200,
+                  "content_type": "text/html",
+                  "observed_at": "2026-10-22T22:06:03.242502+00:00"
+                },
+                "url_changes": [
+                  {
+                    "from_url": "about:blank",
+                    "to_url": "https://www.unitree.com/g1/",
+                    "kind": "response_commit",
+                    "observed_at": "2026-10-22T22:06:03.242502+00:00"
+                  },
+                  {
+                    "from_url": "https://www.unitree.com/g1/",
+                    "to_url": "https://www.unitree.com/g1/",
+                    "kind": "same_document_or_unattested_commit",
+                    "observed_at": "2026-10-22T22:06:04.147967+00:00"
+                  }
+                ],
+                "url_changes_truncated": false,
+                "same_document_navigations": [
+                  {
+                    "url": "https://www.unitree.com/g1/",
+                    "observed_at": "2026-10-22T22:06:04.148494+00:00",
+                    "navigation_type": "historyApi"
+                  }
+                ],
+                "same_document_navigations_truncated": false
+              }
+            },
+            "error": null,
+            "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "e5ad9b121316a62de734b070"
+          },
+          "bytes": 70511
+        }
+      ],
+      "tab_after": {
+        "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+        "url": "https://www.unitree.com/g1",
+        "title": "Humanoid robot G1_Humanoid Robot Functions_Humanoid Robot Price | Unitree Robotics",
+        "title_truncated": false,
+        "navigation": {
+          "requested_url": "https://www.unitree.com/g1/",
+          "final_url": "https://www.unitree.com/g1",
+          "http_status": null,
+          "http_status_reason": "no_main_document_response_observed",
+          "content_type": null,
+          "redirect_chain": [],
+          "redirect_chain_truncated": false,
+          "observed_at": "2026-10-22T22:06:11.298854+00:00",
+          "navigation_id": "e3011805532f37cf792b7b502121e17c",
+          "source": "browser_main_document_response",
+          "main_document_response": {
+            "url": "https://www.unitree.com/g1/",
+            "http_status": 200,
+            "content_type": "text/html",
+            "observed_at": "2026-10-22T22:06:03.242502+00:00"
+          },
+          "url_changes": [
+            {
+              "from_url": "about:blank",
+              "to_url": "https://www.unitree.com/g1/",
+              "kind": "response_commit",
+              "observed_at": "2026-10-22T22:06:03.242502+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/g1/",
+              "to_url": "https://www.unitree.com/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:06:04.147967+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/g1/",
+              "to_url": "https://www.unitree.com/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:06:04.755178+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/g1/",
+              "to_url": "https://www.unitree.com/g1",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:06:11.298854+00:00"
+            }
+          ],
+          "url_changes_truncated": false,
+          "same_document_navigations": [
+            {
+              "url": "https://www.unitree.com/g1/",
+              "observed_at": "2026-10-22T22:06:04.148494+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/g1/",
+              "observed_at": "2026-10-22T22:06:04.755261+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/g1",
+              "observed_at": "2026-10-22T22:06:11.298958+00:00",
+              "navigation_type": "historyApi"
+            }
+          ],
+          "same_document_navigations_truncated": false
+        }
+      },
+      "late_exports": [
+        {
+          "format": "structured",
+          "at": "2026-10-22T22:06:14.238201+00:00",
+          "job": {
+            "id": "6ccd4ce2d78ff44d30661255ab6c4bb7",
+            "kind": "extract",
+            "status": "failed",
+            "created_at": 1792706774.229473,
+            "updated_at": 1792706774.236982,
+            "result": null,
+            "error": {
+              "code": "scope_changed",
+              "message": "Final destination requires explicit scope review",
+              "details": {
+                "target_url": "https://www.unitree.com/g1",
+                "target_sha256": "a282d0da081c21da32b49dcaa896645a2c624e9a5c05e5855300e7ba3bbce3d0",
+                "navigation": {
+                  "requested_url": "https://www.unitree.com/g1/",
+                  "final_url": "https://www.unitree.com/g1",
+                  "http_status": null,
+                  "http_status_reason": "no_main_document_response_observed",
+                  "content_type": null,
+                  "redirect_chain": [],
+                  "redirect_chain_truncated": false,
+                  "observed_at": "2026-10-22T22:06:11.298854+00:00",
+                  "navigation_id": "e3011805532f37cf792b7b502121e17c",
+                  "source": "browser_main_document_response",
+                  "main_document_response": {
+                    "url": "https://www.unitree.com/g1/",
+                    "http_status": 200,
+                    "content_type": "text/html",
+                    "observed_at": "2026-10-22T22:06:03.242502+00:00"
+                  },
+                  "url_changes": [
+                    {
+                      "from_url": "about:blank",
+                      "to_url": "https://www.unitree.com/g1/",
+                      "kind": "response_commit",
+                      "observed_at": "2026-10-22T22:06:03.242502+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/g1/",
+                      "to_url": "https://www.unitree.com/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:06:04.147967+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/g1/",
+                      "to_url": "https://www.unitree.com/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:06:04.755178+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/g1/",
+                      "to_url": "https://www.unitree.com/g1",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:06:11.298854+00:00"
+                    }
+                  ],
+                  "url_changes_truncated": false,
+                  "same_document_navigations": [
+                    {
+                      "url": "https://www.unitree.com/g1/",
+                      "observed_at": "2026-10-22T22:06:04.148494+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/g1/",
+                      "observed_at": "2026-10-22T22:06:04.755261+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/g1",
+                      "observed_at": "2026-10-22T22:06:11.298958+00:00",
+                      "navigation_type": "historyApi"
+                    }
+                  ],
+                  "same_document_navigations_truncated": false
+                },
+                "expected_url": "https://www.unitree.com/g1/",
+                "observed_url": "https://www.unitree.com/g1",
+                "observed_url_truncated": false,
+                "observed_at": "2026-10-22T22:06:14.236784+00:00",
+                "stage": "export.structured.before_capture",
+                "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+                "job_id": "6ccd4ce2d78ff44d30661255ab6c4bb7",
+                "request_id": "1738ab90838d2ac22bb769f4",
+                "artifact_id": null,
+                "artifact_published": false,
+                "service_version": "1.2.1"
+              }
+            },
+            "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "1738ab90838d2ac22bb769f4"
+          }
+        },
+        {
+          "format": "html",
+          "at": "2026-10-22T22:06:14.247965+00:00",
+          "job": {
+            "id": "411ca96c951a48201dc0573979206294",
+            "kind": "extract",
+            "status": "failed",
+            "created_at": 1792706774.2389781,
+            "updated_at": 1792706774.247087,
+            "result": null,
+            "error": {
+              "code": "scope_changed",
+              "message": "Final destination requires explicit scope review",
+              "details": {
+                "target_url": "https://www.unitree.com/g1",
+                "target_sha256": "a282d0da081c21da32b49dcaa896645a2c624e9a5c05e5855300e7ba3bbce3d0",
+                "navigation": {
+                  "requested_url": "https://www.unitree.com/g1/",
+                  "final_url": "https://www.unitree.com/g1",
+                  "http_status": null,
+                  "http_status_reason": "no_main_document_response_observed",
+                  "content_type": null,
+                  "redirect_chain": [],
+                  "redirect_chain_truncated": false,
+                  "observed_at": "2026-10-22T22:06:11.298854+00:00",
+                  "navigation_id": "e3011805532f37cf792b7b502121e17c",
+                  "source": "browser_main_document_response",
+                  "main_document_response": {
+                    "url": "https://www.unitree.com/g1/",
+                    "http_status": 200,
+                    "content_type": "text/html",
+                    "observed_at": "2026-10-22T22:06:03.242502+00:00"
+                  },
+                  "url_changes": [
+                    {
+                      "from_url": "about:blank",
+                      "to_url": "https://www.unitree.com/g1/",
+                      "kind": "response_commit",
+                      "observed_at": "2026-10-22T22:06:03.242502+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/g1/",
+                      "to_url": "https://www.unitree.com/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:06:04.147967+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/g1/",
+                      "to_url": "https://www.unitree.com/g1/",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:06:04.755178+00:00"
+                    },
+                    {
+                      "from_url": "https://www.unitree.com/g1/",
+                      "to_url": "https://www.unitree.com/g1",
+                      "kind": "same_document_or_unattested_commit",
+                      "observed_at": "2026-10-22T22:06:11.298854+00:00"
+                    }
+                  ],
+                  "url_changes_truncated": false,
+                  "same_document_navigations": [
+                    {
+                      "url": "https://www.unitree.com/g1/",
+                      "observed_at": "2026-10-22T22:06:04.148494+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/g1/",
+                      "observed_at": "2026-10-22T22:06:04.755261+00:00",
+                      "navigation_type": "historyApi"
+                    },
+                    {
+                      "url": "https://www.unitree.com/g1",
+                      "observed_at": "2026-10-22T22:06:11.298958+00:00",
+                      "navigation_type": "historyApi"
+                    }
+                  ],
+                  "same_document_navigations_truncated": false
+                },
+                "expected_url": "https://www.unitree.com/g1/",
+                "observed_url": "https://www.unitree.com/g1",
+                "observed_url_truncated": false,
+                "observed_at": "2026-10-22T22:06:14.246941+00:00",
+                "stage": "export.html.before_capture",
+                "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+                "job_id": "411ca96c951a48201dc0573979206294",
+                "request_id": "b3c728a6a7b24784b9160089",
+                "artifact_id": null,
+                "artifact_published": false,
+                "service_version": "1.2.1"
+              }
+            },
+            "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+            "project": "probe",
+            "client_id": "71f873d559093eb839f744fe47aa3d85",
+            "request_id": "b3c728a6a7b24784b9160089"
+          }
+        }
+      ],
+      "tab_after_late_exports": {
+        "tab_id": "d2e55316070e1f4296cc5a0b7eba285b",
+        "url": "https://www.unitree.com/g1",
+        "title": "Humanoid robot G1_Humanoid Robot Functions_Humanoid Robot Price | Unitree Robotics",
+        "title_truncated": false,
+        "navigation": {
+          "requested_url": "https://www.unitree.com/g1/",
+          "final_url": "https://www.unitree.com/g1",
+          "http_status": null,
+          "http_status_reason": "no_main_document_response_observed",
+          "content_type": null,
+          "redirect_chain": [],
+          "redirect_chain_truncated": false,
+          "observed_at": "2026-10-22T22:06:11.298854+00:00",
+          "navigation_id": "e3011805532f37cf792b7b502121e17c",
+          "source": "browser_main_document_response",
+          "main_document_response": {
+            "url": "https://www.unitree.com/g1/",
+            "http_status": 200,
+            "content_type": "text/html",
+            "observed_at": "2026-10-22T22:06:03.242502+00:00"
+          },
+          "url_changes": [
+            {
+              "from_url": "about:blank",
+              "to_url": "https://www.unitree.com/g1/",
+              "kind": "response_commit",
+              "observed_at": "2026-10-22T22:06:03.242502+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/g1/",
+              "to_url": "https://www.unitree.com/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:06:04.147967+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/g1/",
+              "to_url": "https://www.unitree.com/g1/",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:06:04.755178+00:00"
+            },
+            {
+              "from_url": "https://www.unitree.com/g1/",
+              "to_url": "https://www.unitree.com/g1",
+              "kind": "same_document_or_unattested_commit",
+              "observed_at": "2026-10-22T22:06:11.298854+00:00"
+            }
+          ],
+          "url_changes_truncated": false,
+          "same_document_navigations": [
+            {
+              "url": "https://www.unitree.com/g1/",
+              "observed_at": "2026-10-22T22:06:04.148494+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/g1/",
+              "observed_at": "2026-10-22T22:06:04.755261+00:00",
+              "navigation_type": "historyApi"
+            },
+            {
+              "url": "https://www.unitree.com/g1",
+              "observed_at": "2026-10-22T22:06:11.298958+00:00",
+              "navigation_type": "historyApi"
+            }
+          ],
+          "same_document_navigations_truncated": false
+        }
+      }
+    }
+  ]
+}

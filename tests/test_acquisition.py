@@ -663,3 +663,48 @@ def test_cloudflare_signal_survives_request_start_and_same_document_commit():
     assert evidence.cf_challenge  # headers alone do not replace the displayed DOM
     evidence.navigated(page.main_frame)
     assert not evidence.cf_challenge
+
+
+def test_committed_http_response_survives_history_but_new_request_clears_it():
+    page = Page()
+    evidence = NavigationEvidence(page)
+    req = request(page)
+    evidence.request(req)
+    evidence.response(
+        SimpleNamespace(
+            request=req, url=page.url, status=200, headers={"content-type": "text/html"}
+        )
+    )
+    evidence.navigated(page.main_frame)
+    committed = evidence.snapshot()["main_document_response"]
+    assert committed["url"] == page.url
+    page.url = page.main_frame.url = "https://example.org/rewritten"
+    evidence.navigated(page.main_frame)
+    proof = evidence.snapshot()
+    assert proof["main_document_response"] == committed
+    assert proof["http_status"] is None  # No HTTP response attested for rewritten path.
+    assert proof["url_changes"][-1]["to_url"] == page.url
+    for _ in range(30):
+        evidence.navigated(page.main_frame)
+    assert len(evidence.snapshot()["url_changes"]) == 20
+    assert evidence.snapshot()["url_changes_truncated"]
+    evidence.request(request(page))
+    assert evidence.snapshot()["main_document_response"] is None
+    assert evidence.snapshot()["url_changes"] == []
+
+
+def test_history_diagnostics_use_only_attested_main_cdp_frame_and_are_bounded():
+    evidence = NavigationEvidence(Page())
+    evidence.cdp_same_document({"frameId": "unknown", "url": "https://other.org/"})
+    evidence.cdp_frame_navigated({"frame": {"id": "main"}})
+    evidence.cdp_frame_navigated({"frame": {"id": "child", "parentId": "main"}})
+    evidence.cdp_same_document({"frameId": "child", "url": "https://other.org/"})
+    assert not evidence.snapshot()["same_document_navigations"]
+    for _ in range(25):
+        evidence.cdp_same_document(
+            {"frameId": "main", "url": "https://example.org/doc", "navigationType": "historyApi"}
+        )
+    proof = evidence.snapshot()
+    assert len(proof["same_document_navigations"]) == 20
+    assert proof["same_document_navigations_truncated"]
+    assert all(x["navigation_type"] == "historyApi" for x in proof["same_document_navigations"])

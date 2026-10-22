@@ -25,6 +25,7 @@ from .navigation import (
     redirect_guard,
     require_https,
     scope_error,
+    url_diagnostics,
     utc_now,
 )
 from .navigation_diagnostics import navigation_error_details
@@ -375,6 +376,20 @@ class BrowserManager:
             else []
         )
 
+    async def tab_info(self, project, tab_id, *, request_id=None):
+        tab = self.tab(project, tab_id)
+        async with tab.lock:
+            with url_diagnostics(tab, None, None, "tab_info.title", request_id=request_id):
+                checkpoint = tab.evidence.checkpoint()
+                title = await read_title(tab.page)
+                tab.evidence.verify(checkpoint)
+                return {
+                    "tab_id": tab_id,
+                    "url": short_url(checkpoint[3]),
+                    **title,
+                    "navigation": tab.evidence.snapshot(),
+                }
+
     def update_network_policies(self):
         for state in self.states.values():
             state.proxy.policy.policy = self.db.policy(state.project)
@@ -586,7 +601,9 @@ class BrowserManager:
     @staticmethod
     def check_scope(tab, expected_url):
         if expected_url is not None and tab.page.url != expected_url:
-            raise scope_error(tab.page.url, navigation=tab.evidence.snapshot())
+            raise scope_error(
+                tab.page.url, navigation=tab.evidence.snapshot(), expected_url=expected_url
+            )
 
     async def navigation_title(self, project, tab, job, *, expected_url, deadline):
         # Discard unstable title reads within the ORIGINAL navigation budget.
@@ -650,59 +667,70 @@ class BrowserManager:
                 await self._ensure_guard(project, tab)
                 tab.guard_errors.clear()
                 errors = tab.guard_errors
-                try:
-                    deadline = time.monotonic() + self.db.policy(project).navigation_timeout_seconds
-                    response = await tab.page.goto(
-                        request.url,
-                        wait_until=request.wait_until,
-                        timeout=self.db.policy(project).navigation_timeout_seconds * 1000,
-                    )
-                    if errors:
-                        raise errors[0]
-                    await self.human_guard(project, tab, job, deadline=deadline)
-                    if errors:
-                        raise errors[0]
-                    self.check_scope(tab, request.expected_url)
-                    self._upstream_limit(response)
-                    if request.respect_robots and tab.page.url != tab.robots_url:
-                        tab.robots = await self.check_robots(project, tab.page.url, job)
-                        tab.robots_url = tab.page.url
-                    cookie_consent = await self.apply_cookie_policy(
-                        project, tab, job, deadline=deadline
-                    )
-                    title = await self.navigation_title(
-                        project, tab, job, expected_url=request.expected_url, deadline=deadline
-                    )
-                    self.events.emit(project, "tab.navigated", tab_id=tab.id)
-                    return {
-                        "tab_id": tab.id,
-                        "url": short_url(tab.page.url),
-                        **title,
-                        "navigation": tab.evidence.snapshot(),
-                        "robots": tab.robots,
-                        "network_policy": self.network_attestation(tab),
-                        "cookie_consent": cookie_consent,
-                    }
-                except (PlaywrightTimeout, PlaywrightError) as exc:
-                    if errors:
-                        raise errors[0] from exc
-                    if isinstance(exc, PlaywrightTimeout):
-                        raise PQError("TIMEOUT", "Navigation timed out", 504) from exc
-                    blocked = (
-                        tab.page in state.blocked_navigations
-                        or state.proxy.blocked_count > blocked_before
-                    )
-                    code = (
-                        "NAVIGATION_BLOCKED"
-                        if blocked
-                        else ("BROWSER_CRASHED" if tab.page.is_closed() else "UPSTREAM_UNAVAILABLE")
-                    )
-                    details = (
-                        navigation_error_details(str(exc))
-                        if code == "UPSTREAM_UNAVAILABLE"
-                        else None
-                    )
-                    raise PQError(code, "Navigation failed", 502, details=details) from exc
+                with url_diagnostics(
+                    tab, request.expected_url, job, "navigation.goto"
+                ) as diagnostic:
+                    try:
+                        deadline = (
+                            time.monotonic() + self.db.policy(project).navigation_timeout_seconds
+                        )
+                        response = await tab.page.goto(
+                            request.url,
+                            wait_until=request.wait_until,
+                            timeout=self.db.policy(project).navigation_timeout_seconds * 1000,
+                        )
+                        if errors:
+                            raise errors[0]
+                        await self.human_guard(project, tab, job, deadline=deadline)
+                        if errors:
+                            raise errors[0]
+                        diagnostic["stage"] = "navigation.after_wait"
+                        self.check_scope(tab, request.expected_url)
+                        self._upstream_limit(response)
+                        if request.respect_robots and tab.page.url != tab.robots_url:
+                            tab.robots = await self.check_robots(project, tab.page.url, job)
+                            tab.robots_url = tab.page.url
+                        cookie_consent = await self.apply_cookie_policy(
+                            project, tab, job, deadline=deadline
+                        )
+                        diagnostic["stage"] = "navigation.title"
+                        title = await self.navigation_title(
+                            project, tab, job, expected_url=request.expected_url, deadline=deadline
+                        )
+                        self.events.emit(project, "tab.navigated", tab_id=tab.id)
+                        return {
+                            "tab_id": tab.id,
+                            "url": short_url(tab.page.url),
+                            **title,
+                            "navigation": tab.evidence.snapshot(),
+                            "robots": tab.robots,
+                            "network_policy": self.network_attestation(tab),
+                            "cookie_consent": cookie_consent,
+                        }
+                    except (PlaywrightTimeout, PlaywrightError) as exc:
+                        if errors:
+                            raise errors[0] from exc
+                        if isinstance(exc, PlaywrightTimeout):
+                            raise PQError("TIMEOUT", "Navigation timed out", 504) from exc
+                        blocked = (
+                            tab.page in state.blocked_navigations
+                            or state.proxy.blocked_count > blocked_before
+                        )
+                        code = (
+                            "NAVIGATION_BLOCKED"
+                            if blocked
+                            else (
+                                "BROWSER_CRASHED"
+                                if tab.page.is_closed()
+                                else "UPSTREAM_UNAVAILABLE"
+                            )
+                        )
+                        details = (
+                            navigation_error_details(str(exc))
+                            if code == "UPSTREAM_UNAVAILABLE"
+                            else None
+                        )
+                        raise PQError(code, "Navigation failed", 502, details=details) from exc
         finally:
             if getattr(job, "kind", None) == "navigate":
                 partial = dict(job.partial_result or {})
@@ -887,70 +915,93 @@ class BrowserManager:
         job.set_tab(tab_id)
         async with tab.lock, tab.audit.operation("extract", job, label=format):
             expected_url = expected_url if expected_url is not None else tab.scope_url
-            deadline = time.monotonic() + self.db.policy(project).navigation_timeout_seconds
-            while True:
-                await self.human_guard(project, tab, job, deadline=deadline)
-                self.check_scope(tab, expected_url)
-                checkpoint = tab.evidence.checkpoint(expected_url)
-                if tab.respect_robots and tab.page.url != tab.robots_url:
-                    tab.robots = await self.check_robots(project, tab.page.url, job)
-                    tab.robots_url = tab.page.url
-                    tab.evidence.verify(checkpoint, expected_url)
-                try:
-                    artifact_id = uid()
-                    if format == "structured":
-                        snapshot = await extract_structured(
-                            tab.page,
-                            include_dom=include_dom,
-                            max_bytes=self.settings.max_content_bytes,
-                            check=lambda checkpoint=checkpoint: (
-                                job.check_authorization(),
-                                tab.evidence.verify(checkpoint, expected_url),
-                            ),
-                            correlation={
-                                "request_id": job.request_id,
-                                "job_id": job.id,
-                                "tab_id": tab_id,
-                                "artifact_id": artifact_id,
-                            },
-                        )
-                        if tab.network_denials:
-                            snapshot["partial"] = True
-                        snapshot.update(
-                            navigation=tab.evidence.snapshot(),
-                            robots=tab.robots,
-                            network_policy=self.network_attestation(tab),
-                            captured_at=utc_now(),
-                            artifact_id=artifact_id,
-                        )
-                        data, media = (
-                            json.dumps(snapshot, ensure_ascii=False, allow_nan=False),
-                            "application/json",
-                        )
-                    else:
-                        value = await read_page(tab.page, format, self.settings.max_content_bytes)
-                        if format in {"html", "text"}:
-                            data, media = value, "text/html" if format == "html" else "text/plain"
+            with url_diagnostics(
+                tab, expected_url, job, f"export.{format}.before_capture"
+            ) as diagnostic:
+                deadline = time.monotonic() + self.db.policy(project).navigation_timeout_seconds
+                while True:
+                    diagnostic.update(stage=f"export.{format}.wait", artifact_id=None)
+                    await self.human_guard(project, tab, job, deadline=deadline)
+                    diagnostic["stage"] = f"export.{format}.before_capture"
+                    self.check_scope(tab, expected_url)
+                    checkpoint = tab.evidence.checkpoint(expected_url)
+                    if tab.respect_robots and tab.page.url != tab.robots_url:
+                        tab.robots = await self.check_robots(project, tab.page.url, job)
+                        tab.robots_url = tab.page.url
+                        tab.evidence.verify(checkpoint, expected_url)
+                    try:
+                        artifact_id = uid()
+                        diagnostic.update(stage=f"export.{format}.capture", artifact_id=artifact_id)
+                        if format == "structured":
+                            snapshot = await extract_structured(
+                                tab.page,
+                                include_dom=include_dom,
+                                max_bytes=self.settings.max_content_bytes,
+                                check=lambda checkpoint=checkpoint: (
+                                    job.check_authorization(),
+                                    tab.evidence.verify(checkpoint, expected_url),
+                                ),
+                                correlation={
+                                    "request_id": job.request_id,
+                                    "job_id": job.id,
+                                    "tab_id": tab_id,
+                                    "artifact_id": artifact_id,
+                                },
+                            )
+                            diagnostic["stage"] = "export.structured.metadata"
+                            tab.evidence.verify(checkpoint, expected_url)
+                            if snapshot["url"] != checkpoint[3]:
+                                raise PQError(
+                                    "URL_METADATA_MISMATCH",
+                                    "Captured URL differs from browser URL",
+                                    409,
+                                    details={"artifact_url": snapshot["url"]},
+                                )
+                            if tab.network_denials:
+                                snapshot["partial"] = True
+                            snapshot.update(
+                                navigation=tab.evidence.snapshot(),
+                                robots=tab.robots,
+                                network_policy=self.network_attestation(tab),
+                                captured_at=utc_now(),
+                                artifact_id=artifact_id,
+                            )
+                            data, media = (
+                                json.dumps(snapshot, ensure_ascii=False, allow_nan=False),
+                                "application/json",
+                            )
                         else:
-                            data, media = json.dumps(value), "application/json"
-                except PQError as exc:
-                    if exc.code in {
-                        "NAVIGATION_CHANGED",
-                        "scope_changed",
-                    } and await challenge_detected(tab.page, evidence=tab.evidence):
+                            value = await read_page(
+                                tab.page, format, self.settings.max_content_bytes
+                            )
+                            if format in {"html", "text"}:
+                                data, media = (
+                                    value,
+                                    "text/html" if format == "html" else "text/plain",
+                                )
+                            else:
+                                data, media = json.dumps(value), "application/json"
+                    except PQError as exc:
+                        if exc.code in {
+                            "NAVIGATION_CHANGED",
+                            "scope_changed",
+                        } and await challenge_detected(tab.page, evidence=tab.evidence):
+                            continue
+                        raise
+                    if await challenge_detected(tab.page, evidence=tab.evidence):
+                        # Discard the unpublished snapshot. Resume captures a fresh document.
                         continue
-                    raise
-                if await challenge_detected(tab.page, evidence=tab.evidence):
-                    # Discard the unpublished snapshot. Resume captures a fresh document.
-                    continue
-                self.check_scope(tab, expected_url)
-                tab.evidence.verify(checkpoint, expected_url)
-                if tab.guard_errors:
-                    raise tab.guard_errors[0]
-                return {
-                    **self.artifacts.put(project, data.encode(), media, artifact_id=artifact_id),
-                    "navigation": tab.evidence.snapshot(),
-                }
+                    diagnostic["stage"] = f"export.{format}.before_publish"
+                    self.check_scope(tab, expected_url)
+                    tab.evidence.verify(checkpoint, expected_url)
+                    if tab.guard_errors:
+                        raise tab.guard_errors[0]
+                    return {
+                        **self.artifacts.put(
+                            project, data.encode(), media, artifact_id=artifact_id
+                        ),
+                        "navigation": tab.evidence.snapshot(),
+                    }
 
     async def _screenshot(self, project, page):
         state = self.states[project["id"]]

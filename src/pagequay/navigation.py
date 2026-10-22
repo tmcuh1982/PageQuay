@@ -2,12 +2,13 @@
 
 import asyncio
 import hashlib
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager, contextmanager, suppress
 from datetime import UTC, datetime
 from urllib.parse import urldefrag, urljoin, urlsplit, urlunsplit
 
 from playwright.async_api import Error as PlaywrightError
 
+from . import __version__
 from .errors import PQError
 from .storage import uid
 
@@ -37,13 +38,46 @@ def exact_error(url, code="URL_MISMATCH"):
     return PQError(code, "Exact URL contract rejected a destination", 409, details=safe_target(url))
 
 
-def scope_error(url, *, navigation):
+def scope_error(url, *, navigation, expected_url=None):
     return PQError(
         "scope_changed",
         "Final destination requires explicit scope review",
         409,
-        details={**safe_target(url), "navigation": navigation},
+        details={
+            **safe_target(url),
+            "navigation": navigation,
+            "expected_url": expected_url,
+            "observed_url": url[:4096],
+            "observed_url_truncated": len(url) > 4096,
+            "observed_at": utc_now(),
+        },
     )
+
+
+@contextmanager
+def url_diagnostics(tab, expected_url, job, stage, *, request_id=None):
+    """Enrich authenticated operation errors, never broaden the exact URL contract."""
+    state = {"stage": stage, "artifact_id": None}
+    try:
+        yield state
+    except PQError as exc:
+        if exc.code in {"scope_changed", "NAVIGATION_CHANGED", "URL_METADATA_MISMATCH"}:
+            exc.details = {
+                **(exc.details or {}),
+                "expected_url": expected_url,
+                "observed_url": tab.page.url[:4096],
+                "observed_url_truncated": len(tab.page.url) > 4096,
+                "observed_at": utc_now(),
+                "stage": state["stage"],
+                "tab_id": tab.id,
+                "job_id": getattr(job, "id", None),
+                "request_id": getattr(job, "request_id", request_id),
+                "artifact_id": state["artifact_id"],
+                "artifact_published": False,
+                "service_version": __version__,
+                "navigation": tab.evidence.snapshot(),
+            }
+        raise
 
 
 def require_https(url):
@@ -74,6 +108,13 @@ class NavigationEvidence:
         self.observed_at = utc_now()
         self.frame_revision = 0
         self.pending_response = None
+        self.main_document_response = None
+        self.url_changes = []
+        self.url_changes_truncated = False
+        self.same_document_navigations = []
+        self.same_document_navigations_truncated = False
+        self.main_frame_cdp_id = None
+        self.last_committed_url = page.url
         self.cf_challenge = False
         page.on("request", self.request)
         page.on("response", self.response)
@@ -94,6 +135,11 @@ class NavigationEvidence:
             self.requested_url = request.url
             self.redirect_chain = []
             self.redirect_chain_truncated = False
+            self.url_changes = []
+            self.url_changes_truncated = False
+            self.same_document_navigations = []
+            self.same_document_navigations_truncated = False
+        self.main_document_response = None
         self.response_url = None
         self.http_status = None
         self.content_type = None
@@ -134,14 +180,57 @@ class NavigationEvidence:
         self.observed_at = utc_now()
         self.response_url = self.http_status = self.content_type = None
         # A same-document hash/history commit must not erase a challenge response.
-        if (
+        committed_response = (
             self.pending_response
             and urldefrag(self.pending_response[0])[0] == urldefrag(frame.url)[0]
-        ):
+        )
+        if committed_response:
             self.response_url, self.http_status, self.content_type, self.cf_challenge = (
                 self.pending_response
             )
+            self.main_document_response = {
+                "url": self.response_url[:4096],
+                "http_status": self.http_status,
+                "content_type": self.content_type[:256] if self.content_type else None,
+                "observed_at": self.observed_at,
+            }
+        if len(self.url_changes) < 20:
+            self.url_changes.append(
+                {
+                    "from_url": self.last_committed_url[:4096],
+                    "to_url": frame.url[:4096],
+                    "kind": "response_commit"
+                    if committed_response
+                    else "same_document_or_unattested_commit",
+                    "observed_at": self.observed_at,
+                }
+            )
+        else:
+            self.url_changes_truncated = True
+        self.last_committed_url = frame.url
         self.pending_response = None
+
+    def cdp_frame_navigated(self, event):
+        frame = event["frame"]
+        if not frame.get("parentId"):
+            self.main_frame_cdp_id = frame["id"]
+
+    def cdp_same_document(self, event):
+        if self.main_frame_cdp_id is None or event.get("frameId") != self.main_frame_cdp_id:
+            return
+        if len(self.same_document_navigations) >= 20:
+            self.same_document_navigations_truncated = True
+            return
+        kind = event.get("navigationType")
+        self.same_document_navigations.append(
+            {
+                "url": event["url"][:4096],
+                "observed_at": utc_now(),
+                "navigation_type": kind
+                if kind in {"historyApi", "fragment", "other"}
+                else "unknown",
+            }
+        )
 
     def snapshot(self):
         known = (
@@ -159,11 +248,16 @@ class NavigationEvidence:
             "observed_at": self.observed_at,
             "navigation_id": self.navigation_id,
             "source": "browser_main_document_response",
+            "main_document_response": self.main_document_response,
+            "url_changes": list(self.url_changes),
+            "url_changes_truncated": self.url_changes_truncated,
+            "same_document_navigations": list(self.same_document_navigations),
+            "same_document_navigations_truncated": self.same_document_navigations_truncated,
         }
 
     def checkpoint(self, expected_url=None):
         if expected_url is not None and self.page.url != expected_url:
-            raise scope_error(self.page.url, navigation=self.snapshot())
+            raise scope_error(self.page.url, navigation=self.snapshot(), expected_url=expected_url)
         return self.navigation_id, self.frame_revision, self.page.main_frame, self.page.url
 
     def verify(self, checkpoint, expected_url=None):
@@ -246,6 +340,11 @@ async def redirect_guard(
 
     session.on("Fetch.requestPaused", dispatch)
     try:
+        evidence = getattr(contract, "evidence", None)
+        if evidence is not None:
+            session.on("Page.frameNavigated", evidence.cdp_frame_navigated)
+            session.on("Page.navigatedWithinDocument", evidence.cdp_same_document)
+            await session.send("Page.enable")
         await session.send(
             "Fetch.enable", {"patterns": [{"urlPattern": "*", "requestStage": "Response"}]}
         )

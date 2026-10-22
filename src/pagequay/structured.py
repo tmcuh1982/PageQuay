@@ -42,7 +42,7 @@ async def extract_structured(
             "frame_id": frame_ids[frame],
             "parent_frame_id": frame_ids.get(frame.parent_frame),
             "name": frame.name[:256],
-            "url": frame.url[:2048],
+            "url": frame.url[:4096],
         }
         trace = ReadTrace(frame, {**(correlation or {}), "frame_id": entry["frame_id"]})
         try:

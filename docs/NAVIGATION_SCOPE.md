@@ -57,3 +57,52 @@ Version **0.2.2 déployée** dans `/Users/lolo/Library/Application Support/PageQ
 Validation : suite générale finale `pytest --browser -q -rs`, **265 passed, 4 skipped** (minimisation native `--headed`, trois moteurs externes `--live`). Après le dernier ajustement conservant le signal de challenge jusqu’au commit du document, **48 tests ciblés passent**, ainsi que **5 régressions navigateur/signal Cloudflare** ; ces ensembles se recouvrent. Ruff check/format, lockfile hors ligne et diff-check conformes. Un essai précédent concurrent avait échoué sur une restauration de fenêtre macOS ; ce test a réussi isolément, puis la suite entière a réussi sans autre recette Chromium concurrente. Une erreur de génération du document OpenAPI interne a été corrigée ; une régression vérifie désormais l’égalité du contrat livré avec le listener public.
 
 Logs de la suite finale : `/private/tmp/pq-navigation-022-tests.log`. Manifeste et preuves de déploiement : `deployment.json` dans le backup. La recette KUKA réelle et ses nouveaux IDs sont dans [KUKA_FRAME_FIX](KUKA_FRAME_FIX.md). Aucun push distant ni test authentifié du service installé avec la clé UniversRobot n’est revendiqué.
+
+
+## Diagnostic de portée et History API (Unitree G1)
+
+L'égalité `expected_url` reste exacte, slash, query et fragment compris. Un site peut
+servir une URL puis modifier réellement l'adresse avec History API plusieurs secondes
+plus tard. Aucun délai fixe ni transfert d'approbation ne rend ces deux URL équivalentes.
+Voir la [reproduction Unitree](testing/UNITREE_URL_SCOPE.md).
+
+Les erreurs `scope_changed`, `NAVIGATION_CHANGED` et `URL_METADATA_MISMATCH` des opérations
+de navigation/lecture ajoutent `expected_url`, `observed_url`, `observed_at` (UTC), `stage`,
+`service_version`, `tab_id`, `job_id`, `request_id`, `artifact_id` et
+`artifact_published=false`. L'identifiant d'artefact peut désigner une capture allouée
+mais jetée ; null signifie qu'aucun identifiant n'a encore été alloué. Les URL exactes
+sont réservées aux réponses authentifiées, comme `navigation.final_url` ;
+`target_url` reste expurgée et `target_sha256` conserve l'empreinte exacte.
+`observed_url_truncated=true` signale explicitement le dépassement des 4096 caractères.
+
+Étapes : `navigation.goto`, `navigation.after_wait`, `navigation.title`,
+`tab_info.title`, `export.{format}.wait`, `export.{format}.before_capture`,
+`export.{format}.capture`, `export.structured.metadata`, `export.{format}.before_publish`.
+`tab_info` vérifie le même checkpoint avant/après lecture du titre et peut donc
+retourner `NAVIGATION_CHANGED` au lieu d'associer l'ancienne URL au nouveau titre.
+
+`navigation.main_document_response` conserve la dernière réponse HTTP principale
+commise (`url`, `http_status`, `content_type`, `observed_at`), séparément de l'adresse
+courante. Une nouvelle requête principale l'invalide. Cette preuve ne certifie pas un
+statut HTTP pour une URL créée par History API : les champs historiques `http_status`
+et `http_status_reason` conservent leur sémantique conservatrice.
+`url_changes` trace au plus 20 commits principaux ; une absence de réponse ne suffit
+pas à attribuer un commit à JavaScript. `same_document_navigations` trace séparément
+les événements CDP du document principal avec `navigation_type=historyApi`, `fragment`,
+`other` ou `unknown` ; les deux listes possèdent un indicateur de saturation.
+
+Le schéma structured reste `1.0` : l'URL principale est le champ racine `url`
+(`document.url` si le client l'encapsule dans `document`). Elle est lue dans le contexte
+isolé, bornée à 4096 caractères comme l'API, et comparée au checkpoint avant publication.
+Une incohérence produit `URL_METADATA_MISMATCH` sans artefact. Le HTML reste le DOM brut ;
+sa provenance est `result.navigation.final_url`, pas une balise canonical fournie par le
+site. Le JSON structured contient aussi `navigation`. Une modification réelle pendant
+la capture invalide toujours l'export ; un changement après publication ne réécrit pas
+l'artefact précédent et doit être détecté par le contrôle final du client.
+
+Les clients à schéma strict doivent accepter les nouveaux champs optionnels de
+`NavigationMetadata` et conserver les détails d'erreur au lieu de les réduire au seul
+code. Aucun changement des approbations ni du critère d'égalité n'est requis. Après un
+écart, arrêter l'acquisition en cours ; toute nouvelle tentative garde son attente
+explicite. Ne jamais adopter automatiquement la destination observée, même si une
+approbation distincte existe déjà pour elle.

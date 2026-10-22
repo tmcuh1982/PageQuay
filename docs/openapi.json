@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PageQuay",
-    "version": "1.2.1"
+    "version": "1.2.2"
   },
   "paths": {
     "/health/live": {
@@ -2252,6 +2252,44 @@
             "type": "string",
             "const": "browser_main_document_response",
             "title": "Source"
+          },
+          "main_document_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Document Response"
+          },
+          "url_changes": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Url Changes"
+          },
+          "url_changes_truncated": {
+            "type": "boolean",
+            "title": "Url Changes Truncated",
+            "default": false
+          },
+          "same_document_navigations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Same Document Navigations"
+          },
+          "same_document_navigations_truncated": {
+            "type": "boolean",
+            "title": "Same Document Navigations Truncated",
+            "default": false
           }
         },
         "additionalProperties": false,

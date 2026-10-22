@@ -50,6 +50,8 @@ Version publiée / Published version: **1.1.0**, 16 octobre / October 16, 2026. 
 | 1.1.0 | [Français](releases/1.1.0.md) | [English](releases/1.1.0.en.md) |
 | 1.2.0 (local) | [Français](releases/1.2.0.md) | [English](releases/1.2.0.en.md) |
 | 1.1.1 (local) | [Français](releases/1.1.1.md) | [English](releases/1.1.1.en.md) |
+| 1.2.1 | [Français](releases/1.2.1.md) | [English](releases/1.2.1.en.md) |
+| 1.2.2 | [Français](releases/1.2.2.md) | [English](releases/1.2.2.en.md) |
 
 ## Vérifications / Validation
 

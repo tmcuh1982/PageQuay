@@ -9,7 +9,6 @@ from fastapi.responses import FileResponse
 from pydantic import ValidationError
 
 from .artifacts import OriginalImageResponse
-from .bounds import short_url
 from .errors import PQError, error_body
 from .models import (
     Actions,
@@ -25,7 +24,6 @@ from .models import (
     StructuredSnapshot,
 )
 from .navigation import exact_error, require_https
-from .page_reader import read_title
 from .storage import uid
 
 router = APIRouter(prefix="/v1")
@@ -254,8 +252,7 @@ async def tabs(slug: str, request: Request):
 @router.get("/projects/{slug}/tabs/{tab_id}")
 async def tab(slug: str, tab_id: str, request: Request):
     rt, project, _ = access(request, slug, "browser:read")
-    value = rt.browser.tab(project, tab_id)
-    return {"tab_id": tab_id, "url": short_url(value.page.url), **await read_title(value.page)}
+    return await rt.browser.tab_info(project, tab_id, request_id=request.state.request_id)
 
 
 @router.delete("/projects/{slug}/tabs/{tab_id}")

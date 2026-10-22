@@ -53,3 +53,32 @@ async def test_title_never_extends_navigation_deadline(monkeypatch):
         )
     assert error.value.code == "TIMEOUT"
     manager.human_guard.assert_not_awaited()
+
+
+async def test_tab_info_rejects_title_from_changed_navigation(monkeypatch):
+    import asyncio
+
+    from pagequay.browser import Tab
+    from pagequay.navigation import NavigationEvidence
+
+    page = SimpleNamespace(
+        url="https://example.org/first",
+        on=lambda *args: None,
+        main_frame=SimpleNamespace(url="https://example.org/first"),
+    )
+    tab = Tab("tab", page, lock=asyncio.Lock())
+    tab.evidence = NavigationEvidence(page)
+    manager = object.__new__(BrowserManager)
+    manager.tab = lambda *_: tab
+
+    async def read(_):
+        page.url = page.main_frame.url = "https://example.org/second"
+        tab.evidence.navigated(page.main_frame)
+        return {"title": "Second document", "title_truncated": False}
+
+    monkeypatch.setattr("pagequay.browser.read_title", read)
+    with pytest.raises(PQError) as error:
+        await manager.tab_info({}, "tab")
+    assert error.value.code == "NAVIGATION_CHANGED"
+    assert error.value.details["stage"] == "tab_info.title"
+    assert error.value.details["observed_url"] == page.url

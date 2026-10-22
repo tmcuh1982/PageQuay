@@ -271,6 +271,11 @@ class NavigationMetadata(Strict):
     observed_at: str = Field(description="ISO 8601 UTC time of main-frame commit")
     navigation_id: str
     source: Literal["browser_main_document_response"]
+    main_document_response: dict[str, Any] | None = None
+    url_changes: list[dict[str, Any]] = Field(default_factory=list)
+    url_changes_truncated: bool = False
+    same_document_navigations: list[dict[str, Any]] = Field(default_factory=list)
+    same_document_navigations_truncated: bool = False
 
 
 class NavigationResult(Strict):
