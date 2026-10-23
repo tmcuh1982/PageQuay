@@ -70,3 +70,11 @@ La fixture couvre l'hydratation JavaScript, un Shadow DOM ouvert avec slot, une 
 Une frame Shadow peut ne pas apparaître dans window.frames. Le lecteur exige alors une session CDP liée à cette frame exacte ; DOM.getFrameOwner distingue la racine (propriétaire hors cible) des descendants locaux, sans FrameTree/TargetInfo ni titres/URL transférés. Une racine unique, le propriétaire monté et le même contexte sont vérifiés avant/après capture. Ancêtre/page ou racines absentes/ambiguës refusés. Diagnostic path_source=frame_target_root, failure=target_root_ambiguous ; compteur stale_candidate_count optionnel0..128, absent=inconnu.
 
 La visibilité est contrôlée avant le schéma : frame cachée omitted/hidden_frame sans lire son contenu ; blob visible reste unavailable/unsupported_frame_scheme. Options publiques de select limitées à300 ; dépassement toujours partial/options, valeurs de formulaire exclues. Aucun solver ni transfert d’approbation.
+
+## Blocs JSON-LD vides et classes CSS
+
+Les blocs JSON-LD vides ou blancs sont ignorés après les contrôles de nombre et
+longueur. Un bloc non vide mal formé reste signalé invalid_json_ld. Les classes
+CSS ne sont lues et bornées que si include_dom=true ; elles ne participent pas
+aux collecteurs sémantiques. Les autres budgets et exclusions restent actifs.
+Voir les [tests de régression Addverb](../tests/test_structured_addverb_browser.py).

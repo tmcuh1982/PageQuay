@@ -34,6 +34,8 @@
   const attributes = (el) => {
     const result = {};
     for (const name of allowed) {
+      // Classes are only serialized in the optional DOM, never semantic collectors.
+      if (name === 'class' && !include_dom) continue;
       if (el.hasAttribute(name)) result[name] = clip(el.getAttribute(name), 256);
     }
     for (const name of ['href', 'src', 'action']) {
@@ -174,6 +176,8 @@
   for (const el of document.querySelectorAll('script[type="application/ld+json"]')) {
     if (jsonScripts++ >= limits.json_ld) { cut('json_ld'); break; }
     if (el.textContent.length > 20000) { cut('json_ld_length'); continue; }
+    // Empty data blocks are placeholders, not malformed JSON; keep budgets above.
+    if (!el.textContent.trim()) continue;
     try { metadata.json_ld.push(boundedJson(JSON.parse(el.textContent))); }
     catch { cut('invalid_json_ld'); }
   }
