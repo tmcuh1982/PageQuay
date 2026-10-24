@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PageQuay",
-    "version": "1.2.2"
+    "version": "1.2.3"
   },
   "paths": {
     "/health/live": {
@@ -1257,6 +1257,13 @@
     "schemas": {
       "AcquisitionArtifact": {
         "properties": {
+          "capture_restarts": {
+            "type": "integer",
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Capture Restarts",
+            "default": 0
+          },
           "artifact_id": {
             "type": "string",
             "title": "Artifact Id"

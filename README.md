@@ -4,7 +4,7 @@
 
 Passerelle Web privée et auto-hébergée : un projet possède son propre profil Chromium persistant, ses onglets, ses clés API et ses contenus temporaires. API FastAPI REST + WebSocket et administration HTML/CSS/JavaScript locaux, sans build frontend, Docker ni abonnement.
 
-**Version 1.2.2 — diagnostics URL exacts et suivi des réécritures History API.** Consulter [le rapport de tests](docs/testing/REPORT.md) pour distinguer les vérifications exécutées et les limites. Les sources initiales sont conservées dans `docs/definition/`. L'état de travail et les choix sont dans `memory.md` et `decisions.md`.
+**Version 1.2.3 — exports Addverb et Greenfield, reprises bornées et diagnostics réseau.** Consulter [le rapport de tests](docs/testing/REPORT.md) pour distinguer les vérifications exécutées et les limites. Les sources initiales sont conservées dans `docs/definition/`. L'état de travail et les choix sont dans `memory.md` et `decisions.md`.
 
 Consulter [l’index bilingue complet](docs/README.md) pour les guides, notes de version, rapports et références en français et en anglais. L’interface administrateur reste en français.
 
@@ -25,9 +25,9 @@ Consulter [l’index bilingue complet](docs/README.md) pour les guides, notes de
 | [Correctif iframe KUKA](docs/KUKA_FRAME_FIX.md) | Preuves réelles, régressions et version corrective 0.2.1 |
 | [Image originale](docs/DOWNLOAD_IMAGE.md) | `download_image`, original binaire borné et recette UBTECH |
 | [Acquisition exacte](docs/ACQUISITION.md) | Navigation attestée, URL stricte, robots, diagnostics iframe et client serveur |
-| [OpenAPI](docs/openapi.json) | Contrat API client 1.2.2, également disponible via `/openapi.json` |
+| [OpenAPI](docs/openapi.json) | Contrat API client 1.2.3, également disponible via `/openapi.json` |
 
-La [release 1.2.2](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.2.2) fournit les paquets Python et leurs sommes SHA-256 ; elle inclut les changements des versions locales 1.1.1 et 1.2.0. Le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
+La [release 1.2.3](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.2.3) fournit les paquets Python et leurs sommes SHA-256 ; elle inclut les changements des versions locales 1.1.1 et 1.2.0. Le MVP et sa documentation sont publiés sur [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branche `main`. Le dossier de développement suit cette branche ; les données et captures locales sont exclues du dépôt public. Le statut détaillé et la procédure de synchronisation sont dans les documents ci-dessus.
 
 ## Utilisation et non-responsabilité
 
@@ -86,6 +86,8 @@ Le navigateur utilise un port CDP explicite, non nul, lié à `127.0.0.1` et cho
 Les connexions WebSocket des pages sont refusées par une règle de proxy native de Chrome : HTTP/HTTPS passent par le proxy filtrant, et la catégorie `socks=` (« autres proxys », utilisée par Chrome pour `ws://` et `wss://`) pointe vers un second port local qui refuse toute connexion sans résoudre de destination. Aucun repli direct n’est configuré. Ce contrôle couvre aussi les frames, fenêtres secondaires et workers ; l’objet JavaScript `WebSocket` reste natif. Le WebSocket de commande de l’API PageQuay reste disponible. Voir les [règles de proxy WebSocket de Chromium](https://chromium.googlesource.com/chromium/src/+/HEAD/net/docs/proxy.md#mapping-websockets-urls-to-a-proxy).
 
 `PQ_BROWSER_CHANNEL=chrome` sélectionne Google Chrome installé sur macOS ; `chromium` (défaut) conserve le navigateur fourni par Playwright, dont le binaire peut se nommer « Google Chrome for Testing ».
+
+Version 1.2.3 : [notes de release](docs/releases/1.2.3.md), Addverb, Greenfield et diagnostics réseau.
 
 Version 1.2.2 : [notes de release](docs/releases/1.2.2.md), preuve des réécritures Unitree et diagnostics de portée, sans affaiblir `expected_url`.
 

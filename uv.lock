@@ -451,7 +451,7 @@ wheels = [
 
 [[package]]
 name = "pagequay"
-version = "1.2.2"
+version = "1.2.3"
 source = { editable = "." }
 dependencies = [
     { name = "argon2-cffi" },

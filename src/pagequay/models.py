@@ -290,6 +290,7 @@ class NavigationResult(Strict):
 
 
 class AcquisitionArtifact(Strict):
+    capture_restarts: int = Field(0, ge=0, le=2)
     artifact_id: str
     size: int
     media_type: str
