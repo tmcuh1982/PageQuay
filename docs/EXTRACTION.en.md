@@ -41,7 +41,7 @@ Playwright can read individual authorized frames, including other origins. Open 
 ## Limits
 
 - At most four visible document reads including main; inventory at most 32 frames. Hidden frames are reported without consuming read slots, including dimensioned `aria-hidden="true"` frames since 1.1.0. Excess inventory/visible reads set frame_limit_reached/partial. Global budget 40 seconds, per-frame 10 seconds; global overrun is TIMEOUT. Detached/unresponsive frames stay unavailable.
-- Per document: 8000 visited nodes including omitted/hidden nodes; counted depth 32 with at most three neutral envelopes discounted per path (absolute physical depth 35, body at 0); text budget min(160000, max_content_bytes/8). URL/title reserve budget before metadata/DOM. Maximum 400 blocks, 300 links, 100 images/controls, 300 text options per select, 20 tables, 50 rows, 30 cells/row, 30 forms. JSON-LD visits at most 10 scripts including invalid ones, 20000 characters/script and bounded objects/depth/collections; parsed, never executed.
+- Per document: 8000 visited nodes including omitted/hidden nodes; counted depth 32 with at most eight neutral envelopes discounted per path (absolute physical depth 40, body at 0); text budget min(160000, max_content_bytes/8). URL/title reserve budget before metadata/DOM. Maximum 400 blocks, 300 links, 100 images/controls, 300 text options per select, 20 tables, 50 rows, 30 cells/row, 30 forms. JSON-LD visits at most 10 scripts including invalid ones, 20000 characters/script and bounded objects/depth/collections; parsed, never executed.
 - Credit applies only to `div`, `span`, and `picture` elements whose attributes are restricted to `id`, `class`, `style`, and `data-*` (at most 32 attributes). Editable elements, open Shadow hosts, and slot-assigned elements are excluded. Roles, ARIA attributes, labels, language or interaction attributes therefore prevent credit. Each branch inherits credit already consumed on its path; siblings do not share a global counter. Envelopes remain in the filtered DOM and consume the usual node and text budgets. Text, images, links, headings, lists, tables, controls, Shadow roots, and slots receive no credit. Every depth cut retains `depth`, `truncated`, and `partial`. XPath provenance keeps its independent 32-segment bound: recovered content may have `xpath=null`, `xpath_reason=depth_limit` without content omission.
 - On structured-module load, the local `pagequay.extraction` log records `structured_reader_loaded` with version, schema, and `script_sha256`, the SHA-256 fingerprint of the script actually loaded into `SCRIPT`. This fixed diagnostic contains no URL or page data and does not reread the file during extraction.
 - Limits are flagged; max_content_bytes, disk quota and TTL also apply. Oversized final representations are rejected by artifact controls.
@@ -63,3 +63,15 @@ Fixtures cover hydration, open shadow/slot, closed root, cross-origin iframe on 
 A shadow frame may be absent from window.frames. The reader then requires a CDP session for that exact frame; DOM.getFrameOwner distinguishes its target root from local descendants without transferring FrameTree/TargetInfo, titles or URLs. A unique root, mounted owner and unchanged context are checked before/after capture. Ancestor/page sessions and missing/ambiguous roots are refused. Diagnostics: path_source=frame_target_root, failure=target_root_ambiguous; optional stale_candidate_count 0–128, absent means unknown.
 
 Visibility is checked before scheme: hidden is omitted/hidden_frame without content read; visible blob is unavailable/unsupported_frame_scheme. Select options are capped at 300; overrun is partial/options. Form values stay excluded. No solver or approval transfer.
+
+
+## Fresh capture after navigation mutation — Greenfield fix
+
+An unpublished capture interrupted by NAVIGATION_CHANGED may be recaptured at
+most twice within the same job, only while its URL equals the checkpoint URL
+and passes the scope guard. Each recapture checks authorization, waits250ms,
+and reads a fresh snapshot; no navigation or client POST replay. No further
+recapture is started after the navigation budget expires. A changed URL or
+persistent drift remains rejected without an artifact. capture_restarts reports
+recaptures in the receipt. Partial content and network refusals remain explicit.
+See the [Greenfield report (French)](GREENFIELD_EXPORT_REPORT.md).

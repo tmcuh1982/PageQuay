@@ -859,3 +859,86 @@ async def test_inconsistent_structured_identity_is_rejected(acquisition_site, mo
     assert row["error"]["code"] == "URL_METADATA_MISMATCH", row
     assert row["error"]["details"]["stage"] == "export.structured.metadata"
     assert not rt.db.all("SELECT * FROM artifacts")
+
+
+@pytest.mark.parametrize("format", ["structured", "html"])
+async def test_single_same_url_rewrite_recaptures_before_publish(
+    acquisition_site, monkeypatch, format
+):
+    rt, _, client, base, _, _ = acquisition_site
+    prefix = "/v1/projects/acquisition"
+    row = await finish(
+        rt, client, await client.post(prefix + "/tabs", json={"url": base + "/allowed"})
+    )
+    module = __import__("pagequay.browser", fromlist=["read_page"])
+    target = "extract_structured" if format == "structured" else "read_page"
+    original = getattr(module, target)
+    calls = 0
+
+    async def racing(page, *args, **kwargs):
+        nonlocal calls
+        if target == "read_page" and args[0] != "html":
+            return await original(page, *args, **kwargs)
+        calls += 1
+        value = await original(page, *args, **kwargs)
+        if calls == 1:
+            await page.evaluate(
+                "document.querySelector('p').textContent='Fresh verified content';"
+                "history.replaceState({}, '', location.href)"
+            )
+            await asyncio.sleep(0.02)
+        return value
+
+    monkeypatch.setattr(module, target, racing)
+    row = await finish(
+        rt,
+        client,
+        await client.get(
+            prefix + f"/tabs/{row['tab_id']}/content",
+            params={"format": format, "expected_url": base + "/allowed"},
+        ),
+    )
+    assert row["status"] == "completed", row
+    assert calls == 2
+    assert len(rt.db.all("SELECT * FROM artifacts")) == 1
+    artifact = await client.get(row["result"]["url"])
+    assert "Fresh verified content" in artifact.text
+
+
+@pytest.mark.parametrize("exact_scope", [False, True])
+async def test_export_rewrite_to_other_url_never_recaptures(
+    acquisition_site, monkeypatch, exact_scope
+):
+    rt, _, client, base, _, _ = acquisition_site
+    prefix = "/v1/projects/acquisition"
+    row = await finish(
+        rt, client, await client.post(prefix + "/tabs", json={"url": base + "/allowed"})
+    )
+    module = __import__("pagequay.browser", fromlist=["read_page"])
+    original = module.read_page
+    calls = 0
+
+    async def racing(page, *args, **kwargs):
+        nonlocal calls
+        if args[0] != "html":
+            return await original(page, *args, **kwargs)
+        calls += 1
+        value = await original(page, *args, **kwargs)
+        await page.evaluate("history.replaceState({}, '', '/other')")
+        await asyncio.sleep(0.02)
+        return value
+
+    monkeypatch.setattr(module, "read_page", racing)
+    row = await finish(
+        rt,
+        client,
+        await client.get(
+            prefix + f"/tabs/{row['tab_id']}/content",
+            params={
+                "format": "html",
+                **({"expected_url": base + "/allowed"} if exact_scope else {}),
+            },
+        ),
+    )
+    assert row["error"]["code"] == ("scope_changed" if exact_scope else "NAVIGATION_CHANGED"), row
+    assert calls == 1 and not rt.db.all("SELECT * FROM artifacts")

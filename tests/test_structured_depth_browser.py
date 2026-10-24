@@ -45,7 +45,9 @@ def descendants(node):
         ("div", 31, False),
         ("div", 32, False),
         ("div", 34, False),
-        ("div", 35, True),
+        ("div", 35, False),
+        ("div", 39, False),
+        ("div", 40, True),
     ],
 )
 async def test_counted_and_physical_depth_boundaries(page, tag, count, partial):

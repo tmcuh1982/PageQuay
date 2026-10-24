@@ -412,7 +412,8 @@ def test_http_quota_deadline_scope_and_no_creation_retry(client, projects, monke
     assert len(calls) == 1
 
 
-async def test_capture_navigation_race_has_no_artifact(client, projects, monkeypatch):
+@pytest.mark.parametrize("expired", [False, True])
+async def test_capture_navigation_race_has_no_artifact(client, projects, monkeypatch, expired):
     rt = client.app.state.rt
     project = projects[0]
     page = Page()
@@ -431,7 +432,17 @@ async def test_capture_navigation_race_has_no_artifact(client, projects, monkeyp
     async def human(*args, **kwargs):
         return None
 
+    calls = 0
+    now = [0]
+    monkeypatch.setattr(
+        "pagequay.browser.time", SimpleNamespace(monotonic=lambda: now[0], time=lambda: 0)
+    )
+
     async def read(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if expired:
+            now[0] = 1000
         tab.evidence.navigated(page.main_frame)
         return "untrusted mixed capture"
 
@@ -442,11 +453,14 @@ async def test_capture_navigation_race_has_no_artifact(client, projects, monkeyp
 
     monkeypatch.setattr("pagequay.browser.challenge_detected", no_challenge)
     monkeypatch.setattr("pagequay.browser.read_page", read)
-    job = SimpleNamespace(set_tab=lambda _: None, request_id="r", id="j")
+    job = SimpleNamespace(
+        set_tab=lambda _: None, request_id="r", id="j", check_authorization=lambda: None
+    )
     try:
         with pytest.raises(PQError) as error:
             await rt.browser.extract(project, tab.id, "text", job, expected_url=page.url)
         assert error.value.code == "NAVIGATION_CHANGED"
+        assert calls == (1 if expired else 3)
         assert not rt.db.all("SELECT * FROM artifacts")
     finally:
         rt.browser.states.clear()

@@ -1,7 +1,7 @@
 /* Fixed, read-only snapshot. No caller-supplied code, clicks, scrolling or network calls. */
 ({ include_dom, text_budget }) => {
   const reasons = new Set();
-  const limits = { nodes: 8000, depth: 32, wrapper_credit: 3, physical_depth: 35, blocks: 400, links: 300, images: 100,
+  const limits = { nodes: 8000, depth: 32, wrapper_credit: 8, physical_depth: 40, blocks: 400, links: 300, images: 100,
     tables: 20, rows: 50, cells: 30, controls: 100, forms: 30, options: 300, json_ld: 10 };
   let characters = 0, nodes = 0, visited = 0, shadowRoots = 0;
   const seen = new WeakSet();
@@ -72,7 +72,7 @@
     return current ? { xpath: '/' + parts.reverse().join('/'), xpath_reason: null } :
       { xpath: null, xpath_reason: 'not_in_document' };
   };
-  // Discount at most three layout envelopes per path, never semantic nodes or
+  // Discount at most eight layout envelopes per path, never semantic nodes or
   // shadow/projection boundaries. Keep the envelopes in the returned tree.
   const neutralEnvelope = (node) => {
     if (node.nodeType !== Node.ELEMENT_NODE || !['div', 'span', 'picture'].includes(node.localName) ||

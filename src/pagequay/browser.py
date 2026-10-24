@@ -30,6 +30,7 @@ from .navigation import (
 )
 from .navigation_diagnostics import navigation_error_details
 from .network import EgressProxy, NetworkPolicy
+from .network_diagnostics import network_refusal, resolve_navigation
 from .page_reader import click_classification, read_page, read_title
 from .profiles import ProfileLock, reset_directory
 from .startup_diagnostics import startup_error_details
@@ -215,13 +216,7 @@ class BrowserManager:
                 except PQError as exc:
                     if tab is not None:
                         if len(tab.network_denials) < 32:
-                            tab.network_denials.append(
-                                {
-                                    "code": exc.code,
-                                    "cause": (exc.details or {}).get("cause", exc.code),
-                                    "main_document": route.request.frame == page.main_frame,
-                                }
-                            )
+                            tab.network_denials.append(network_refusal(route.request, page, exc))
                         else:
                             tab.network_denials_truncated = True
                     if route.request.is_navigation_request():
@@ -640,7 +635,7 @@ class BrowserManager:
         strict = request.expected_url is not None or not request.allow_redirects
         if strict:
             require_https(request.url)
-        await network.resolve(request.url)
+        await resolve_navigation(network, request.url)
         if tab_id:
             tab = self.tab(project, tab_id)
         else:
@@ -919,6 +914,7 @@ class BrowserManager:
                 tab, expected_url, job, f"export.{format}.before_capture"
             ) as diagnostic:
                 deadline = time.monotonic() + self.db.policy(project).navigation_timeout_seconds
+                capture_restarts = 0
                 while True:
                     diagnostic.update(stage=f"export.{format}.wait", artifact_id=None)
                     await self.human_guard(project, tab, job, deadline=deadline)
@@ -981,26 +977,40 @@ class BrowserManager:
                                 )
                             else:
                                 data, media = json.dumps(value), "application/json"
+                        if await challenge_detected(tab.page, evidence=tab.evidence):
+                            # Discard the unpublished snapshot. Resume captures a fresh document.
+                            continue
+                        diagnostic["stage"] = f"export.{format}.before_publish"
+                        self.check_scope(tab, expected_url)
+                        tab.evidence.verify(checkpoint, expected_url)
+                        if tab.guard_errors:
+                            raise tab.guard_errors[0]
                     except PQError as exc:
+                        if exc.code == "NAVIGATION_CHANGED":
+                            self.check_scope(tab, expected_url)
+                            if (
+                                capture_restarts < 2
+                                and tab.page.url == checkpoint[3]
+                                and time.monotonic() + 0.25 < deadline
+                            ):
+                                # Cliché non publié : reprendre à la même URL exacte.
+                                capture_restarts += 1
+                                diagnostic["capture_restarts"] = capture_restarts
+                                job.check_authorization()
+                                await asyncio.sleep(0.25)
+                                continue
                         if exc.code in {
                             "NAVIGATION_CHANGED",
                             "scope_changed",
                         } and await challenge_detected(tab.page, evidence=tab.evidence):
                             continue
                         raise
-                    if await challenge_detected(tab.page, evidence=tab.evidence):
-                        # Discard the unpublished snapshot. Resume captures a fresh document.
-                        continue
-                    diagnostic["stage"] = f"export.{format}.before_publish"
-                    self.check_scope(tab, expected_url)
-                    tab.evidence.verify(checkpoint, expected_url)
-                    if tab.guard_errors:
-                        raise tab.guard_errors[0]
                     return {
                         **self.artifacts.put(
                             project, data.encode(), media, artifact_id=artifact_id
                         ),
                         "navigation": tab.evidence.snapshot(),
+                        "capture_restarts": capture_restarts,
                     }
 
     async def _screenshot(self, project, page):

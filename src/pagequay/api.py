@@ -24,6 +24,7 @@ from .models import (
     StructuredSnapshot,
 )
 from .navigation import exact_error, require_https
+from .network_diagnostics import resolve_navigation
 from .storage import uid
 
 router = APIRouter(prefix="/v1")
@@ -229,7 +230,7 @@ async def new_tab(
 ):
     rt, project, key = access(request, slug, "browser:interact")
     validate_navigation(body)
-    await rt.browser.network_factory(rt.db.policy(project)).resolve(body.url)
+    await resolve_navigation(rt.browser.network_factory(rt.db.policy(project)), body.url)
     return rt.jobs.submit(
         project,
         key["id"],
@@ -280,7 +281,7 @@ async def navigate(
     rt, project, key = access(request, slug, "browser:interact")
     rt.browser.tab(project, tab_id)
     validate_navigation(body)
-    await rt.browser.network_factory(rt.db.policy(project)).resolve(body.url)
+    await resolve_navigation(rt.browser.network_factory(rt.db.policy(project)), body.url)
     return rt.jobs.submit(
         project,
         key["id"],
@@ -655,7 +656,7 @@ async def ws_command(rt, project, key, body):
         }
     )
     validate_navigation(model)
-    await rt.browser.network_factory(rt.db.policy(project)).resolve(model.url)
+    await resolve_navigation(rt.browser.network_factory(rt.db.policy(project)), model.url)
     return submit(
         rt,
         project,
