@@ -12,7 +12,7 @@ Mode visible : une session utilisateur macOS graphique doit rester ouverte. Un L
 
 La console locale propose **Minimiser** et **Restaurer** dans Projets / Profils et Sessions / Onglets pour les navigateurs visibles déjà démarrés. La navigation distante et l’extraction continuent dans une fenêtre minimisée ; ouvrir un nouvel onglet conserve cet état. Une capture restaure brièvement la fenêtre pour permettre le rendu macOS, puis la minimise à nouveau, y compris en cas d’échec de la capture.
 
-Dans Paramètres, **Démarrer les fenêtres minimisées** ajoute `browser_start_minimized: true` aux valeurs globales. Enregistrer puis redémarrer les navigateurs pour appliquer cette option de lancement. Une surcharge JSON par projet peut activer ou désactiver le réglage. L’option est désactivée par défaut et ignorée en mode `headless`. Pour une vérification humaine, restaurer la fenêtre avant d’intervenir.
+Dans Paramètres, **Démarrer les fenêtres minimisées** ajoute `browser_start_minimized: true` aux valeurs globales. Enregistrer puis redémarrer les navigateurs pour appliquer cette option de lancement. Une surcharge JSON par projet peut activer ou désactiver le réglage. L’option est désactivée par défaut et ignorée en mode `headless`. Lorsqu’un CAPTCHA exige une intervention humaine, PageQuay restaure la fenêtre minimisée et active l’onglet concerné.
 
 ## LaunchAgent utilisateur
 

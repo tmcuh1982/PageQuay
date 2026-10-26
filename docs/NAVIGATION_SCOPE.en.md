@@ -27,7 +27,7 @@ Authorization: Bearer <original key>
 
 After manual server-browser action, resume rechecks challenge and final URL. Persistent challenge waits again; another target fails scope_changed. Capture checkpoints are taken after waiting, so a legitimate human reload alone no longer triggers NAVIGATION_CHANGED. Extraction rechecks before publication; challenge during reading discards the unpublished snapshot and resume takes a fresh one. Other navigation changes remain denied; WORLD_NOT_FOUND is not globally retried or hidden.
 
-Default human timeout 600 seconds, global job budget 180+600 seconds, resume authorization, locks, reader budget 10 seconds/frame and node/frame/byte quotas remain. Resume adds no new automatic budget. download_image has its own shorter total deadline as documented separately.
+Default shared human deadline 120 seconds per job, global job budget 180+120 seconds, resume authorization, locks, reader budget 10 seconds/frame and node/frame/byte quotas remain. Resume adds no new automatic budget. download_image has its own shorter total deadline as documented separately.
 
 ## Network, robots and callers
 

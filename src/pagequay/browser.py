@@ -57,6 +57,8 @@ class Tab:
     network_denials_truncated: bool = False
     robots: dict = field(default_factory=lambda: {"status": "not_checked"})
     response_handler: object = None
+    suspended: bool = False
+    lifecycle_session: object = None
 
 
 @dataclass
@@ -237,7 +239,7 @@ class BrowserManager:
                 else:
                     self._register(state, page)
             if policy.browser_start_minimized and not state.headless:
-                await self._set_windows(state, "minimized")
+                await self._startup_windows(state)
             self.states[project["id"]] = state
             self.events.emit(project, "browser.started")
             self.db.audit("browser.started", project["id"])
@@ -260,6 +262,51 @@ class BrowserManager:
                 503,
                 details=startup_error_details(exc, startup_step),
             ) from exc
+
+    async def _window_health_warning(self, state, operation):
+        """Keep an unconfirmed presentation change only if Chromium still answers."""
+        pages = [page for page in state.context.pages if not page.is_closed()]
+        if not pages:
+            raise PlaywrightError("Browser closed during automatic window setup")
+        session = None
+        try:
+            async with asyncio.timeout(2):
+                session = await state.context.new_cdp_session(pages[0])
+                await session.send("Browser.getVersion")
+        finally:
+            if session is not None:
+                with suppress(PlaywrightError):
+                    await session.detach()
+        self.db.audit(
+            "browser.window_state_unconfirmed",
+            state.project["id"],
+            status="warning",
+            details={
+                "operation": operation,
+                "cause": "window_bounds_timeout",
+                "browser_healthy": True,
+            },
+        )
+
+    async def _startup_windows(self, state):
+        """Automatic presentation never waits for native animation confirmation."""
+        try:
+            async with asyncio.timeout(2):
+                confirmed = await self._set_windows(state, "minimized", confirm=False)
+        except TimeoutError:
+            confirmed = False
+        if not confirmed:
+            await self._window_health_warning(state, "startup_minimize")
+
+    async def _auto_minimize_page(self, state, page):
+        try:
+            async with asyncio.timeout(2):
+                window = await self._window(state, page, "minimized", confirm=False)
+                confirmed = window["bounds"]["windowState"] == "minimized"
+        except TimeoutError:
+            confirmed = False
+        if not confirmed:
+            await self._window_health_warning(state, "tab_auto_restore")
 
     def _register(self, state, page):
         if any(tab.page is page for tab in state.tabs.values()):
@@ -397,7 +444,12 @@ class BrowserManager:
             raise PQError("CONFLICT", "Tab operation is running", 409)
         await tab.page.close()
 
-    async def _window(self, state, page, window_state=None):
+    async def _window(self, state, page, window_state=None, *, confirm=True):
+        # Include CDP attachment and the initial reply, not just native animation polling.
+        async with asyncio.timeout(5):
+            return await self._window_operation(state, page, window_state, confirm=confirm)
+
+    async def _window_operation(self, state, page, window_state=None, *, confirm=True):
         session = await state.context.new_cdp_session(page)
         try:
             window = await session.send("Browser.getWindowForTarget")
@@ -406,6 +458,12 @@ class BrowserManager:
                     "Browser.setWindowBounds",
                     {"windowId": window["windowId"], "bounds": {"windowState": window_state}},
                 )
+                if not confirm:
+                    result = await session.send(
+                        "Browser.getWindowBounds", {"windowId": window["windowId"]}
+                    )
+                    window["bounds"] = result["bounds"]
+                    return window
                 # Native macOS minimize/restore animations complete after the CDP reply.
                 async with asyncio.timeout(5):
                     while True:
@@ -418,18 +476,21 @@ class BrowserManager:
                         await asyncio.sleep(0.05)
             return window
         finally:
-            with suppress(PlaywrightError):
-                await session.detach()
+            with suppress(PlaywrightError, TimeoutError):
+                await asyncio.wait_for(session.detach(), 1)
 
-    async def _set_windows(self, state, window_state):
+    async def _set_windows(self, state, window_state, *, confirm=True):
         seen = set()
+        confirmed = True
         for page in state.context.pages:
             if page.is_closed():
                 continue
             window = await self._window(state, page)
             if window["windowId"] not in seen:
-                await self._window(state, page, window_state)
+                changed = await self._window(state, page, window_state, confirm=confirm)
+                confirmed = confirmed and changed["bounds"]["windowState"] == window_state
                 seen.add(window["windowId"])
+        return confirmed and bool(seen)
 
     async def window_control(self, project, *, minimized):
         async with self.lifecycle:
@@ -483,7 +544,7 @@ class BrowserManager:
                 finally:
                     for existing in minimized.values():
                         if not existing.is_closed():
-                            await self._window(state, existing, "minimized")
+                            await self._auto_minimize_page(state, existing)
             self._register(state, page)
             tab = next((tab for tab in state.tabs.values() if tab.page is page), None)
             if tab is None:
@@ -570,28 +631,105 @@ class BrowserManager:
         finally:
             await helper.page.close()
 
+    async def _page_lifecycle(self, tab, state):
+        session = tab.lifecycle_session
+        try:
+            async with asyncio.timeout(2):
+                if session is None:
+                    session = await tab.page.context.new_cdp_session(tab.page)
+                if state == "frozen":
+                    await session.send("Page.stopLoading")
+                # Lifecycle freezing alone can be ignored by a foreground renderer.
+                await session.send(
+                    "Emulation.setScriptExecutionDisabled", {"value": state == "frozen"}
+                )
+                await session.send("Page.setWebLifecycleState", {"state": state})
+                tab.suspended = state == "frozen"
+                # Keep script emulation attached until explicit reactivation/close.
+                tab.lifecycle_session = session if tab.suspended else None
+                if tab.suspended:
+                    session = None
+        finally:
+            if session is not None:
+                tab.lifecycle_session = None
+                with suppress(PlaywrightError, TimeoutError):
+                    await asyncio.wait_for(session.detach(), 1)
+
+    async def _activate_tab(self, tab):
+        if tab.suspended:
+            await self._page_lifecycle(tab, "active")
+
+    async def _suspend_challenge(self, project, tab):
+        # Stopping the Python job alone leaves Chromium's challenge scripts running.
+        # Preserve the document when possible; close only if suspension fails.
+        try:
+            await self._page_lifecycle(tab, "frozen")
+        except (PlaywrightError, TimeoutError):
+            with suppress(PlaywrightError, TimeoutError):
+                await asyncio.wait_for(tab.page.close(run_before_unload=False), 2)
+        self.db.audit(
+            "challenge.suspended",
+            project["id"],
+            details={"tab_id": tab.id, "suspended": tab.suspended},
+        )
+
+    async def _show_challenge(self, project, tab):
+        state = self.states.get(project["id"])
+        if state is None or state.headless:
+            return
+        try:
+            # Bound lock acquisition, native restoration and foreground activation together.
+            async with asyncio.timeout(6), state.creation_lock:
+                window = await self._window(state, tab.page)
+                if window["bounds"]["windowState"] == "minimized":
+                    await self._window(state, tab.page, "normal")
+                await tab.page.bring_to_front()
+        except (PlaywrightError, TimeoutError):
+            self.db.audit(
+                "challenge.window_unavailable",
+                project["id"],
+                status="warning",
+                details={"tab_id": tab.id},
+            )
+
     async def human_guard(self, project, tab, job, *, deadline=None):
         # Passive polling only: no solver, clicks, reload or new navigation budget.
+        await self._activate_tab(tab)
         if deadline is None:
             deadline = time.monotonic() + self.db.policy(project).navigation_timeout_seconds
-        while state := await challenge_state(tab.page, evidence=tab.evidence):
-            if job:
-                job.check_authorization()
-            if state == "automatic" and time.monotonic() < deadline:
-                await asyncio.sleep(min(0.25, max(0, deadline - time.monotonic())))
-                continue
-            if not job:
-                raise PQError("CHALLENGE_REQUIRED", "Manual intervention required", 409)
-            capture = None
-            if getattr(job, "kind", None) != "download_image":
-                with suppress(PlaywrightError, PQError):
-                    capture = self.artifacts.put(
-                        project,
-                        await self._screenshot(project, tab.page),
-                        "image/png",
-                        "screenshot:read",
-                    )
-            await job.wait_for_human(tab.id, capture, navigation=tab.evidence.snapshot())
+        challenged = False
+        capture = None
+        captured = False
+        presented = False
+        try:
+            while state := await challenge_state(tab.page, evidence=tab.evidence):
+                challenged = True
+                if job:
+                    job.check_authorization()
+                if state == "automatic" and time.monotonic() < deadline:
+                    await asyncio.sleep(min(1, max(0, deadline - time.monotonic())))
+                    continue
+                if not presented:
+                    presented = True
+                    await self._show_challenge(project, tab)
+                if not job:
+                    raise PQError("CHALLENGE_REQUIRED", "Manual intervention required", 409)
+                if not captured and getattr(job, "kind", None) != "download_image":
+                    captured = True
+                    with suppress(PlaywrightError, PQError, TimeoutError):
+                        async with asyncio.timeout(3):
+                            capture = self.artifacts.put(
+                                project,
+                                await self._screenshot(project, tab.page),
+                                "image/png",
+                                "screenshot:read",
+                            )
+                await job.wait_for_human(tab.id, capture, navigation=tab.evidence.snapshot())
+                await asyncio.sleep(0.25)
+        except (PQError, PlaywrightError, TimeoutError, asyncio.CancelledError):
+            if challenged:
+                await self._suspend_challenge(project, tab)
+            raise
 
     @staticmethod
     def check_scope(tab, expected_url):
@@ -643,6 +781,7 @@ class BrowserManager:
         job.set_tab(tab.id)
         try:
             async with tab.lock, tab.audit.operation("navigate", job, url=request.url):
+                await self._activate_tab(tab)
                 state = self.states[project["id"]]
                 state.blocked_navigations.discard(tab.page)
                 blocked_before = state.proxy.blocked_count
@@ -805,6 +944,7 @@ class BrowserManager:
             tab.lock,
             tab.audit.operation("submit_search_form", job, label="next page", url=form["url"]),
         ):
+            await self._activate_tab(tab)
             await tab.page.set_content(html, wait_until="domcontentloaded", timeout=timeout)
             async with tab.page.expect_navigation(
                 wait_until="domcontentloaded", timeout=timeout
@@ -915,7 +1055,15 @@ class BrowserManager:
             ) as diagnostic:
                 deadline = time.monotonic() + self.db.policy(project).navigation_timeout_seconds
                 capture_restarts = 0
+                challenge_restarts = 0
                 while True:
+                    job.check_authorization()
+                    if time.monotonic() >= deadline or challenge_restarts >= 3:
+                        if challenge_restarts:
+                            await self._suspend_challenge(project, tab)
+                        raise PQError(
+                            "TIMEOUT", "Document did not stabilize during extraction", 504
+                        )
                     diagnostic.update(stage=f"export.{format}.wait", artifact_id=None)
                     await self.human_guard(project, tab, job, deadline=deadline)
                     diagnostic["stage"] = f"export.{format}.before_capture"
@@ -979,6 +1127,8 @@ class BrowserManager:
                                 data, media = json.dumps(value), "application/json"
                         if await challenge_detected(tab.page, evidence=tab.evidence):
                             # Discard the unpublished snapshot. Resume captures a fresh document.
+                            challenge_restarts += 1
+                            await asyncio.sleep(0.25)
                             continue
                         diagnostic["stage"] = f"export.{format}.before_publish"
                         self.check_scope(tab, expected_url)
@@ -1003,6 +1153,8 @@ class BrowserManager:
                             "NAVIGATION_CHANGED",
                             "scope_changed",
                         } and await challenge_detected(tab.page, evidence=tab.evidence):
+                            challenge_restarts += 1
+                            await asyncio.sleep(0.25)
                             continue
                         raise
                     return {

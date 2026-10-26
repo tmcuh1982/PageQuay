@@ -99,7 +99,7 @@ SQLite stores remainder/native state; the client gets a random token. Repeated p
 | search_cursor_ttl_minutes | 15 | 1–60 |
 | search_max_cursors_per_project active states | 100 | 1–1000 |
 
-Document max_content_bytes defaults to 2 MB; parser at most 200 results/document, title 500 chars, snippet 2000. Form max 40 fields/16 KiB. Total operation budget job_timeout_seconds + human_timeout_seconds (default 180+600); navigation default 30 seconds, each human wait up to 600. Server does not wait for quotas. job.progress emits fetching_search_page. Each call returns at most one native page or remainder.
+Document max_content_bytes defaults to 2 MB; parser at most 200 results/document, title 500 chars, snippet 2000. Form max 40 fields/16 KiB. Total operation budget job_timeout_seconds + human_timeout_seconds (default 180+120); navigation default 30 seconds, shared human deadline up to 120 seconds per job. Server does not wait for quotas. job.progress emits fetching_search_page. Each call returns at most one native page or remainder.
 
 stop_reason values: result_limit, page_complete, exhausted, continuation_unavailable, continuation_unusable, repeated_page, repeated_continuation, no_progress, page_limit, total_results_limit, cursor_capacity, cursor_expired, pagination_not_supported. Failures may use lowercase codes such as rate_limited/timeout. Known limits/repetitions set partial=true; a normal slice with continuation is not a partial failure.
 

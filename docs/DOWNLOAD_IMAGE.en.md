@@ -6,6 +6,8 @@
 
 # Original image acquisition — PageQuay 1.2.0
 
+Optional response wait: `POST download_image?wait_seconds=0..10` returns HTTP 200 with the completed job document when it finishes within that interval; otherwise HTTP 202 with the same ticket. Default 0 remains asynchronous. Waiting neither replays nor cancels the job; access is checked again before responding.
+
 **1.2.0 contract, 19 October 2026: installed on 19 October, included in the 20 October 1.2.1 release.** GIF/20 MB
 requires the extended contract below. The service observed during the audit
 still reported 1.1.1.

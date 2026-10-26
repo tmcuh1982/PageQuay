@@ -34,7 +34,7 @@ Authorization: Bearer <clé d’origine>
 
 Le serveur recontrôle le challenge, puis l’URL finale. Une page toujours en challenge revient en attente ; une cible différente donne `scope_changed`. Le checkpoint de capture est pris **après** cette attente : un reload légitime effectué par l’humain ne provoque plus à lui seul `NAVIGATION_CHANGED`. L’extraction recontrôle la page avant publication. Un challenge arrivé pendant la lecture fait jeter la capture non publiée ; la reprise produit un nouveau snapshot. Les autres changements de navigation restent refusés, et `WORLD_NOT_FOUND` n’est ni réessayé globalement ni masqué par cette logique.
 
-Timeout humain (600 s par défaut), plafond global du job (180 + 600 s), autorisations lors de la reprise, verrous, budgets lecteur (10 s/frame), octets/nœuds/frames et quotas restent inchangés. La reprise n’accorde aucun nouveau budget automatique.
+Timeout humain (120 s par défaut), plafond global du job (180 + 120 s), autorisations lors de la reprise, verrous, budgets lecteur (10 s/frame), octets/nœuds/frames et quotas restent inchangés. La reprise n’accorde aucun nouveau budget automatique.
 
 ## Réseau, robots et appelants
 

@@ -5,7 +5,7 @@ from contextlib import suppress
 from typing import Annotated
 
 from fastapi import APIRouter, Header, Query, Request, Response, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import ValidationError
 
 from .artifacts import OriginalImageResponse
@@ -68,13 +68,19 @@ def validate_navigation(body):
     "/projects/{slug}/download_image",
     status_code=202,
     response_model=SearchAccepted,
-    responses=ACQUISITION_ERRORS,
+    responses={200: {"model": JobResponse}, **ACQUISITION_ERRORS},
     openapi_extra={
+        "x-pagequay-image-wait": "completed-job-v1",
         "x-pagequay-image-transport": "chromium-byob-integers-v1",
         "x-pagequay-image-contract": "original-gif-20mb-v1",
     },
 )
-async def download_image(slug: str, body: DownloadImage, request: Request):
+async def download_image(
+    slug: str,
+    body: DownloadImage,
+    request: Request,
+    wait_seconds: Annotated[float, Query(ge=0, le=10)] = 0,
+):
     """Acquire original JPEG/PNG/WebP, or opt-in GIF, through the guarded browser.
 
     Requires content:read and browser:interact; poll/cancel/resume the ordinary job.
@@ -85,12 +91,13 @@ async def download_image(slug: str, body: DownloadImage, request: Request):
     """
     from .image_download import download_image as acquire_image
 
+    ticket = None
     try:
         rt, project, key = access(request, slug, "content:read")
         rt.auth.authorize(key, project, "browser:interact")
         validate_navigation(body)
         require_https(body.expected_url)
-        return rt.jobs.submit(
+        ticket = rt.jobs.submit(
             project,
             key["id"],
             "download_image",
@@ -101,21 +108,50 @@ async def download_image(slug: str, body: DownloadImage, request: Request):
             payload=body.model_dump(),
             total_timeout=min(body.timeout, rt.settings.job_timeout_seconds),
         )
+        if wait_seconds:
+            job = rt.jobs.active[ticket["job_id"]]
+            # Waiting never cancels or repeats the accepted job, even on timeout.
+            await asyncio.wait({job.task}, timeout=wait_seconds)
+            # Recheck rights after the wait, without spending a second rate slot.
+            project = rt.db.project(slug)
+            rt.auth.authorize(key, project, "content:read")
+            rt.auth.authorize(key, project, "browser:interact")
+            row = rt.jobs.get(project, ticket["job_id"])
+            if row["status"] == "completed":
+                return JSONResponse(
+                    {
+                        name: row[name]
+                        for name in (
+                            "id",
+                            "kind",
+                            "status",
+                            "created_at",
+                            "updated_at",
+                            "result",
+                            "error",
+                            "tab_id",
+                            "project",
+                            "client_id",
+                            "request_id",
+                        )
+                    }
+                )
+        return ticket
     except PQError as exc:
         from . import __version__
         from .navigation import utc_now
 
         details = dict(exc.details or {})
         details.update(
-            stage="admission",
+            stage="response_wait" if ticket else "admission",
             cause=details.get("cause", exc.code),
             retryable=exc.status in {429, 503},
             requested_url=body.url,
             expected_url=body.expected_url,
             final_url=None,
             request_id=getattr(request.state, "request_id", None),
-            job_id=None,
-            tab_id=None,
+            job_id=ticket["job_id"] if ticket else None,
+            tab_id=ticket.get("tab_id") if ticket else None,
             version=__version__,
             observed_at=utc_now(),
             expected="accepted bounded image acquisition job",

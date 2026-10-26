@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     max_payload_bytes: int = 65536
     max_content_bytes: int = 2_000_000
     job_timeout_seconds: int = 180
-    human_timeout_seconds: int = 600
+    human_timeout_seconds: int = 120
     websocket_lifetime_seconds: int = 600
     audit_queue_size: int = Field(512, ge=16, le=4096)
     audit_events_per_minute: int = Field(2400, ge=60, le=10000)

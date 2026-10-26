@@ -4,7 +4,9 @@
 
 Private, self-hosted web gateway: each project has its own persistent Chromium profile, tabs, API keys and temporary content. FastAPI REST + WebSocket API and local HTML/CSS/JavaScript administration, with no frontend build, Docker or subscription.
 
-**Version 1.2.3 — Addverb and Greenfield exports, bounded recaptures and network diagnostics.** See the [test report](docs/testing/REPORT.en.md) for executed checks and limitations. Original specifications are in `docs/definition/`; development history is in `memory.md` and `decisions.md`.
+**Version 1.2.4 — bounded CAPTCHA waits, visible challenge windows and robust Chromium startup.** See the [test report](docs/testing/REPORT.en.md) for executed checks and limitations. Original specifications are in `docs/definition/`; development history is in `memory.md` and `decisions.md`.
+
+Version 1.2.4: [release notes](docs/releases/1.2.4.en.md), CAPTCHA safeguards and optional image response wait.
 
 Version 1.2.3: [release notes](docs/releases/1.2.3.en.md), Addverb, Greenfield and network diagnostics.
 
@@ -31,9 +33,9 @@ The [bilingual documentation index](docs/README.md) lists English and French gui
 | [Exact acquisition](docs/ACQUISITION.en.md) | URL contracts, robots, evidence, frame diagnostics and server client |
 | [Original images](docs/DOWNLOAD_IMAGE.en.md) | download_image and UBTECH validation |
 | [KUKA frame fix](docs/KUKA_FRAME_FIX.en.md) | Real-site evidence and regression coverage |
-| [OpenAPI](docs/openapi.json) | Shared machine-readable 1.2.3 contract, also served at /openapi.json |
+| [OpenAPI](docs/openapi.json) | Shared machine-readable 1.2.4 contract, also served at /openapi.json |
 
-[Release 1.2.3](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.2.3) provides Python packages and SHA-256 checksums, including the local 1.1.1 and 1.2.0 changes. Sources and documentation are public on [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branch `main`. Local data and captures are excluded.
+[Release 1.2.4](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.2.4) provides Python packages and SHA-256 checksums, including the local 1.1.1 and 1.2.0 changes. Sources and documentation are public on [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branch `main`. Local data and captures are excluded.
 
 ## Use and disclaimer of liability
 
@@ -196,7 +198,9 @@ DuckDuckGo, Brave and Google have separate fixture-tested adapters. Explicit eng
 
 PageQuay's engine quota is **6 page attempts/60 seconds per project/engine**, shared by keys/admin; this is not a DuckDuckGo quota. Stored remainder consumes no engine attempt. REST quotas are separate and include polling. 429 provides `Retry-After` when known; job errors expose scope/cause/timing, resumability and partials. `Idempotency-Key` on POST /search retrieves the same operation for 24 hours, including after restart. Owned internal tabs close on success/failure/cancellation.
 
-DuckDuckGo filters: `region` such as `fr-fr`, `pl-pl`, `us-en`, `wt-wt`; `time_range` in `any`, `day`, `week`, `month`, `year`. Console menus are **Pays / région** and **Période**. Preserve filters across continuations. Explicit filters are rejected for auto/other engines. `fetched_at` is collection time, not publication/event time. Locale transmission does not guarantee rankings. Identifiable ads are filtered; unknown types remain `uncertain`. No CAPTCHA solver, spoofing or identity rotation. [Search contract](docs/SEARCH_API.en.md), [server client](examples/search_duckduckgo.py).
+DuckDuckGo filters: `region` such as `fr-fr`, `pl-pl`, `us-en`, `wt-wt`; `time_range` in `any`, `day`, `week`, `month`, `year`. Console menus are **Pays / région** and **Période**. Preserve filters across continuations. Explicit filters are rejected for auto/other engines. `fetched_at` is collection time, not publication/event time. Locale transmission does not guarantee rankings. Identifiable ads are filtered; unknown types remain `uncertain`. No CAPTCHA solver, spoofing or identity rotation.
+
+CAPTCHA resource protection: automatic checks run at most once per second. Human intervention defaults to a shared 120-second deadline per job (`PQ_HUMAN_TIMEOUT_SECONDS`); resuming does not reset it. When human intervention is needed, a minimized window is restored and the CAPTCHA tab is brought to the front (except in headless mode). Each wait sequence creates at most one screenshot. On timeout or cancellation, PageQuay stops loading and freezes the Chromium page, or attempts to close that tab if freezing fails. A frozen document is preserved and reactivated on the next PageQuay navigation/action/extraction. Extraction stops after three discarded challenge captures. These safeguards reduce resource pressure; they are not OS CPU or memory limits. Restart the service to load the changes. [Search contract](docs/SEARCH_API.en.md), [server client](examples/search_duckduckgo.py).
 
 | Policy | Effect |
 | --- | --- |

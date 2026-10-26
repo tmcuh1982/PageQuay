@@ -32,6 +32,7 @@ class Job:
         self.image_failure = None
         self.cleanup_verified = False
         self.cancel_reason = "unknown"
+        self.human_deadline = None
 
     def audit_details(self):
         return {
@@ -96,6 +97,13 @@ class Job:
 
     async def wait_for_human(self, tab_id, capture, *, navigation=None):
         self.check_authorization()
+        # Resuming an unresolved CAPTCHA must not renew the human-wait budget.
+        loop = asyncio.get_running_loop()
+        if self.human_deadline is None:
+            self.human_deadline = loop.time() + self.manager.settings.human_timeout_seconds
+        remaining = self.human_deadline - loop.time()
+        if remaining <= 0:
+            raise PQError("TIMEOUT", "Human intervention timed out", 408)
         self.resume.clear()
         previous_partial = self.partial_result
         waiting = {"tab_id": tab_id, "capture": capture}
@@ -108,7 +116,7 @@ class Job:
             self.project, "challenge.required", job_id=self.id, tab_id=tab_id, scope=self.scope
         )
         try:
-            await asyncio.wait_for(self.resume.wait(), self.manager.settings.human_timeout_seconds)
+            await asyncio.wait_for(self.resume.wait(), remaining)
         except TimeoutError as exc:
             raise PQError("TIMEOUT", "Human intervention timed out", 408) from exc
         self.check_authorization()

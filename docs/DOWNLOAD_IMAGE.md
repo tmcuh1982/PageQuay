@@ -4,6 +4,8 @@
 GIF et le plafond de 20 Mo exigent le nouveau contrat décrit ci-dessous.
 Le service observé pendant l’audit déclarait encore 1.1.1.
 
+Attente optionnelle : `POST download_image?wait_seconds=0..10` retourne HTTP 200 avec le document du job si celui-ci termine pendant ce délai ; sinon, HTTP 202 et le même ticket. Le défaut reste 0 (asynchrone). L’attente ne rejoue ni n’annule le job et les droits sont revérifiés avant la réponse.
+
 [Français](DOWNLOAD_IMAGE.md) | [English](DOWNLOAD_IMAGE.en.md)
 
 **Transport disponible à partir de PageQuay 1.1.1, du 16 octobre 2026.** Les garanties

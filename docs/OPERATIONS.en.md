@@ -12,7 +12,7 @@ Visible mode requires a logged-in graphical macOS user session; a system LaunchD
 
 **Minimiser / Restaurer** in Projets / Profils and Sessions / Onglets minimizes/restores running headed browsers. Navigation/extraction continue; new tabs preserve state. Screenshots briefly restore for macOS rendering, then minimize again even after failure.
 
-**Démarrer les fenêtres minimisées** sets global browser_start_minimized=true. Save and restart browsers; per-project JSON overrides may enable/disable it. Default off, ignored in headless mode. Restore before human checks.
+**Démarrer les fenêtres minimisées** sets global browser_start_minimized=true. Save and restart browsers; per-project JSON overrides may enable/disable it. Default off, ignored in headless mode. When a CAPTCHA requires human intervention, PageQuay restores the minimized window and activates its tab.
 
 ## User LaunchAgent
 

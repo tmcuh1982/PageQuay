@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PageQuay",
-    "version": "1.2.3"
+    "version": "1.2.4"
   },
   "paths": {
     "/health/live": {
@@ -51,6 +51,18 @@
               "type": "string",
               "title": "Slug"
             }
+          },
+          {
+            "name": "wait_seconds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 10,
+              "minimum": 0,
+              "default": 0,
+              "title": "Wait Seconds"
+            }
           }
         ],
         "requestBody": {
@@ -73,6 +85,16 @@
                 }
               }
             }
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            },
+            "description": "OK"
           },
           "403": {
             "description": "Project/scope or URL/network policy refusal",
@@ -123,6 +145,7 @@
             }
           }
         },
+        "x-pagequay-image-wait": "completed-job-v1",
         "x-pagequay-image-transport": "chromium-byob-integers-v1",
         "x-pagequay-image-contract": "original-gif-20mb-v1",
         "security": [
