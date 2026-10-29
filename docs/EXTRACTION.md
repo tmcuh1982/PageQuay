@@ -46,7 +46,7 @@ L'arbre DOM **dans la réponse** est utile pour comprendre un composant personna
 
 ## Bornes et limites
 
-- Quatre lectures de documents visibles maximum, principal compris. Inventaire limité à 32 frames ; les frames cachées sont signalées comme omises sans consommer une lecture, y compris depuis 1.1.0 les iframes dimensionnées portant `aria-hidden="true"`. Inventaire ou lectures visibles excédentaires : frame_limit_reached et partial. Durée totale 40 secondes, au plus 10 secondes par frame ; dépassement global typé TIMEOUT. Les frames détachées/non réactives restent indisponibles.
+- Huit lectures de documents visibles maximum, principal compris. Inventaire limité à 32 frames ; les frames cachées sont signalées comme omises sans consommer une lecture, y compris depuis 1.1.0 les iframes dimensionnées portant `aria-hidden="true"`. Inventaire ou lectures visibles excédentaires : frame_limit_reached et partial. Durée totale 40 secondes, au plus 10 secondes par frame ; dépassement global typé TIMEOUT. Les frames détachées/non réactives restent indisponibles.
 - Par document : 8 000 nœuds visités (y compris cachés/omis), profondeur comptée 32 avec au plus huit enveloppes neutres non décomptées par chemin (profondeur physique absolue 40, body à 0), budget texte de min(160 000, quota de contenu / 8) caractères ; URL puis titre réservent ce budget avant métadonnées et DOM ; valeurs textuelles bornées. Maximum 400 blocs, 300 liens, 100 images/contrôles, 300 options textuelles par select, 20 tables, 50 lignes et 30 cellules par ligne, 30 formulaires. JSON-LD : 10 scripts visités, y compris invalides, 20 000 caractères par script, objets/niveaux/collections bornés ; contenu parsé, jamais exécuté.
 - Le crédit concerne uniquement les `div`, `span` et `picture` dont les attributs sont limités à `id`, `class`, `style` et `data-*` (32 attributs maximum). Les éléments éditables, hôtes Shadow ouverts et éléments projetés par un slot sont exclus. Les rôles, attributs ARIA, labels, attributs de langue ou d’interaction interdisent donc le crédit. Chaque branche hérite du crédit déjà consommé sur son chemin ; les branches sœurs ne partagent pas un compteur global. Les enveloppes restent dans le DOM filtré et consomment les budgets de nœuds et de texte habituels. Texte, images, liens, titres, listes, tables, contrôles, racines Shadow et slots ne reçoivent aucun crédit. Toute coupure conserve `depth`, `truncated` et `partial`. La provenance XPath conserve sa borne indépendante de 32 segments : `xpath=null`, `xpath_reason=depth_limit` peut accompagner un contenu récupéré sans omission.
 - Au chargement du module structuré, le journal local `pagequay.extraction` reçoit `structured_reader_loaded` avec la version, le schéma et `script_sha256`, empreinte SHA-256 du script effectivement chargé dans `SCRIPT`. Ce diagnostic fixe ne contient ni URL ni donnée de page ; il ne relit pas le fichier lors des extractions.
@@ -96,3 +96,8 @@ si le budget de navigation est épuisé ; URL différente ou dérive persistante
 restent refusées sans artefact. capture_restarts indique le nombre de reprises
 dans le reçu. Les contenus partiels et refus réseau gardent leur statut.
 Recette réelle et hashes : [rapport Greenfield](GREENFIELD_EXPORT_REPORT.md).
+
+
+## Quatre vidéos Clearpath — correction du budget de frames
+
+Le plafond8 principal compris permet les quatre vidéos montées ; délai40s et10s/frame, inventaire32 et vraies troncatures inchangés. [Cause, recette sans repli, hashes et limites](CLEARPATH_EXPORT_REPORT.md).

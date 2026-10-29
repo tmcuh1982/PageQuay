@@ -20,9 +20,9 @@
   const safeUrl = (value, image = false) => {
     if (!value) return null;
     try {
-      if (String(value).length > 2048) cut('url_length');
       const url = new URL(String(value).slice(0, 2048), document.baseURI);
       if (!(image ? ['http:', 'https:'] : ['http:', 'https:', 'mailto:', 'tel:']).includes(url.protocol)) return null;
+      if (String(value).length > 2048) cut('url_length');
       url.username = ''; url.password = '';
       return clip(url.href, 2048);
     } catch { return null; }

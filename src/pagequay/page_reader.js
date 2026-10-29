@@ -31,7 +31,7 @@
       frame: blockingFrame, captcha_widget: widgets.length > 0});
   }
   if (kind === 'text' || kind === 'html') {
-    let value;
+    let value, derivation;
     if (kind === 'text') value = document.body?.innerText || '';
     else {
       const type = document.doctype;
@@ -43,11 +43,34 @@
         if (type.systemId) prefix += ' "' + type.systemId + '"';
         prefix += '>';
       }
-      value = prefix + (document.documentElement?.outerHTML || '');
+      let root = document.documentElement;
+      if (options.omit_inline_media === true && root) {
+        // Clone only: the live DOM and its resource URLs remain untouched.
+        root = root.cloneNode(true);
+        const nodes = root.querySelectorAll('img,video,audio,source');
+        if (nodes.length > 10000) return JSON.stringify({too_large: true});
+        const removed = [];
+        let characters = 0;
+        for (const node of nodes) {
+          for (const attribute of ['src', 'srcset', 'poster', 'data-src']) {
+            const raw = node.getAttribute(attribute);
+            if (raw && /^\s*data:(?:image|video|audio)\//i.test(raw)) {
+              if (removed.length >= 1000) return JSON.stringify({too_large: true});
+              removed.push({tag: node.localName, attribute, characters: raw.length});
+              characters += raw.length;
+              node.removeAttribute(attribute);
+            }
+          }
+        }
+        derivation = {contract: 'html-inline-media-omission/1',
+          removed_attribute_count: removed.length, removed_characters: characters,
+          removed_attributes: removed};
+      }
+      value = prefix + (root?.outerHTML || '');
     }
     if (value.length > max_bytes || encoder.encode(value).length > max_bytes)
       return JSON.stringify({too_large: true});
-    return respond(well(value));
+    return respond(derivation ? {html: well(value), derivation} : well(value));
   }
   if (kind === 'links') return respond(Array.from(document.querySelectorAll('a[href]')).slice(0,1000)
     .map(el => ({text: clip(el.innerText,500), url: clip(el.href,2048)})));

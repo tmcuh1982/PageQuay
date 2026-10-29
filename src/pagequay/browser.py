@@ -1116,13 +1116,19 @@ class BrowserManager:
                             )
                         else:
                             value = await read_page(
-                                tab.page, format, self.settings.max_content_bytes
+                                tab.page,
+                                format,
+                                self.settings.max_content_bytes,
+                                **({"omit_inline_media": True} if format == "html" else {}),
                             )
-                            if format in {"html", "text"}:
-                                data, media = (
-                                    value,
-                                    "text/html" if format == "html" else "text/plain",
-                                )
+                            if format == "html":
+                                data, media = value["html"], "text/html"
+                                html_derivation = {
+                                    **value["derivation"],
+                                    "sha256": hashlib.sha256(data.encode()).hexdigest(),
+                                }
+                            elif format == "text":
+                                data, media = value, "text/plain"
                             else:
                                 data, media = json.dumps(value), "application/json"
                         if await challenge_detected(tab.page, evidence=tab.evidence):
@@ -1158,6 +1164,7 @@ class BrowserManager:
                             continue
                         raise
                     return {
+                        **({"html_derivation": html_derivation} if format == "html" else {}),
                         **self.artifacts.put(
                             project, data.encode(), media, artifact_id=artifact_id
                         ),

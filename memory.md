@@ -428,3 +428,8 @@ Validation : suite générale 347 réussis, Chromium ciblé 29 réussis ; OpenAP
 ## 26 octobre 2026 — Préparation release 1.2.4
 
 Publication locale et GitHub explicitement demandée. Regroupe protections CAPTCHA, restauration de fenêtre, démarrage minimisé robuste et attente optionnelle download_image déjà présente dans le dépôt. Délai humain partagé 120 s, contrôles espacés, reprises bornées, suspension des scripts après expiration/annulation. OpenAPI et versions alignés sur 1.2.4. Validation : 389 réussis / 178 ignorés ; ciblée Chromium 36 réussis ; Ruff/format conformes. Le service local a été redémarré et ses deux listeners vérifiés avant cette publication. Son installation possède des adaptations de reprise de recherche préservées lors du déploiement ; la publication des paquets ne remplace pas cette installation.
+
+
+## 29 octobre 2026 — Commit AVIF et exports Clearpath/Sunflower
+
+Commit et push GitHub demandés explicitement. Changements locaux regroupés : AVIF statique sur opt-in et validation bornée ; huit documents visibles au maximum dans le budget global existant ; HTML dérivé sur clone sans attributs médias data binaires, reçu de dérivation et empreinte ; URL data exclues avant le contrôle de longueur. OpenAPI régénéré sans changement de version. Validation : 407 tests réussis, 179 ignorés ; 25 ciblés avec Chromium/AVIF. Ruff et formatage conformes. Les exemples JSON préexistants sont conservés sans les réécritures de cette exécution. Aucun redémarrage ni nouvelle release demandé dans ce tour.

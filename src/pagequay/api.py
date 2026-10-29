@@ -427,6 +427,7 @@ async def screenshot(slug: str, tab_id: str, request: Request):
                 "image/jpeg": {"schema": {"type": "string", "format": "binary"}},
                 "image/webp": {"schema": {"type": "string", "format": "binary"}},
                 "image/gif": {"schema": {"type": "string", "format": "binary"}},
+                "image/avif": {"schema": {"type": "string", "format": "binary"}},
             },
         },
     },

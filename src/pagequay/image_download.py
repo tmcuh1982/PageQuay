@@ -16,7 +16,7 @@ from .image_validator import validate_image
 from .models import Navigate
 from .navigation import utc_now
 
-MIMES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+MIMES = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp", "AVIF": "image/avif"}
 
 
 def verify_image(data, mime):
@@ -26,6 +26,11 @@ def verify_image(data, mime):
 
         verify_gif(data)
         return
+    if mime == "image/avif":
+        from .avif_validator import avif_signature
+
+        if not avif_signature(data):
+            raise PQError("IMAGE_INVALID", "Invalid static AVIF container", 422)
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
@@ -33,6 +38,12 @@ def verify_image(data, mime):
                 if MIMES.get(image.format) != mime:
                     raise ValueError("signature_mime_mismatch")
                 # Bound validation memory, including malicious small compressed files.
+                if mime == "image/avif" and (
+                    not 0 < image.width <= 8192
+                    or not 0 < image.height <= 8192
+                    or image.width * image.height > 16_000_000
+                ):
+                    raise ValueError("avif_dimension_limit")
                 if image.width * image.height > 25_000_000:
                     raise ValueError("pixel_limit")
                 image.verify()

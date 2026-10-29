@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "title": "Page complexe PQ",
-  "url": "http://localhost:61394/complex",
+  "url": "http://localhost:54751/complex",
   "metadata": {
     "language": "fr",
     "meta": [
@@ -132,7 +132,7 @@
     {
       "type": "frame",
       "node_id": "n83",
-      "url": "http://localhost:61395/child#section",
+      "url": "http://localhost:54752/child#section",
       "title": "Document intégré",
       "provenance": {
         "xpath": "/*[1]/*[2]/*[2]/*[15]",
@@ -154,18 +154,18 @@
     {
       "node_id": "n3",
       "text": "Navigation globale",
-      "url": "http://localhost:61394/navigation"
+      "url": "http://localhost:54751/navigation"
     },
     {
       "node_id": "n12",
       "text": "documentation",
-      "url": "http://localhost:61394/documentation"
+      "url": "http://localhost:54751/documentation"
     }
   ],
   "images": [
     {
       "node_id": "n81",
-      "url": "http://localhost:61394/image.png",
+      "url": "http://localhost:54751/image.png",
       "alt": "Illustration robot"
     }
   ],
@@ -333,7 +333,7 @@
   "forms": [
     {
       "node_id": "n51",
-      "action": "http://localhost:61394/send",
+      "action": "http://localhost:54751/send",
       "method": "post",
       "label": "",
       "control_ids": [
@@ -383,11 +383,11 @@
       "frame_id": "f1",
       "parent_frame_id": "f0",
       "name": "",
-      "url": "http://localhost:61395/child#section",
+      "url": "http://localhost:54752/child#section",
       "status": "extracted",
       "document": {
         "title": "Enfant",
-        "url": "http://localhost:61395/child#section",
+        "url": "http://localhost:54752/child#section",
         "metadata": {
           "language": "",
           "meta": [],
@@ -441,9 +441,6 @@
         ],
         "observed_paths": [
           [
-            1
-          ],
-          [
             0
           ]
         ],
@@ -459,7 +456,7 @@
       "frame_id": "f2",
       "parent_frame_id": "f0",
       "name": "",
-      "url": "http://localhost:61395/child#section?hidden=1",
+      "url": "http://localhost:54752/child#section?hidden=1",
       "status": "omitted",
       "reason": "hidden_frame"
     }
@@ -473,28 +470,28 @@
     "Node IDs refer to this snapshot only; they are not action selectors."
   ],
   "navigation": {
-    "requested_url": "http://localhost:61394/complex",
-    "final_url": "http://localhost:61394/complex",
+    "requested_url": "http://localhost:54751/complex",
+    "final_url": "http://localhost:54751/complex",
     "http_status": 200,
     "http_status_reason": null,
     "content_type": "text/html; charset=utf-8",
     "redirect_chain": [],
     "redirect_chain_truncated": false,
-    "observed_at": "2026-10-23T20:43:19.293506+00:00",
-    "navigation_id": "745d9d58e4d70bca5fb105d3ec60a0eb",
+    "observed_at": "2026-10-27T13:21:40.769951+00:00",
+    "navigation_id": "66eacce905f4dfce6d67e1cf076e34be",
     "source": "browser_main_document_response",
     "main_document_response": {
-      "url": "http://localhost:61394/complex",
+      "url": "http://localhost:54751/complex",
       "http_status": 200,
       "content_type": "text/html; charset=utf-8",
-      "observed_at": "2026-10-23T20:43:19.293506+00:00"
+      "observed_at": "2026-10-27T13:21:40.769951+00:00"
     },
     "url_changes": [
       {
         "from_url": "about:blank",
-        "to_url": "http://localhost:61394/complex",
+        "to_url": "http://localhost:54751/complex",
         "kind": "response_commit",
-        "observed_at": "2026-10-23T20:43:19.293506+00:00"
+        "observed_at": "2026-10-27T13:21:40.769951+00:00"
       }
     ],
     "url_changes_truncated": false,
@@ -528,6 +525,6 @@
       "Ports reflect production policy; tests may inject local endpoints."
     ]
   },
-  "captured_at": "2026-10-23T20:43:19.418452+00:00",
-  "artifact_id": "992e2cecd9f734d87f379f3d1f4aab2c"
+  "captured_at": "2026-10-27T13:21:40.896471+00:00",
+  "artifact_id": "3c02d8d95d71228ea18d5aa808dc6fae"
 }

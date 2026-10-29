@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from pagequay.main import create_app
 from pagequay.network import NetworkPolicy
 from pagequay.settings import Policy, Settings
+from pagequay.structured import MAX_FRAMES
 
 pytestmark = [
     pytest.mark.browser,
@@ -53,9 +54,17 @@ def complex_site():
                     + '<p style="display:none">Caché</p>' * 10000
                     + "<p>Après la limite</p></main></body></html>"
                 )
+            elif self.path == "/clearpath-frames":
+                content = (
+                    "<html><body><main><p>Four mounted videos</p>"
+                    + f'<iframe src="{frame_url}"></iframe>' * 4
+                    + "</main></body></html>"
+                )
             elif self.path == "/frames":
                 content = (
-                    "<html><body>" + f'<iframe src="{frame_url}"></iframe>' * 6 + "</body></html>"
+                    "<html><body>"
+                    + f'<iframe src="{frame_url}"></iframe>' * (MAX_FRAMES + 2)
+                    + "</body></html>"
                 )
             elif self.path == "/malformed":
                 content = (
@@ -241,7 +250,7 @@ async def test_frame_count_is_bounded(structured_client):
     )
     data = (await client.get(value["url"])).json()
     assert data["frame_limit_reached"] and data["truncated"]
-    assert len(data["frames"]) == 3
+    assert len(data["frames"]) == MAX_FRAMES - 1
 
 
 async def test_malformed_authored_data_and_unsafe_links(structured_client):
@@ -260,3 +269,22 @@ async def test_malformed_authored_data_and_unsafe_links(structured_client):
     assert data["images"][0]["url"] is None
     assert "javascript:" not in json.dumps(data)
     assert "data:text/html" not in json.dumps(data)
+
+
+async def test_four_visible_clearpath_frames_are_complete(structured_client):
+    client, complete, _, _, base = structured_client
+    prefix = "/v1/projects/structured-test"
+    navigation = await complete(
+        "POST", prefix + "/tabs", json={"url": base + "/clearpath-frames", "wait_until": "load"}
+    )
+    value = await complete(
+        "GET", prefix + f"/tabs/{navigation['tab_id']}/content?format=structured"
+    )
+    data = (await client.get(value["url"])).json()
+    assert not data["frame_limit_reached"] and not data["partial"] and not data["truncated"]
+    children = [f for f in data["frames"] if f["status"] == "extracted"]
+    assert len(children) == 4
+    assert all(
+        "Contenu iframe" in json.dumps(f["document"]["blocks"], ensure_ascii=False)
+        for f in children
+    )

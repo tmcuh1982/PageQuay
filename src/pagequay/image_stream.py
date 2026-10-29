@@ -37,7 +37,10 @@ def metadata(request, url, status, headers):
             else "IMAGE_FORMAT_FORBIDDEN"
         )
         raise PQError(
-            code, "Response is not a supported image", 415, details={"cause": "unsupported_mime"}
+            code,
+            "Response is not a supported image",
+            415,
+            details={"cause": "unsupported_mime", "observed_mime": mime[:100]},
         )
     if headers.get("content-encoding", "identity").lower() != "identity":
         raise PQError(

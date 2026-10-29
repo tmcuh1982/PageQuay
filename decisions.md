@@ -226,3 +226,8 @@ L’utilisateur autorise explicitement l’implémentation puis l’installation
 ## 26 octobre 2026 — CAPTCHA et release 1.2.4
 
 Les reprises humaines partagent une échéance par job. Une attente abandonnée désactive les scripts puis suspend la page via CDP ; réactivation sur une opération explicite, fermeture tentée si la suspension échoue. Afficher une fenêtre minimisée seulement quand une intervention humaine est nécessaire, une fois par séquence ; borner les appels natifs et conserver l’attente si l’affichage échoue. Aucune garantie de plafond système CPU/mémoire. L’utilisateur autorise le commit local, le push main et la release GitHub avec les paquets Python et leurs empreintes.
+
+
+## 29 octobre 2026 — Publication des correctifs AVIF et extraction
+
+Publier les changements locaux sur main dans un commit, sans nouveau tag ni release. Conserver les formats image par défaut, rendre AVIF explicite, maintenir les budgets et l’URL exacte. Les omissions de médias binaires dans le HTML restent déclarées dans le reçu ; ne pas modifier le DOM vivant.

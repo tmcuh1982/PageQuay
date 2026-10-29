@@ -1057,6 +1057,12 @@
                   "type": "string",
                   "format": "binary"
                 }
+              },
+              "image/avif": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
           },
@@ -1589,11 +1595,12 @@
                 "image/jpeg",
                 "image/png",
                 "image/webp",
-                "image/gif"
+                "image/gif",
+                "image/avif"
               ]
             },
             "type": "array",
-            "maxItems": 4,
+            "maxItems": 5,
             "minItems": 1,
             "uniqueItems": true,
             "title": "Allowed Media Types",
@@ -1639,7 +1646,8 @@
               "image/jpeg",
               "image/png",
               "image/webp",
-              "image/gif"
+              "image/gif",
+              "image/avif"
             ],
             "title": "Media Type"
           },

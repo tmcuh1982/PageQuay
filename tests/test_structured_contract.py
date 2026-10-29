@@ -21,6 +21,10 @@ def test_loaded_script_fingerprint_is_logged(caplog):
         importlib.reload(structured)
     assert structured.SCRIPT_SHA256 == hashlib.sha256(structured.SCRIPT.encode("utf-8")).hexdigest()
     assert (
+        f"structured_reader_budget max_frames={structured.MAX_FRAMES} max_frame_inventory=32"
+        in caplog.messages
+    )
+    assert (
         f"structured_reader_loaded version={__version__} schema_version=1.0 "
         f"script_sha256={structured.SCRIPT_SHA256}"
     ) in caplog.messages

@@ -20,8 +20,11 @@ logger.info(
     __version__,
     SCRIPT_SHA256,
 )
-MAX_FRAMES = 4  # Visible reads, including the main document.
+MAX_FRAMES = 8  # Visible reads, including the main document; shared 40s deadline.
 MAX_FRAME_INVENTORY = 32  # Hidden frames are reported without consuming a read slot.
+logger.info(
+    "structured_reader_budget max_frames=%s max_frame_inventory=%s", MAX_FRAMES, MAX_FRAME_INVENTORY
+)
 
 
 async def extract_structured(

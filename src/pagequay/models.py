@@ -6,7 +6,7 @@ from .auth import SCOPES
 from .search_options import DDG_REGIONS
 
 ContentFormat = Literal["text", "html", "links", "metadata", "structured"]
-ImageMediaType = Literal["image/jpeg", "image/png", "image/webp", "image/gif"]
+ImageMediaType = Literal["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"]
 
 
 class Strict(BaseModel):
@@ -72,7 +72,7 @@ class DownloadImage(Strict):
     allowed_media_types: list[ImageMediaType] = Field(
         default_factory=lambda: ["image/jpeg", "image/png", "image/webp"],
         min_length=1,
-        max_length=4,
+        max_length=5,
         description="Opt-in formats; omission preserves JPEG/PNG/WebP only",
         json_schema_extra={"uniqueItems": True},
     )

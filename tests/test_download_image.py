@@ -297,6 +297,12 @@ async def test_browser_binary(image_site, path):
 )
 async def test_browser_refusals(image_site, path, kwargs, code):
     rt, p, *_ = image_site
+    if path == "/slow":
+        # This case measures the stream deadline, not a cold Chromium startup.
+        # Production already owns a running browser; keep the one-second limit
+        # and every refusal/cleanup assertion unchanged.
+        tab = await rt.browser.new_tab(p)
+        await rt.browser.close_tab(p, tab.id)
     row = await finish(image_site, await start(image_site, path, **kwargs))
     assert row["status"] == "failed", row
     assert row["error"]["code"] == code, row
