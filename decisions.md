@@ -236,3 +236,8 @@ Publier les changements locaux sur main dans un commit, sans nouveau tag ni rele
 ## 2 novembre 2026 — Publication des adaptations récentes
 
 Conserver l’échéance humaine unique du job et exposer ses dates/budget dans les résultats et erreurs. Préserver le refus de parsing moteur et stocker sa preuve seulement dans les artefacts privés du projet. Normaliser les messages de fin, pas les titres/extraits. Augmenter les budgets d’extraction selon le patch local tout en conservant les plafonds de taille, temps et troncatures explicites ; une frame sans URL ne devient omise qu’après attestation about:blank vierge. Publication sur main autorisée par l’utilisateur, sans nouvelle release.
+
+
+## 2 novembre 2026 — Release GitHub 1.2.5
+
+L’utilisateur autorise une nouvelle release regroupant les adaptations déjà committées après v1.2.4. Publier v1.2.5 avec commit de version, tag annoté, notes bilingues, wheel, archive source et SHA256SUMS. Conserver les dépendances et le service installé ; publication et déploiement restent distincts.

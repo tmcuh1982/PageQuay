@@ -4,7 +4,9 @@
 
 Private, self-hosted web gateway: each project has its own persistent Chromium profile, tabs, API keys and temporary content. FastAPI REST + WebSocket API and local HTML/CSS/JavaScript administration, with no frontend build, Docker or subscription.
 
-**Version 1.2.4 — bounded CAPTCHA waits, visible challenge windows and robust Chromium startup.** See the [test report](docs/testing/REPORT.en.md) for executed checks and limitations. Original specifications are in `docs/definition/`; development history is in `memory.md` and `decisions.md`.
+**Version 1.2.5 — AVIF, expanded structured exports and search diagnostics.** See the [test report](docs/testing/REPORT.en.md) for executed checks and limitations. Original specifications are in `docs/definition/`; development history is in `memory.md` and `decisions.md`.
+
+Version 1.2.5: [release notes](docs/releases/1.2.5.en.md), AVIF, expanded exports and search diagnostics.
 
 Version 1.2.4: [release notes](docs/releases/1.2.4.en.md), CAPTCHA safeguards and optional image response wait.
 
@@ -33,9 +35,9 @@ The [bilingual documentation index](docs/README.md) lists English and French gui
 | [Exact acquisition](docs/ACQUISITION.en.md) | URL contracts, robots, evidence, frame diagnostics and server client |
 | [Original images](docs/DOWNLOAD_IMAGE.en.md) | download_image and UBTECH validation |
 | [KUKA frame fix](docs/KUKA_FRAME_FIX.en.md) | Real-site evidence and regression coverage |
-| [OpenAPI](docs/openapi.json) | Shared machine-readable 1.2.4 contract, also served at /openapi.json |
+| [OpenAPI](docs/openapi.json) | Shared machine-readable 1.2.5 contract, also served at /openapi.json |
 
-[Release 1.2.4](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.2.4) provides Python packages and SHA-256 checksums, including the local 1.1.1 and 1.2.0 changes. Sources and documentation are public on [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branch `main`. Local data and captures are excluded.
+[Release 1.2.5](https://github.com/tmcuh1982/PageQuay/releases/tag/v1.2.5) provides Python packages and SHA-256 checksums, including the local 1.1.1 and 1.2.0 changes. Sources and documentation are public on [tmcuh1982/PageQuay](https://github.com/tmcuh1982/PageQuay), branch `main`. Local data and captures are excluded.
 
 ## Use and disclaimer of liability
 

@@ -438,3 +438,8 @@ Commit et push GitHub demandés explicitement. Changements locaux regroupés : A
 ## 2 novembre 2026 — Dernières adaptations recherche et extraction
 
 Commit/push GitHub explicitement demandé. Regroupe les diagnostics privés de parsing moteur, normalisation des avis sans résultat, métadonnées de l’échéance humaine et adaptations d’extraction des documents denses, attributs longs et frames initiales vides attestées. Budgets documentés dans les deux langues ; tests de dépassement alignés sur les nouveaux plafonds avec vérification du plafond texte absolu. Validation : 451 réussis, 179 ignorés ; 68 ciblés avec Chromium ; Ruff/format/diff-check conformes. Exemples JSON préexistants restaurés après les tests pour éviter la réécriture par cette exécution. Aucun nouveau tag, release ou déploiement demandé dans ce tour.
+
+
+## 2 novembre 2026 — Préparation release GitHub 1.2.5
+
+Nouvelle release explicitement demandée après le commit 8956387. Version 1.2.5 regroupe d782b5a et 8956387 depuis v1.2.4 : AVIF opt-in, Clearpath/Sunflower et exports denses, diagnostics recherche et échéance humaine. Notes bilingues, README, index et OpenAPI alignés. Validation de publication : 451 tests réussis, 179 ignorés ; Ruff/format/diff-check et uv lock --check --offline conformes. Les adaptations avaient aussi passé 68 tests ciblés avec Chromium. Construire les paquets depuis le commit de release et vérifier leurs empreintes avant publication ; ne pas modifier l’installation locale dans cette demande.
