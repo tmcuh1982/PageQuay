@@ -43,7 +43,7 @@ def complex_site():
                     "<h2>Contenu iframe</h2><p>Autre origine</p></body></html>"
                 )
             elif self.path == "/large":
-                content = "<html><body><main>" + "<p>Élément</p>" * 5000 + "</main></body></html>"
+                content = "<html><body><main>" + "<p>Élément</p>" * 10000 + "</main></body></html>"
             elif self.path == "/deep":
                 content = (
                     "<html><body>" + "<div>" * 100 + "Profond" + "</div>" * 100 + "</body></html>"
@@ -51,7 +51,7 @@ def complex_site():
             elif self.path == "/hidden-flood":
                 content = (
                     "<html><body><main>"
-                    + '<p style="display:none">Caché</p>' * 10000
+                    + '<p style="display:none">Caché</p>' * 20000
                     + "<p>Après la limite</p></main></body></html>"
                 )
             elif self.path == "/clearpath-frames":
@@ -103,6 +103,7 @@ async def structured_client(tmp_path, complex_site):
     app = create_app(
         Settings(
             data_dir=tmp_path,
+            max_content_bytes=4_000_000,
             allowed_hosts=["testserver"],
             policy=Policy(headless=os.environ.get("PQ_TEST_HEADED") != "1"),
         ),
@@ -236,7 +237,7 @@ async def test_snapshot_size_and_depth_are_bounded(structured_client, path, reas
     )
     data = (await client.get(value["url"])).json()
     assert data["truncated"] and reason in data["truncation_reasons"]
-    assert data["stats"]["nodes_visited"] <= 8000
+    assert data["stats"]["nodes_visited"] <= 16000
 
 
 async def test_frame_count_is_bounded(structured_client):

@@ -21,6 +21,7 @@ logger.info(
     SCRIPT_SHA256,
 )
 MAX_FRAMES = 8  # Visible reads, including the main document; shared 40s deadline.
+MAX_FRAME_NAME_CHARACTERS = 131072
 MAX_FRAME_INVENTORY = 32  # Hidden frames are reported without consuming a read slot.
 logger.info(
     "structured_reader_budget max_frames=%s max_frame_inventory=%s", MAX_FRAMES, MAX_FRAME_INVENTORY
@@ -44,9 +45,12 @@ async def extract_structured(
         entry = {
             "frame_id": frame_ids[frame],
             "parent_frame_id": frame_ids.get(frame.parent_frame),
-            "name": frame.name[:256],
+            "name": frame.name[:MAX_FRAME_NAME_CHARACTERS],
             "url": frame.url[:4096],
         }
+        if len(frame.name) > MAX_FRAME_NAME_CHARACTERS:
+            entry["name_truncated"] = True
+            truncated = True
         trace = ReadTrace(frame, {**(correlation or {}), "frame_id": entry["frame_id"]})
         try:
             async with asyncio.timeout(min(10, max(0, deadline - time.monotonic()))):
@@ -63,6 +67,30 @@ async def extract_structured(
                             continue
                     finally:
                         await handle.dispose()
+                if frame != page.main_frame and frame.url == "":
+                    # Uninitialized child targets may expose no Playwright URL.
+                    # Omit only a verified pristine about:blank document; this
+                    # bounded metadata probe does not consume a content slot.
+                    empty = await isolated_read(
+                        page,
+                        "function() { return JSON.stringify({value: {empty: "
+                        "location.href === 'about:blank' && document.readyState === 'complete' && "
+                        "document.documentElement !== null && "
+                        "document.documentElement.attributes.length === 0 && "
+                        "document.head !== null && document.head.attributes.length === 0 && "
+                        "document.head.childNodes.length === 0 && "
+                        "document.body !== null && document.body.attributes.length === 0 && "
+                        "document.body.childNodes.length === 0}}); }",
+                        None,
+                        frame=frame,
+                        max_bytes=1024,
+                        trace=trace,
+                    )
+                    check()
+                    if empty == {"empty": True}:
+                        entry.update(status="omitted", reason="empty_initial_document")
+                        documents.append(entry)
+                        continue
                 if urlsplit(frame.url).scheme not in {"http", "https", "about"}:
                     if frame == page.main_frame:
                         raise PQError("NAVIGATION_BLOCKED", "Unsupported document scheme", 403)
@@ -83,7 +111,7 @@ async def extract_structured(
                         "return JSON.stringify({too_large: true}); return output; }",
                         {
                             "include_dom": include_dom,
-                            "text_budget": min(160000, max_bytes // 8),
+                            "text_budget": min(1_000_000, max_bytes // 4),
                             "max_bytes": max_bytes,
                         },
                         frame=frame,
@@ -130,6 +158,18 @@ async def extract_structured(
         "schema_version": "1.0",
         **primary,
         "source": "rendered_dom",
+        "truncation_reasons": list(
+            dict.fromkeys(
+                [
+                    *primary.get("truncation_reasons", []),
+                    *(
+                        ["frame_name"]
+                        if any(entry.get("name_truncated") for entry in documents)
+                        else []
+                    ),
+                ]
+            )
+        ),
         "frame_id": documents[0]["frame_id"],
         "frames": documents[1:],
         "truncated": truncated,

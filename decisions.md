@@ -231,3 +231,8 @@ Les reprises humaines partagent une échéance par job. Une attente abandonnée 
 ## 29 octobre 2026 — Publication des correctifs AVIF et extraction
 
 Publier les changements locaux sur main dans un commit, sans nouveau tag ni release. Conserver les formats image par défaut, rendre AVIF explicite, maintenir les budgets et l’URL exacte. Les omissions de médias binaires dans le HTML restent déclarées dans le reçu ; ne pas modifier le DOM vivant.
+
+
+## 2 novembre 2026 — Publication des adaptations récentes
+
+Conserver l’échéance humaine unique du job et exposer ses dates/budget dans les résultats et erreurs. Préserver le refus de parsing moteur et stocker sa preuve seulement dans les artefacts privés du projet. Normaliser les messages de fin, pas les titres/extraits. Augmenter les budgets d’extraction selon le patch local tout en conservant les plafonds de taille, temps et troncatures explicites ; une frame sans URL ne devient omise qu’après attestation about:blank vierge. Publication sur main autorisée par l’utilisateur, sans nouvelle release.

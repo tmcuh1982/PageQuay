@@ -154,3 +154,7 @@ Rerun with same checkpoint/arguments for uncertain receipt. After manual resume,
 Simulation covers three progressive pages, remainder, duplicates/repetition, deadlines, binding, bounds/shared quotas, concurrent idempotency/SQLite reopen, cancellation/timeouts/CAPTCHA/cleanup. Real Chromium fixtures test native POST, repeated/Unicode fields and proxy transport.
 
 Bounded live attempts for “robot agriculture” (fr-FR), “agricultural robotics manufacturers” (en-US), “robots agricoles France” (fr-FR) all encountered DuckDuckGo CAPTCHA, challenge.required, five-second test human expiry and confirmed tab cleanup. **No real result page was obtained; three-page live pagination remains unvalidated.** Raw local HTML/reports are excluded from Git. Passing a diagnostic means outcome recording, not engine acceptance. [Test report](testing/REPORT.en.md).
+
+End-of-results notices are compared after Unicode NFKC and whitespace normalization; returned titles and snippets are not rewritten. Unrecognized engine HTML remains `UPSTREAM_CHANGED` and may be preserved in a private project HTML artifact (`content:read`); diagnostic details report availability, artifact ID, size and SHA-256. A storage failure preserves the original parsing refusal.
+
+`waiting_for_human` results expose `human_verification` with `budget_seconds`, `started_at` and `expires_at` (Unix timestamps). Resuming preserves that deadline. Expiry reports cause `human_deadline_reached`, stage `human_verification` and the original budget in error details.

@@ -30,8 +30,10 @@ def test_loaded_script_fingerprint_is_logged(caplog):
     ) in caplog.messages
 
 
-@pytest.mark.parametrize("max_bytes,text_budget", [(2_000_000, 160_000), (80_000, 10_000)])
-async def test_existing_text_and_serialization_budgets(monkeypatch, max_bytes, text_budget):
+@pytest.mark.parametrize(
+    "max_bytes,text_budget", [(2_000_000, 500_000), (80_000, 20_000), (8_000_000, 1_000_000)]
+)
+async def test_configured_text_and_serialization_budgets(monkeypatch, max_bytes, text_budget):
     frame = Frame()
     page = SimpleNamespace(main_frame=frame, frames=[frame])
     read = AsyncMock(return_value={"blocks": [], "truncated": False})

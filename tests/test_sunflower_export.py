@@ -35,7 +35,7 @@ async def test_long_inline_media_does_not_mark_structured_text_partial(page):
 
 async def test_real_long_https_url_still_marks_partial(page):
     await page.set_content(
-        '<h1>Fixture</h1><a href="https://example.org/' + "a" * 3000 + '">Technical document</a>'
+        '<h1>Fixture</h1><a href="https://example.org/' + "a" * 5000 + '">Technical document</a>'
     )
     document = await extract_structured(page)
     assert document["partial"] is True

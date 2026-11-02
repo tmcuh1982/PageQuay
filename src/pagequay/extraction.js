@@ -1,8 +1,9 @@
 /* Fixed, read-only snapshot. No caller-supplied code, clicks, scrolling or network calls. */
 ({ include_dom, text_budget }) => {
   const reasons = new Set();
-  const limits = { nodes: 8000, depth: 32, wrapper_credit: 8, physical_depth: 40, blocks: 400, links: 300, images: 100,
-    tables: 20, rows: 50, cells: 30, controls: 100, forms: 30, options: 300, json_ld: 10 };
+  const limits = { nodes: 16000, depth: 32, wrapper_credit: 8, physical_depth: 40, blocks: 400, links: 300, images: 100,
+    tables: 20, rows: 50, cells: 30, controls: 400, forms: 30, options: 300, json_ld: 10 };
+  const maxUrlCharacters = 4096, maxFrameNameCharacters = 131072;
   let characters = 0, nodes = 0, visited = 0, shadowRoots = 0;
   const seen = new WeakSet();
   const cut = (reason) => reasons.add(reason);
@@ -20,11 +21,11 @@
   const safeUrl = (value, image = false) => {
     if (!value) return null;
     try {
-      const url = new URL(String(value).slice(0, 2048), document.baseURI);
+      const url = new URL(String(value).slice(0, maxUrlCharacters), document.baseURI);
       if (!(image ? ['http:', 'https:'] : ['http:', 'https:', 'mailto:', 'tel:']).includes(url.protocol)) return null;
-      if (String(value).length > 2048) cut('url_length');
+      if (String(value).length > maxUrlCharacters) cut('url_length');
       url.username = ''; url.password = '';
-      return clip(url.href, 2048);
+      return clip(url.href, maxUrlCharacters);
     } catch { return null; }
   };
   const allowed = ['id', 'class', 'role', 'aria-label', 'aria-labelledby', 'aria-describedby',
@@ -36,7 +37,7 @@
     for (const name of allowed) {
       // Classes are only serialized in the optional DOM, never semantic collectors.
       if (name === 'class' && !include_dom) continue;
-      if (el.hasAttribute(name)) result[name] = clip(el.getAttribute(name), 256);
+      if (el.hasAttribute(name)) result[name] = clip(el.getAttribute(name), name === 'name' && el.localName === 'iframe' ? maxFrameNameCharacters : name === 'title' ? 16384 : ['alt', 'aria-label'].includes(name) ? 4096 : 256);
     }
     for (const name of ['href', 'src', 'action']) {
       const value = safeUrl(el.getAttribute(name), name === 'src');

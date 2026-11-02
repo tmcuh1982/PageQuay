@@ -33,6 +33,7 @@ class Job:
         self.cleanup_verified = False
         self.cancel_reason = "unknown"
         self.human_deadline = None
+        self.human_verification = None
 
     def audit_details(self):
         return {
@@ -95,18 +96,42 @@ class Job:
         self.update(self.status, result)
         self.partial_result = result
 
+    def _human_timeout(self):
+        # L’échéance appartient au job ; une reprise ne renouvelle pas ce budget.
+        return PQError(
+            "TIMEOUT",
+            "Human intervention timed out",
+            408,
+            details={
+                "stage": "human_verification",
+                "cause": "human_deadline_reached",
+                "human_verification": dict(self.human_verification or {}),
+            },
+        )
+
     async def wait_for_human(self, tab_id, capture, *, navigation=None):
         self.check_authorization()
         # Resuming an unresolved CAPTCHA must not renew the human-wait budget.
         loop = asyncio.get_running_loop()
         if self.human_deadline is None:
-            self.human_deadline = loop.time() + self.manager.settings.human_timeout_seconds
+            budget = self.manager.settings.human_timeout_seconds
+            self.human_deadline = loop.time() + budget
+            started = time.time()
+            self.human_verification = {
+                "budget_seconds": budget,
+                "started_at": started,
+                "expires_at": started + budget,
+            }
         remaining = self.human_deadline - loop.time()
         if remaining <= 0:
-            raise PQError("TIMEOUT", "Human intervention timed out", 408)
+            raise self._human_timeout()
         self.resume.clear()
         previous_partial = self.partial_result
-        waiting = {"tab_id": tab_id, "capture": capture}
+        waiting = {
+            "tab_id": tab_id,
+            "capture": capture,
+            "human_verification": self.human_verification,
+        }
         if navigation is not None:
             waiting["navigation"] = navigation
         if self.kind != "search":
@@ -118,7 +143,7 @@ class Job:
         try:
             await asyncio.wait_for(self.resume.wait(), remaining)
         except TimeoutError as exc:
-            raise PQError("TIMEOUT", "Human intervention timed out", 408) from exc
+            raise self._human_timeout() from exc
         self.check_authorization()
         self.partial_result = previous_partial
         self.update("running")

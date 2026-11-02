@@ -3,6 +3,7 @@ import hashlib
 import json
 import secrets
 import time
+import unicodedata
 from contextlib import suppress
 from urllib.parse import parse_qs, parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
@@ -38,6 +39,13 @@ def normalize_url(url):
     )
 
 
+def _notice_text(soup):
+    """Comparer les messages sans dépendre de leur typographie Unicode."""
+    return " ".join(
+        unicodedata.normalize("NFKC", soup.get_text(" ", strip=True)).casefold().split()
+    )
+
+
 class Adapter:
     def __init__(self, name, base):
         self.name, self.base = name, base
@@ -56,7 +64,7 @@ class Adapter:
         soup = BeautifulSoup(html, "html.parser")
         if soup.select_one('[data-pq-challenge="true"]'):
             raise PQError("CHALLENGE_REQUIRED", "Search engine requests human intervention", 409)
-        text = soup.get_text(" ", strip=True).lower()
+        text = _notice_text(soup)
         if any(marker in text for marker in ("too many requests", "rate limit exceeded")):
             raise PQError(
                 "RATE_LIMITED",
@@ -117,7 +125,7 @@ class Adapter:
             if len(results) >= limit:
                 break
         if not results and not any(
-            marker in soup.get_text(" ", strip=True).lower()
+            marker in _notice_text(soup)
             for marker in ("no results", "aucun résultat", "no more results")
         ):
             raise PQError("UPSTREAM_CHANGED", "Search HTML not recognized by adapter", 502)
@@ -232,7 +240,7 @@ def ddg_continuation(html, source_url, query, *, region=None, time_range=None):
         ):
             return None, None, "continuation_unusable"
         return {"url": url, "method": method, "fields": fields}, True, None
-    text = soup.get_text(" ", strip=True).lower()
+    text = _notice_text(soup)
     exhausted = any(
         marker in text
         for marker in ("no more results", "no results", "aucun résultat", "fin des résultats")
@@ -247,6 +255,46 @@ def ddg_continuation(html, source_url, query, *, region=None, time_range=None):
 class SearchService:
     def __init__(self, browser, auth, db):
         self.browser, self.auth, self.db = browser, auth, db
+
+    def parse_page(self, project, job, tab, name, html, limit):
+        try:
+            return ADAPTERS[name].parse(html, limit)
+        except PQError as exc:
+            if exc.code != "UPSTREAM_CHANGED":
+                raise
+            details = {
+                "stage": "search_parse",
+                "cause": "unrecognized_search_html",
+                "diagnostic_available": False,
+            }
+            source = getattr(getattr(tab, "page", None), "url", None)
+            if isinstance(source, str):
+                parsed = urlsplit(source)
+                if (
+                    len(source) <= 4096
+                    and parsed.scheme == "https"
+                    and parsed.hostname
+                    and not parsed.username
+                    and not parsed.password
+                ):
+                    details["source_url"] = source
+            try:
+                data = html.encode("utf-8")
+                artifact = self.browser.artifacts.put(project, data, "text/html", "content:read")
+                details.update(
+                    diagnostic_available=True,
+                    artifact_id=artifact["artifact_id"],
+                    artifact_bytes=len(data),
+                    artifact_sha256=hashlib.sha256(data).hexdigest(),
+                )
+            except (PQError, OSError, ValueError) as diagnostic_error:
+                # Le refus initial reste la cause, même si sa preuve ne peut pas être stockée.
+                details["diagnostic_error_type"] = (
+                    "OSError"
+                    if isinstance(diagnostic_error, OSError)
+                    else type(diagnostic_error).__name__
+                )
+            raise PQError(exc.code, exc.message, exc.status, details=details) from exc
 
     def engine(self, project, request):
         return request.engine or self.db.policy(project).search_default_engine
@@ -445,7 +493,7 @@ class SearchService:
             html = await self.read_page(
                 project, request, job, "duckduckgo", tab, state["next_form"]
             )
-            results = ADAPTERS["duckduckgo"].parse(html, 200)
+            results = self.parse_page(project, job, tab, "duckduckgo", html, 200)
             signature = fingerprint([row["url"] for row in results])
             state["pages"] += 1
             next_form, more, reason = ddg_continuation(
@@ -591,8 +639,13 @@ class SearchService:
                         job.check_authorization()
                         try:
                             html = await self.read_page(project, request, job, name, tab)
-                            group = ADAPTERS[name].parse(
-                                html, min(request.limit, policy.search_max_results)
+                            group = self.parse_page(
+                                project,
+                                job,
+                                tab,
+                                name,
+                                html,
+                                min(request.limit, policy.search_max_results),
                             )
                             groups.append(group)
                             used.append(name)

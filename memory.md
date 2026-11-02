@@ -433,3 +433,8 @@ Publication locale et GitHub explicitement demandée. Regroupe protections CAPTC
 ## 29 octobre 2026 — Commit AVIF et exports Clearpath/Sunflower
 
 Commit et push GitHub demandés explicitement. Changements locaux regroupés : AVIF statique sur opt-in et validation bornée ; huit documents visibles au maximum dans le budget global existant ; HTML dérivé sur clone sans attributs médias data binaires, reçu de dérivation et empreinte ; URL data exclues avant le contrôle de longueur. OpenAPI régénéré sans changement de version. Validation : 407 tests réussis, 179 ignorés ; 25 ciblés avec Chromium/AVIF. Ruff et formatage conformes. Les exemples JSON préexistants sont conservés sans les réécritures de cette exécution. Aucun redémarrage ni nouvelle release demandé dans ce tour.
+
+
+## 2 novembre 2026 — Dernières adaptations recherche et extraction
+
+Commit/push GitHub explicitement demandé. Regroupe les diagnostics privés de parsing moteur, normalisation des avis sans résultat, métadonnées de l’échéance humaine et adaptations d’extraction des documents denses, attributs longs et frames initiales vides attestées. Budgets documentés dans les deux langues ; tests de dépassement alignés sur les nouveaux plafonds avec vérification du plafond texte absolu. Validation : 451 réussis, 179 ignorés ; 68 ciblés avec Chromium ; Ruff/format/diff-check conformes. Exemples JSON préexistants restaurés après les tests pour éviter la réécriture par cette exécution. Aucun nouveau tag, release ou déploiement demandé dans ce tour.
